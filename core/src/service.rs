@@ -403,7 +403,11 @@ impl ReelVaultService {
                     exposure_mode, exposure_program, white_balance,
                     color_transfer, color_primaries, dynamic_range, timecode_start, capture_fps,
                     bit_depth, audio_bit_depth, audio_language, audio_track_count, spatial, projection,
-                    gps_track, gps_track_distance_m
+                    gps_track, gps_track_distance_m, accel_magnitude, gyro_magnitude,
+                    description, creator, rights, keywords, headline,
+                    chapter_count, chapters_json, subtitle_tracks, dolby_vision_profile,
+                    production_scene, production_take, nd_filter, iris_f_number, lut_name,
+                    spatial_initial_heading, spatial_initial_pitch, spatial_initial_roll, stereo_mode, ambisonics_channel_order
                  FROM metadata WHERE video_id = ?",
                 [video_id],
                 |row| {
@@ -445,6 +449,27 @@ impl ReelVaultService {
                         row.get::<_, Option<String>>(34)?,
                         row.get::<_, Option<String>>(35)?,
                         row.get::<_, Option<f64>>(36)?,
+                        row.get::<_, Option<Vec<u8>>>(37)?,
+                        row.get::<_, Option<Vec<u8>>>(38)?,
+                        row.get::<_, Option<String>>(39)?,
+                        row.get::<_, Option<String>>(40)?,
+                        row.get::<_, Option<String>>(41)?,
+                        row.get::<_, Option<String>>(42)?,
+                        row.get::<_, Option<String>>(43)?,
+                        row.get::<_, Option<i32>>(44)?,
+                        row.get::<_, Option<String>>(45)?,
+                        row.get::<_, Option<i32>>(46)?,
+                        row.get::<_, Option<i32>>(47)?,
+                        row.get::<_, Option<String>>(48)?,
+                        row.get::<_, Option<String>>(49)?,
+                        row.get::<_, Option<String>>(50)?,
+                        row.get::<_, Option<f64>>(51)?,
+                        row.get::<_, Option<String>>(52)?,
+                        row.get::<_, Option<f64>>(53)?,
+                        row.get::<_, Option<f64>>(54)?,
+                        row.get::<_, Option<f64>>(55)?,
+                        row.get::<_, Option<String>>(56)?,
+                        row.get::<_, Option<String>>(57)?,
                     ))
                 },
             )
@@ -469,12 +494,19 @@ impl ReelVaultService {
              exposure_mode, exposure_program, white_balance,
              color_transfer, color_primaries, dynamic_range, timecode_start, capture_fps,
              bit_depth, audio_bit_depth, audio_language, audio_track_count, spatial, projection,
-             gps_track, gps_track_distance_m) =
+             gps_track, gps_track_distance_m, accel_magnitude, gyro_magnitude,
+             description, creator, rights, keywords, headline,
+             chapter_count, chapters_json, subtitle_tracks, dolby_vision_profile,
+             production_scene, production_take, nd_filter, iris_f_number, lut_name,
+             spatial_initial_heading, spatial_initial_pitch, spatial_initial_roll, stereo_mode, ambisonics_channel_order) =
             row.unwrap_or((0, None, None, 0, 0, 0.0, 0, None, false, 0, 0, None, None, None, None, None, None,
                            None, None, None, None, None, None, None,
                            None, None, None, None, None,
                            None, None, None, None, false, None,
-                           None, None));
+                           None, None, None, None, None, None, None, None, None,
+                           None, None, None, None,
+                           None, None, None, None, None,
+                           None, None, None, None, None));
 
         let camera_model_str = camera_model.unwrap_or_default();
         // Resolve marketing name with the user's custom overrides
@@ -539,6 +571,27 @@ impl ReelVaultService {
             projection: projection.unwrap_or_default(),
             gps_track: gps_track.unwrap_or_default(),
             gps_track_distance_m: gps_track_distance_m.unwrap_or(0.0),
+            accel_magnitude: accel_magnitude.unwrap_or_default(),
+            gyro_magnitude: gyro_magnitude.unwrap_or_default(),
+            description: description.unwrap_or_default(),
+            creator: creator.unwrap_or_default(),
+            rights: rights.unwrap_or_default(),
+            keywords: keywords_from_json(keywords.as_deref()),
+            headline: headline.unwrap_or_default(),
+            chapter_count: chapter_count.unwrap_or(0),
+            chapters_json: chapters_json.unwrap_or_default(),
+            subtitle_tracks: subtitle_tracks.unwrap_or(0),
+            dolby_vision_profile: dolby_vision_profile.unwrap_or(-1),
+            production_scene: production_scene.unwrap_or_default(),
+            production_take: production_take.unwrap_or_default(),
+            nd_filter: nd_filter.unwrap_or_default(),
+            iris_f_number: iris_f_number.unwrap_or(0.0),
+            lut_name: lut_name.unwrap_or_default(),
+            spatial_initial_heading: spatial_initial_heading.unwrap_or(0.0),
+            spatial_initial_pitch: spatial_initial_pitch.unwrap_or(0.0),
+            spatial_initial_roll: spatial_initial_roll.unwrap_or(0.0),
+            stereo_mode: stereo_mode.unwrap_or_default(),
+            ambisonics_channel_order: ambisonics_channel_order.unwrap_or_default(),
             tags,
             collections: db.get_video_collections(video_id).unwrap_or_default(),
             notes,
@@ -3700,6 +3753,15 @@ impl ServiceWatcherHandle {
                 tracing::warn!("Failed to start watcher: {}", e);
             }
         }
+    }
+}
+
+/// Parse keywords from the stored JSON string (from the database).
+/// Returns an empty Vec if the JSON is absent or malformed.
+fn keywords_from_json(json_str: Option<&str>) -> Vec<String> {
+    match json_str {
+        Some(s) => serde_json::from_str::<Vec<String>>(s).unwrap_or_default(),
+        None => Vec::new(),
     }
 }
 

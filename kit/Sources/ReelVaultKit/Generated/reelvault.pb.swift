@@ -1071,6 +1071,128 @@ public nonisolated struct Reelvault_VideoMetadata: @unchecked Sendable {
     set {_uniqueStorage()._gpsTrackDistanceM = newValue}
   }
 
+  /// GoPro GPMF motion series: accelerometer magnitude envelope and gyroscope
+  /// magnitude envelope, each downsampled to 480 float32 values stored as
+  /// little-endian bytes (empty when no GPMF or non-GoPro).
+  public var accelMagnitude: Data {
+    get {_storage._accelMagnitude}
+    set {_uniqueStorage()._accelMagnitude = newValue}
+  }
+
+  public var gyroMagnitude: Data {
+    get {_storage._gyroMagnitude}
+    set {_uniqueStorage()._gyroMagnitude = newValue}
+  }
+
+  /// IPTC Core / Editorial metadata from the embedded XMP packet (Dublin Core +
+  /// Photoshop namespaces). All empty when not present.
+  public var description_p: String {
+    get {_storage._description_p}
+    set {_uniqueStorage()._description_p = newValue}
+  }
+
+  public var creator: String {
+    get {_storage._creator}
+    set {_uniqueStorage()._creator = newValue}
+  }
+
+  public var rights: String {
+    get {_storage._rights}
+    set {_uniqueStorage()._rights = newValue}
+  }
+
+  public var keywords: [String] {
+    get {_storage._keywords}
+    set {_uniqueStorage()._keywords = newValue}
+  }
+
+  public var headline: String {
+    get {_storage._headline}
+    set {_uniqueStorage()._headline = newValue}
+  }
+
+  /// Chapter tracks and embedded subtitle tracks. chapter_count is the number of
+  /// chapters (0 when none); chapters_json is a JSON array of {title, start_ms,
+  /// end_ms} objects (empty when none). subtitle_tracks is the count of subtitle
+  /// streams (0 when none).
+  public var chapterCount: Int32 {
+    get {_storage._chapterCount}
+    set {_uniqueStorage()._chapterCount = newValue}
+  }
+
+  public var chaptersJson: String {
+    get {_storage._chaptersJson}
+    set {_uniqueStorage()._chaptersJson = newValue}
+  }
+
+  public var subtitleTracks: Int32 {
+    get {_storage._subtitleTracks}
+    set {_uniqueStorage()._subtitleTracks = newValue}
+  }
+
+  /// Dolby Vision profile number (0–9 for profiles 4, 5, 8.1, 8.4, etc.);
+  /// -1 absent. Influences the dynamic_range label when present.
+  public var dolbyVisionProfile: Int32 {
+    get {_storage._dolbyVisionProfile}
+    set {_uniqueStorage()._dolbyVisionProfile = newValue}
+  }
+
+  /// Sony Professional XML sidecar metadata: production scene and take numbers,
+  /// ND filter setting, iris F-number, and LUT name. All empty when not present.
+  public var productionScene: String {
+    get {_storage._productionScene}
+    set {_uniqueStorage()._productionScene = newValue}
+  }
+
+  public var productionTake: String {
+    get {_storage._productionTake}
+    set {_uniqueStorage()._productionTake = newValue}
+  }
+
+  public var ndFilter: String {
+    get {_storage._ndFilter}
+    set {_uniqueStorage()._ndFilter = newValue}
+  }
+
+  public var irisFNumber: Double {
+    get {_storage._irisFNumber}
+    set {_uniqueStorage()._irisFNumber = newValue}
+  }
+
+  public var lutName: String {
+    get {_storage._lutName}
+    set {_uniqueStorage()._lutName = newValue}
+  }
+
+  /// Extended 360° / spatial audio parameters: initial viewer orientation (yaw,
+  /// pitch, roll in degrees), stereo mode ("top-bottom", "left-right", "mono"),
+  /// and ambisonics channel ordering ("ACN", "Furse-Malham"). All empty when not
+  /// present or not applicable.
+  public var spatialInitialHeading: Double {
+    get {_storage._spatialInitialHeading}
+    set {_uniqueStorage()._spatialInitialHeading = newValue}
+  }
+
+  public var spatialInitialPitch: Double {
+    get {_storage._spatialInitialPitch}
+    set {_uniqueStorage()._spatialInitialPitch = newValue}
+  }
+
+  public var spatialInitialRoll: Double {
+    get {_storage._spatialInitialRoll}
+    set {_uniqueStorage()._spatialInitialRoll = newValue}
+  }
+
+  public var stereoMode: String {
+    get {_storage._stereoMode}
+    set {_uniqueStorage()._stereoMode = newValue}
+  }
+
+  public var ambisonicsChannelOrder: String {
+    get {_storage._ambisonicsChannelOrder}
+    set {_uniqueStorage()._ambisonicsChannelOrder = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3690,7 +3812,7 @@ nonisolated extension Reelvault_GetMetadataRequest: SwiftProtobuf.Message, Swift
 
 nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".VideoMetadata"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0\u{3}camera_display_name\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}exposure_mode\0\u{3}exposure_program\0\u{3}white_balance\0\u{3}full_resolution\0\u{3}frame_count\0\u{3}color_transfer\0\u{3}color_primaries\0\u{3}dynamic_range\0\u{1}timecode\0\u{3}capture_fps\0\u{3}bit_depth\0\u{3}audio_bit_depth\0\u{3}audio_language\0\u{3}audio_track_count\0\u{1}spatial\0\u{1}projection\0\u{3}gps_track\0\u{3}gps_track_distance_m\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0\u{3}camera_display_name\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}exposure_mode\0\u{3}exposure_program\0\u{3}white_balance\0\u{3}full_resolution\0\u{3}frame_count\0\u{3}color_transfer\0\u{3}color_primaries\0\u{3}dynamic_range\0\u{1}timecode\0\u{3}capture_fps\0\u{3}bit_depth\0\u{3}audio_bit_depth\0\u{3}audio_language\0\u{3}audio_track_count\0\u{1}spatial\0\u{1}projection\0\u{3}gps_track\0\u{3}gps_track_distance_m\0\u{3}accel_magnitude\0\u{3}gyro_magnitude\0\u{1}description\0\u{1}creator\0\u{1}rights\0\u{1}keywords\0\u{1}headline\0\u{3}chapter_count\0\u{3}chapters_json\0\u{3}subtitle_tracks\0\u{3}dolby_vision_profile\0\u{3}production_scene\0\u{3}production_take\0\u{3}nd_filter\0\u{3}iris_f_number\0\u{3}lut_name\0\u{3}spatial_initial_heading\0\u{3}spatial_initial_pitch\0\u{3}spatial_initial_roll\0\u{3}stereo_mode\0\u{3}ambisonics_channel_order\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -3746,6 +3868,27 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
     var _projection: String = String()
     var _gpsTrack: String = String()
     var _gpsTrackDistanceM: Double = 0
+    var _accelMagnitude: Data = Data()
+    var _gyroMagnitude: Data = Data()
+    var _description_p: String = String()
+    var _creator: String = String()
+    var _rights: String = String()
+    var _keywords: [String] = []
+    var _headline: String = String()
+    var _chapterCount: Int32 = 0
+    var _chaptersJson: String = String()
+    var _subtitleTracks: Int32 = 0
+    var _dolbyVisionProfile: Int32 = 0
+    var _productionScene: String = String()
+    var _productionTake: String = String()
+    var _ndFilter: String = String()
+    var _irisFNumber: Double = 0
+    var _lutName: String = String()
+    var _spatialInitialHeading: Double = 0
+    var _spatialInitialPitch: Double = 0
+    var _spatialInitialRoll: Double = 0
+    var _stereoMode: String = String()
+    var _ambisonicsChannelOrder: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3809,6 +3952,27 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       _projection = source._projection
       _gpsTrack = source._gpsTrack
       _gpsTrackDistanceM = source._gpsTrackDistanceM
+      _accelMagnitude = source._accelMagnitude
+      _gyroMagnitude = source._gyroMagnitude
+      _description_p = source._description_p
+      _creator = source._creator
+      _rights = source._rights
+      _keywords = source._keywords
+      _headline = source._headline
+      _chapterCount = source._chapterCount
+      _chaptersJson = source._chaptersJson
+      _subtitleTracks = source._subtitleTracks
+      _dolbyVisionProfile = source._dolbyVisionProfile
+      _productionScene = source._productionScene
+      _productionTake = source._productionTake
+      _ndFilter = source._ndFilter
+      _irisFNumber = source._irisFNumber
+      _lutName = source._lutName
+      _spatialInitialHeading = source._spatialInitialHeading
+      _spatialInitialPitch = source._spatialInitialPitch
+      _spatialInitialRoll = source._spatialInitialRoll
+      _stereoMode = source._stereoMode
+      _ambisonicsChannelOrder = source._ambisonicsChannelOrder
     }
   }
 
@@ -3880,6 +4044,27 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         case 51: try { try decoder.decodeSingularStringField(value: &_storage._projection) }()
         case 52: try { try decoder.decodeSingularStringField(value: &_storage._gpsTrack) }()
         case 53: try { try decoder.decodeSingularDoubleField(value: &_storage._gpsTrackDistanceM) }()
+        case 54: try { try decoder.decodeSingularBytesField(value: &_storage._accelMagnitude) }()
+        case 55: try { try decoder.decodeSingularBytesField(value: &_storage._gyroMagnitude) }()
+        case 56: try { try decoder.decodeSingularStringField(value: &_storage._description_p) }()
+        case 57: try { try decoder.decodeSingularStringField(value: &_storage._creator) }()
+        case 58: try { try decoder.decodeSingularStringField(value: &_storage._rights) }()
+        case 59: try { try decoder.decodeRepeatedStringField(value: &_storage._keywords) }()
+        case 60: try { try decoder.decodeSingularStringField(value: &_storage._headline) }()
+        case 61: try { try decoder.decodeSingularInt32Field(value: &_storage._chapterCount) }()
+        case 62: try { try decoder.decodeSingularStringField(value: &_storage._chaptersJson) }()
+        case 63: try { try decoder.decodeSingularInt32Field(value: &_storage._subtitleTracks) }()
+        case 64: try { try decoder.decodeSingularInt32Field(value: &_storage._dolbyVisionProfile) }()
+        case 65: try { try decoder.decodeSingularStringField(value: &_storage._productionScene) }()
+        case 66: try { try decoder.decodeSingularStringField(value: &_storage._productionTake) }()
+        case 67: try { try decoder.decodeSingularStringField(value: &_storage._ndFilter) }()
+        case 68: try { try decoder.decodeSingularDoubleField(value: &_storage._irisFNumber) }()
+        case 69: try { try decoder.decodeSingularStringField(value: &_storage._lutName) }()
+        case 70: try { try decoder.decodeSingularDoubleField(value: &_storage._spatialInitialHeading) }()
+        case 71: try { try decoder.decodeSingularDoubleField(value: &_storage._spatialInitialPitch) }()
+        case 72: try { try decoder.decodeSingularDoubleField(value: &_storage._spatialInitialRoll) }()
+        case 73: try { try decoder.decodeSingularStringField(value: &_storage._stereoMode) }()
+        case 74: try { try decoder.decodeSingularStringField(value: &_storage._ambisonicsChannelOrder) }()
         default: break
         }
       }
@@ -4047,6 +4232,69 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       if _storage._gpsTrackDistanceM.bitPattern != 0 {
         try visitor.visitSingularDoubleField(value: _storage._gpsTrackDistanceM, fieldNumber: 53)
       }
+      if !_storage._accelMagnitude.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._accelMagnitude, fieldNumber: 54)
+      }
+      if !_storage._gyroMagnitude.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._gyroMagnitude, fieldNumber: 55)
+      }
+      if !_storage._description_p.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._description_p, fieldNumber: 56)
+      }
+      if !_storage._creator.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._creator, fieldNumber: 57)
+      }
+      if !_storage._rights.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._rights, fieldNumber: 58)
+      }
+      if !_storage._keywords.isEmpty {
+        try visitor.visitRepeatedStringField(value: _storage._keywords, fieldNumber: 59)
+      }
+      if !_storage._headline.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._headline, fieldNumber: 60)
+      }
+      if _storage._chapterCount != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._chapterCount, fieldNumber: 61)
+      }
+      if !_storage._chaptersJson.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._chaptersJson, fieldNumber: 62)
+      }
+      if _storage._subtitleTracks != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._subtitleTracks, fieldNumber: 63)
+      }
+      if _storage._dolbyVisionProfile != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._dolbyVisionProfile, fieldNumber: 64)
+      }
+      if !_storage._productionScene.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._productionScene, fieldNumber: 65)
+      }
+      if !_storage._productionTake.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._productionTake, fieldNumber: 66)
+      }
+      if !_storage._ndFilter.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._ndFilter, fieldNumber: 67)
+      }
+      if _storage._irisFNumber.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._irisFNumber, fieldNumber: 68)
+      }
+      if !_storage._lutName.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._lutName, fieldNumber: 69)
+      }
+      if _storage._spatialInitialHeading.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._spatialInitialHeading, fieldNumber: 70)
+      }
+      if _storage._spatialInitialPitch.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._spatialInitialPitch, fieldNumber: 71)
+      }
+      if _storage._spatialInitialRoll.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._spatialInitialRoll, fieldNumber: 72)
+      }
+      if !_storage._stereoMode.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._stereoMode, fieldNumber: 73)
+      }
+      if !_storage._ambisonicsChannelOrder.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._ambisonicsChannelOrder, fieldNumber: 74)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4109,6 +4357,27 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         if _storage._projection != rhs_storage._projection {return false}
         if _storage._gpsTrack != rhs_storage._gpsTrack {return false}
         if _storage._gpsTrackDistanceM != rhs_storage._gpsTrackDistanceM {return false}
+        if _storage._accelMagnitude != rhs_storage._accelMagnitude {return false}
+        if _storage._gyroMagnitude != rhs_storage._gyroMagnitude {return false}
+        if _storage._description_p != rhs_storage._description_p {return false}
+        if _storage._creator != rhs_storage._creator {return false}
+        if _storage._rights != rhs_storage._rights {return false}
+        if _storage._keywords != rhs_storage._keywords {return false}
+        if _storage._headline != rhs_storage._headline {return false}
+        if _storage._chapterCount != rhs_storage._chapterCount {return false}
+        if _storage._chaptersJson != rhs_storage._chaptersJson {return false}
+        if _storage._subtitleTracks != rhs_storage._subtitleTracks {return false}
+        if _storage._dolbyVisionProfile != rhs_storage._dolbyVisionProfile {return false}
+        if _storage._productionScene != rhs_storage._productionScene {return false}
+        if _storage._productionTake != rhs_storage._productionTake {return false}
+        if _storage._ndFilter != rhs_storage._ndFilter {return false}
+        if _storage._irisFNumber != rhs_storage._irisFNumber {return false}
+        if _storage._lutName != rhs_storage._lutName {return false}
+        if _storage._spatialInitialHeading != rhs_storage._spatialInitialHeading {return false}
+        if _storage._spatialInitialPitch != rhs_storage._spatialInitialPitch {return false}
+        if _storage._spatialInitialRoll != rhs_storage._spatialInitialRoll {return false}
+        if _storage._stereoMode != rhs_storage._stereoMode {return false}
+        if _storage._ambisonicsChannelOrder != rhs_storage._ambisonicsChannelOrder {return false}
         return true
       }
       if !storagesAreEqual {return false}

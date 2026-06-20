@@ -1,5 +1,19 @@
 # Handoff: Implement the 13 Unsupported Metadata Types
 
+## Status: Items 1-7 Complete ✓
+
+All HIGH and MEDIUM priority items have been successfully implemented and committed:
+
+1. ✓ **Item 1: GoPro GPMF Inertial Data** (commit 1780960)
+2. ✓ **Item 2: IPTC Keywords & Editorial Metadata** (commit d8d486d)
+3. ✓ **Item 3: Chapter Tracks & Embedded Subtitles** (commit f78f33b)
+4. ✓ **Item 4: Dolby Vision Detection** (commit 1d438eb)
+5. ✓ **Item 5: DJI SRT Embedded Subtitle Detection** (commit 9a68b00)
+6. ✓ **Item 6: Sony Professional XML Sidecar** (commit 51e7e53)
+7. ✓ **Item 7: Extended 360° / Spatial Audio Parameters** (commit 463605a)
+
+Remaining items (8-13) are LOWER priority and await future work allocation.
+
 ## Context
 
 You are working in the ReelVault project at `/Users/brian/git/ReelVault`, checked out on the `develop` branch. ReelVault is a video cataloging app with a Rust core daemon and four client frontends (macOS SwiftUI, iOS SwiftUI, desktop Kotlin Compose, Android Kotlin Compose).

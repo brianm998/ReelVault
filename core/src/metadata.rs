@@ -167,6 +167,18 @@ impl MetadataExtractor {
             }
         }
 
+        // Extract IPTC Core / Editorial metadata from the XMP packet.
+        let iptc_description = xmp.as_ref().and_then(|x| x.description.clone());
+        let iptc_creator = xmp.as_ref().and_then(|x| x.creator.clone());
+        let iptc_rights = xmp.as_ref().and_then(|x| x.rights.clone());
+        let iptc_keywords = xmp.as_ref().map(|x| x.keywords.clone()).unwrap_or_default();
+        let iptc_keywords_json = if iptc_keywords.is_empty() {
+            None
+        } else {
+            serde_json::to_string(&iptc_keywords).ok()
+        };
+        let iptc_headline = xmp.as_ref().and_then(|x| x.headline.clone());
+
         // QuickTime *keyed* metadata (moov[/trak]/meta → keys → ilst).
         // ffprobe lifts the movie-level keys into format.tags (make/model/
         // creationdate/location, handled above), but drops the per-track
@@ -212,20 +224,28 @@ impl MetadataExtractor {
             // GoPro: a representative GPS fix from the GPMF track.
             .or(gpmf.gps);
 
+        // Get the file extension for gating various sidecar lookups
+        let ext = video_path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_ascii_lowercase());
+
         // DJI drone telemetry from a sidecar `<clip>.SRT` (GPS + ISO/aperture/
         // shutter/date). Only looked for when nothing else gave us a location —
         // DJI clips never carry container GPS, so a GPS-bearing clip (iPhone,
         // GoPro) can't be one, and we skip the sidecar stat. Also gated to the
         // container extensions DJI produces.
         let dji = {
-            let ext = video_path
-                .extension()
-                .and_then(|e| e.to_str())
-                .map(|e| e.to_ascii_lowercase());
             let is_dji_container =
                 matches!(ext.as_deref(), Some("mp4") | Some("mov") | Some("lrv") | Some("m4v"));
             if gps_from_container.is_none() && is_dji_container {
-                crate::dji::read_sidecar(video_path)
+                // Try sidecar first, then embedded subtitle if no sidecar found
+                let sidecar_data = crate::dji::read_sidecar(video_path);
+                if !sidecar_data.is_empty() {
+                    sidecar_data
+                } else {
+                    crate::dji::read_embedded_subtitle(video_path)
+                }
             } else {
                 crate::dji::DjiTelemetry::default()
             }
@@ -256,6 +276,13 @@ impl MetadataExtractor {
         let gps_track_distance_m = (gpmf.track_distance_m > 0.0)
             .then_some(gpmf.track_distance_m)
             .or_else(|| (dji.track_distance_m > 0.0).then_some(dji.track_distance_m));
+
+        // GoPro GPMF inertial data: accelerometer and gyroscope magnitude series.
+        // Each is stored as a little-endian f32 byte array (480 points max).
+        let accel_magnitude = (!gpmf.accel_magnitude.is_empty())
+            .then(|| serialize_f32_vec(&gpmf.accel_magnitude));
+        let gyro_magnitude = (!gpmf.gyro_magnitude.is_empty())
+            .then(|| serialize_f32_vec(&gpmf.gyro_magnitude));
 
         // Recover a missing make prefix. Some files carry only the model
         // (a sidecar wrote `tiff:Model` but no make, and ffprobe had none
@@ -355,6 +382,32 @@ impl MetadataExtractor {
             .filter(|s| s.codec_type.as_deref() == Some("audio"))
             .count() as i32;
 
+        // Chapters and subtitles. Chapter titles come from chapter tags.
+        let chapter_count = probe_output.chapters.len() as i32;
+        let chapters_json = if !probe_output.chapters.is_empty() {
+            let chapter_list: Vec<_> = probe_output.chapters.iter().filter_map(|ch| {
+                let start_ms = ch.start_time.map(|t| (t * 1000.0) as i64).unwrap_or(0);
+                let end_ms = ch.end_time.map(|t| (t * 1000.0) as i64).unwrap_or(0);
+                let title = ch.tags.as_ref()
+                    .and_then(|t| t.get("title"))
+                    .cloned()
+                    .unwrap_or_else(|| String::from("Chapter"));
+                Some(serde_json::json!({
+                    "title": title,
+                    "start_ms": start_ms,
+                    "end_ms": end_ms,
+                }))
+            }).collect();
+            serde_json::to_string(&chapter_list).ok()
+        } else {
+            None
+        };
+        let subtitle_tracks = probe_output
+            .streams
+            .iter()
+            .filter(|s| s.codec_type.as_deref() == Some("subtitle"))
+            .count() as i32;
+
         // Coded video bit depth (8 / 10 / 12 …) for grading workflows.
         let bit_depth = Self::video_bit_depth(video_stream);
 
@@ -369,6 +422,52 @@ impl MetadataExtractor {
                 .find(|sd| sd.side_data_type.as_deref() == Some("Spherical Mapping"))
                 .map(|sd| sd.projection.clone().unwrap_or_else(|| "spherical".to_string()))
         });
+
+        // Dolby Vision. ffprobe surfaces it as a "DOVI configuration record"
+        // side-data entry on the video stream; extract the profile number.
+        let dolby_vision_profile: Option<i32> = video_stream.side_data_list.as_ref().and_then(|sds| {
+            sds.iter().find_map(|sd| {
+                if sd.side_data_type.as_deref() == Some("DOVI configuration record") {
+                    sd.dv_profile.map(|p| p as i32)
+                } else {
+                    None
+                }
+            })
+        });
+
+        // Sony Professional XML sidecar metadata (clip name, scene, take, ND filter,
+        // iris F-number, LUT name). Only looked for when the container is MP4/MOV.
+        let sony = if matches!(ext.as_deref(), Some("mp4") | Some("mov")) {
+            crate::sony_xml::read_sidecar(video_path)
+        } else {
+            crate::sony_xml::SonyXmlMetadata::default()
+        };
+        let production_scene = sony.scene.clone();
+        let production_take = sony.take.clone();
+        let nd_filter = sony.nd_filter.clone();
+        let iris_f_number = sony.iris_f_number;
+        let lut_name = sony.lut_name.clone();
+
+        // Extended 360° / spatial audio parameters. For now, extract only what
+        // ffprobe provides: stereo mode (from container/XMP) and ambisonics channel
+        // ordering (from audio stream tags). Initial viewing angles (heading/pitch/roll)
+        // would require proprietary metadata extensions not yet parsed by ffprobe.
+        let spatial_initial_heading: Option<f64> = None;
+        let spatial_initial_pitch: Option<f64> = None;
+        let spatial_initial_roll: Option<f64> = None;
+
+        // Stereo mode from container metadata or stream tags (top-bottom,
+        // left-right, mono). For 360° video this controls how left/right eyes are
+        // packed in the frame for 3D VR playback.
+        let stereo_mode = format.tags.as_ref()
+            .and_then(|t| t.get("stereo_mode").cloned())
+            .or_else(|| video_stream.tags.as_ref().and_then(|t| t.get("stereo_mode").cloned()));
+
+        // Ambisonics channel ordering from audio stream tags (ACN or Furse-Malham).
+        let ambisonics_channel_order = audio_stream
+            .and_then(|s| s.tags.as_ref().and_then(|t| t.get("ambisonics_channel_ordering").cloned()))
+            .or_else(|| audio_stream
+                .and_then(|s| s.tags.as_ref().and_then(|t| t.get("ambisonics_mode").cloned())));
 
         // Color space + HDR. ffprobe reports the transfer characteristic on the
         // video stream; an HDR EOTF (PQ/HLG/DCI) is what makes a clip HDR — both
@@ -421,8 +520,11 @@ impl MetadataExtractor {
               creation_date, camera_model,
               lens_model, gps_latitude, gps_longitude, gps_altitude, gps_track, gps_track_distance_m,
               iso, aperture, exposure_time_s, focal_length_mm,
-              exposure_mode, exposure_program, white_balance, metadata_json)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              exposure_mode, exposure_program, white_balance, accel_magnitude, gyro_magnitude,
+              description, creator, rights, keywords, headline, chapter_count, chapters_json, subtitle_tracks, dolby_vision_profile,
+              production_scene, production_take, nd_filter, iris_f_number, lut_name,
+              spatial_initial_heading, spatial_initial_pitch, spatial_initial_roll, stereo_mode, ambisonics_channel_order, metadata_json)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(video_id) DO UPDATE SET
              duration_ms=excluded.duration_ms,
              frame_count=excluded.frame_count,
@@ -466,6 +568,27 @@ impl MetadataExtractor {
              exposure_mode=excluded.exposure_mode,
              exposure_program=excluded.exposure_program,
              white_balance=excluded.white_balance,
+             accel_magnitude=excluded.accel_magnitude,
+             gyro_magnitude=excluded.gyro_magnitude,
+             description=excluded.description,
+             creator=excluded.creator,
+             rights=excluded.rights,
+             keywords=excluded.keywords,
+             headline=excluded.headline,
+             chapter_count=excluded.chapter_count,
+             chapters_json=excluded.chapters_json,
+             subtitle_tracks=excluded.subtitle_tracks,
+             dolby_vision_profile=excluded.dolby_vision_profile,
+             production_scene=excluded.production_scene,
+             production_take=excluded.production_take,
+             nd_filter=excluded.nd_filter,
+             iris_f_number=excluded.iris_f_number,
+             lut_name=excluded.lut_name,
+             spatial_initial_heading=excluded.spatial_initial_heading,
+             spatial_initial_pitch=excluded.spatial_initial_pitch,
+             spatial_initial_roll=excluded.spatial_initial_roll,
+             stereo_mode=excluded.stereo_mode,
+             ambisonics_channel_order=excluded.ambisonics_channel_order,
              metadata_json=excluded.metadata_json,
              -- Invalidate the lazily-cached loudness series: the file content may
              -- have changed (an in-place edit re-runs this UPSERT), so force a
@@ -512,6 +635,27 @@ impl MetadataExtractor {
                 final_exposure_mode,
                 final_exposure_program,
                 final_white_balance,
+                accel_magnitude,
+                gyro_magnitude,
+                iptc_description,
+                iptc_creator,
+                iptc_rights,
+                iptc_keywords_json,
+                iptc_headline,
+                chapter_count,
+                chapters_json,
+                subtitle_tracks,
+                dolby_vision_profile,
+                production_scene,
+                production_take,
+                nd_filter,
+                iris_f_number,
+                lut_name,
+                spatial_initial_heading,
+                spatial_initial_pitch,
+                spatial_initial_roll,
+                stereo_mode,
+                ambisonics_channel_order,
                 metadata_json
             ],
         )
@@ -1034,6 +1178,8 @@ const WHITE_BALANCE_KEYS: &[&str] = &[
 pub struct FFProbeOutput {
     pub streams: Vec<FFProbeStream>,
     pub format: FFProbeFormat,
+    #[serde(default)]
+    pub chapters: Vec<FFProbeChapter>,
 }
 
 fn deserialize_f64_from_str<'de, D>(deserializer: D) -> std::result::Result<Option<f64>, D::Error>
@@ -1212,6 +1358,9 @@ pub struct FFProbeSideData {
     /// normalizes both the GSpherical (v1 XMP) and sv3d (v2 box) markers here.
     #[serde(default)]
     pub projection: Option<String>,
+    /// Dolby Vision profile number. Present only for
+    /// `side_data_type = "DOVI configuration record"` entries.
+    pub dv_profile: Option<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1221,6 +1370,15 @@ pub struct FFProbeFormat {
     pub size: Option<String>,
     #[serde(deserialize_with = "deserialize_i64_from_str")]
     pub bit_rate: Option<i64>,
+    pub tags: Option<FFProbeTagMap>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FFProbeChapter {
+    #[serde(deserialize_with = "deserialize_f64_from_str")]
+    pub start_time: Option<f64>,
+    #[serde(deserialize_with = "deserialize_f64_from_str")]
+    pub end_time: Option<f64>,
     pub tags: Option<FFProbeTagMap>,
 }
 
@@ -1465,6 +1623,13 @@ fn downsample_avg(src: &[f32], max: usize) -> Vec<f32> {
             let slice = &src[start..end];
             slice.iter().sum::<f32>() / slice.len() as f32
         })
+        .collect()
+}
+
+/// Serialize a Vec<f32> to little-endian bytes for BLOB storage.
+fn serialize_f32_vec(samples: &[f32]) -> Vec<u8> {
+    samples.iter()
+        .flat_map(|&f| f.to_le_bytes())
         .collect()
 }
 

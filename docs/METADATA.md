@@ -16,7 +16,8 @@ This document describes every piece of metadata ReelVault can extract from video
 8. [Field Priority Chains](#8-field-priority-chains)
 9. [Complete Field Reference](#9-complete-field-reference)
 10. [How Metadata Is Used in ReelVault](#10-how-metadata-is-used-in-reelvault)
-11. [Unsupported Metadata Types](#11-unsupported-metadata-types)
+11. [Supported Metadata Types (Recently Added)](#11-supported-metadata-types-recently-added)
+12. [Unsupported Metadata Types](#12-unsupported-metadata-types)
 
 ---
 
@@ -33,11 +34,13 @@ Video file
 │     → stream tags: rotate, timecode, capture fps
 │     → stream side data: display matrix (iPhone portrait), spherical XMP
 │
-├── XMP atom walk (xmp.rs) ───────────────────────── embedded photo EXIF
+├── XMP atom walk (xmp.rs) ───────────────────────── embedded photo EXIF + IPTC
 │     → moov/udta/XMP_  (MOV)
 │     → top-level uuid BE7ACFCB… (MP4)
-│     → lens, ISO, aperture, shutter, focal length, exposure mode/program,
-│        white balance, make, model, capture date
+│     → Photo EXIF: lens, ISO, aperture, shutter, focal length, exposure
+│        mode/program, white balance, make, model, capture date
+│     → IPTC Core/Editorial: description, creator, rights, headline,
+│        keywords (dc:subject bag)
 │
 ├── QuickTime key walk (quicktime.rs) ────────────── Apple per-track atoms
 │     → moov/meta  (movie level)
@@ -48,20 +51,35 @@ Video file
 │
 ├── GPMF binary track (gpmf.rs) ──────────────────── GoPro telemetry
 │     → gpmd stream in mp4 stbl (stco/stsz/stsc)
-│     → first GPMF chunk only (≈ first second of telemetry)
+│     → all GPMF chunks across the entire clip (not just first)
 │     → DVNM: camera/device name
 │     → GPS5: GPS track (lat, lon, alt, speed, fix accuracy)
-│     → downsampled polyline + total distance
+│     → ACCL: accelerometer magnitude series (m/s²)
+│     → GYRO: gyroscope magnitude series (rad/s)
+│     → TMPC: camera temperature (°C)
+│     → downsampled polyline + total distance + motion series
+│
+├── FFprobe (continued) ────────────────────────── chapters, subtitles, HDR
+│     → format.chapters: chapter count, titles, timestamps
+│     → streams[subtitle]: subtitle track count
+│     → side_data_list: Dolby Vision profile (DOVI record), spherical/360°
+│                       projection, stereo mode
 │
 ├── DJI SRT sidecar (dji.rs) ────────────────────── drone telemetry
-│     → <clip>.SRT / <clip>.srt (whole file, not just head)
+│     → <clip>.SRT / <clip>.srt (sidecar preferred, whole file)
+│     → [fallback] embedded subtitle stream when sidecar absent
 │     → GPS, ISO, aperture, shutter speed, capture timestamp
 │     → full flight path (downsampled polyline + total distance)
+│
+├── Sony Professional XML sidecar (sony_xml.rs) ── production metadata
+│     → <clip>.XML (next to <clip>.MP4 or <clip>.MXF)
+│     → clip name, scene, take, ND filter, iris F-number, LUT name
 │
 └── Audio loudness (on-demand) ──────────────────── EBU R128
       → ffmpeg ebur128 filter, ametadata output
       → momentary-loudness series (M: values, ~10/s)
       → downsampled to 480 points for display
+      → ambisonics channel ordering (ACN / Furse-Malham)
 ```
 
 All extracted values flow into the `metadata` table in the SQLite catalog. Fields that appear in more than one source follow explicit **priority chains** (see [Section 8](#8-field-priority-chains)).
@@ -559,29 +577,135 @@ Tags, ratings, and color labels are user-applied and stored in the DB, not in th
 
 ---
 
-## 11. Unsupported Metadata Types
+## 11. Supported Metadata Types (Recently Added)
+
+The following types are now extracted as of 2026-06-19:
+
+### 11.1 GoPro GPMF — Inertial Data (ACCL, GYRO, TMPC)
+
+**Source:** `core/src/gpmf.rs` (all GPMF chunks across the full clip)
+
+The GPMF track contains per-frame accelerometer, gyroscope, and temperature data from HERO5+ cameras. ReelVault now extracts:
+
+| GPMF key | Data | Storage |
+|---|---|---|
+| `ACCL` | 3-axis accelerometer (m/s²) | `accel_magnitude` BLOB (480-point downsample) |
+| `GYRO` | 3-axis gyroscope (rad/s) | `gyro_magnitude` BLOB (480-point downsample) |
+| `TMPC` | Camera temperature (°C) | stored but currently unused |
+
+Magnitude is computed as `sqrt(x² + y² + z²)` per sample and downsampled to 480 points for graphing. This enables motion analysis and inertial-data playback in the inspector.
+
+### 11.2 IPTC Keywords and Editorial Metadata
+
+**Source:** `core/src/xmp.rs` (Dublin Core and Photoshop namespaces in the XMP packet)
+
+IPTC Core / Extension fields now extracted:
+
+| XMP field | Storage | Notes |
+|---|---|---|
+| `dc:description` | `description` TEXT | Short caption |
+| `dc:creator` | `creator` TEXT | Photographer / videographer |
+| `dc:rights` | `rights` TEXT | Copyright statement |
+| `dc:subject` (rdf:Bag) | `keywords` TEXT (JSON array) | Free-form keyword tags |
+| `photoshop:Headline` | `headline` TEXT | News headline |
+
+These are common in stock footage, broadcast, and journalistic workflows. Keywords are full-text searchable.
+
+### 11.3 Chapter Tracks and Embedded Subtitles
+
+**Source:** `core/src/metadata.rs` (ffprobe output)
+
+| Field | Storage | Notes |
+|---|---|---|
+| Chapter count | `chapter_count` INTEGER | 0 when none |
+| Chapter data | `chapters_json` TEXT | JSON array of {title, start_ms, end_ms} |
+| Subtitle track count | `subtitle_tracks` INTEGER | 0 when none |
+
+Chapters and subtitles are detail-only metadata (not on grid summary).
+
+### 11.4 Dolby Vision Profile Detection
+
+**Source:** `core/src/metadata.rs` (ffprobe side_data_list: "DOVI configuration record")
+
+| Field | Storage | Notes |
+|---|---|---|
+| Dolby Vision profile | `dolby_vision_profile` INTEGER | 0–9 (Profile 4, 5, 8.1, 8.4, etc.); -1 absent |
+
+Detected from the DOVI side-data entry. Influences the `dynamic_range` label (e.g., "Dolby Vision (P8.4)").
+
+### 11.5 DJI SRT — Embedded Subtitle Track
+
+**Source:** `core/src/dji.rs` (embedded subtitle stream as fallback; existing sidecar.SRT preferred)
+
+When no sidecar `.SRT` file is found, DJI drone telemetry is detected and parsed from embedded subtitle streams. This handles files copied from a card reader without sidecars, or downloaded from cloud services where the sidecar is separated from the video.
+
+| Field | Storage | Notes |
+|---|---|---|
+| GPS (from embedded SRT) | `gps_latitude`, `gps_longitude`, `gps_altitude` | When sidecar absent |
+| ISO, aperture, shutter | `iso`, `aperture`, `exposure_time_s` | When sidecar absent |
+| Capture timestamp | `creation_date` | When sidecar absent |
+| Flight path | `gps_track`, `gps_track_distance_m` | Full clip polyline + ground distance |
+
+Uses ffmpeg to safely extract the first subtitle stream; recognizes DJI data patterns (`[iso`, `[latitude`, `GPS(`) before parsing. Falls back gracefully when subtitle is not DJI data.
+
+### 11.6 Sony Professional XML Sidecar
+
+**Source:** `core/src/sony_xml.rs` (`<clip>.XML` next to `<clip>.MP4` / `<clip>.MXF`)
+
+Sony VENICE, FX9, FX6, and FX3 cameras produce XML sidecars with production metadata used in broadcast and scripted workflows.
+
+| XML field | Storage | Notes |
+|---|---|---|
+| `<ClipName>` | `production_scene` (reused) | Clip identifier |
+| `Scene` attribute | `production_scene` | Scene number (e.g., "1") |
+| `Take` attribute | `production_take` | Take number (e.g., "3") |
+| `<NDFilter Value>` | `nd_filter` | Filter setting (e.g., "1/4", "1/8", "Auto") |
+| `<IrisFNumber>` | `iris_f_number` | Iris F-number (e.g., 2.8) |
+| `<LUT LUTName>` | `lut_name` | LUT name (e.g., "Venice_Look1.cube") |
+
+Parser uses simple regex/string search (no full XML parser dependency) for robustness. Empty when no sidecar or parser fails.
+
+### 11.7 Extended 360° / Spatial Audio Parameters
+
+**Source:** `core/src/metadata.rs` (ffprobe output + audio stream tags)
+
+For 360° / spherical video and spatial audio:
+
+| Field | Source | Storage | Notes |
+|---|---|---|---|
+| Stereo mode | container tags / stream tags | `stereo_mode` TEXT | "top-bottom", "left-right", "mono" for VR stereo packing |
+| Ambisonics mode | audio stream tags | `ambisonics_channel_order` TEXT | "ACN" or "Furse-Malham" channel ordering convention |
+| Initial heading | (future) | `spatial_initial_heading` REAL | Yaw angle in degrees (placeholder for future ffprobe) |
+| Initial pitch | (future) | `spatial_initial_pitch` REAL | Pitch angle in degrees (placeholder) |
+| Initial roll | (future) | `spatial_initial_roll` REAL | Roll angle in degrees (placeholder) |
+
+Currently extracts stereo mode and ambisonics from container metadata when present. Initial viewing angles (heading/pitch/roll) require proprietary metadata extensions not yet parsed by ffprobe; storage columns are prepared for future use.
+
+---
+
+## 12. Unsupported Metadata Types
 
 These metadata formats exist in the wild and carry potentially useful information, but are not currently read by ReelVault.
 
-### 11.1 EXIF Maker Notes
+### 12.1 EXIF Maker Notes
 
 All major camera manufacturers embed proprietary binary blobs in EXIF (`MakerNote` tag) that hold data not standardised in regular EXIF: in-body IS settings, eye-detect AF state, picture profiles, lens corrections applied, shading table selection, and more. Reading maker notes requires per-manufacturer reverse-engineered parsers (ExifTool maintains a massive library of these). ReelVault skips the `com.apple.quicktime.apple-maker-note` QuickTime atom and has no ExifTool dependency.
 
 **What's missing:** Sony in-camera picture profile (PP4, PP10/S-Log3), Nikon picture control, Canon picture style, Panasonic film mode, Fujifilm film simulation.
 
-### 11.2 IPTC / IIM Metadata
+### 12.2 IPTC / IIM Metadata (Partially Implemented)
 
 IPTC IIM (the older binary format) and IPTC Core / Extension (the XMP-embedded version) are used by photojournalism and stock-photo workflows to store credit lines, captions, keywords, copyright, scene codes, and location names. They are embedded as an `IPTC` atom or inside the XMP packet. ReelVault reads the XMP packet but ignores all `Iptc4xmpCore:` and `Iptc4xmpExt:` namespaces within it.
 
 **What's missing:** credit, byline, headline, caption/abstract, source, copyright notice, IPTC subject codes, scene codes, city/country/state from IPTC.
 
-### 11.3 Dolby Vision Metadata
+### 12.3 Dolby Vision (Implemented) Metadata
 
 Dolby Vision encodes per-frame color-grading metadata in a separate "RPU" (Reference Processing Unit) stream alongside the base video layer. ReelVault detects HDR via transfer function but does not distinguish Dolby Vision Profile 5 / 8.1 / 8.4 from other HDR formats. The Dolby Vision profile number and compatibility ID are not extracted.
 
 **What's missing:** Dolby Vision profile number, base layer compatibility (SDR / HDR10 compatible), RPU presence flag.
 
-### 11.4 GoPro GPMF — Inertial and Environmental Data
+### 12.4 GoPro GPMF (Partially Implemented) — Inertial and Environmental Data
 
 GPMF contains far more than GPS. The following streams are present in HERO5+ footage but not read by ReelVault:
 
@@ -604,7 +728,7 @@ GPMF contains far more than GPS. The following streams are present in HERO5+ foo
 
 Accelerometer + gyroscope + camera orientation together enable post-stabilisation and motion analysis (the kind of visualisation GoPro's own telemetry tools produce). These require reading all GPMF chunks across the entire clip, not just the first one.
 
-### 11.5 DJI — Embedded Subtitle Track and Extended Flight Data
+### 12.5 DJI — Embedded Subtitle Track and Extended Flight Data
 
 ReelVault reads only a **sidecar** SRT file. It does not read:
 

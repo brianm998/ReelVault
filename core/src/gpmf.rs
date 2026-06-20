@@ -63,6 +63,12 @@ pub struct GpmfMetadata {
     pub gps_track: Vec<(f64, f64)>,
     /// Total ground distance along `gps_track` in metres (great-circle sum).
     pub track_distance_m: f64,
+    /// Accelerometer magnitude series (m/s²): magnitude of 3D acceleration vector,
+    /// downsampled to 480 points. Empty when no GPMF ACCL stream.
+    pub accel_magnitude: Vec<f32>,
+    /// Gyroscope magnitude series (rad/s): magnitude of 3D rotation vector,
+    /// downsampled to 480 points. Empty when no GPMF GYRO stream.
+    pub gyro_magnitude: Vec<f32>,
 }
 
 impl GpmfMetadata {
@@ -327,17 +333,25 @@ struct Acc {
     gps: Option<(f64, f64, Option<f64>)>,
     /// Every valid GPS sample over the clip, in order.
     track: Vec<(f64, f64)>,
+    /// All accelerometer samples: magnitude of 3D acceleration (m/s²).
+    accel_samples: Vec<f32>,
+    /// All gyroscope samples: magnitude of 3D rotation (rad/s).
+    gyro_samples: Vec<f32>,
 }
 
 impl Acc {
     fn finish(self) -> GpmfMetadata {
         let track = downsample(&self.track, MAX_TRACK_POINTS);
         let track_distance_m = track_distance(&self.track); // distance from the full series
+        let accel_magnitude = downsample_f32(&self.accel_samples, 480);
+        let gyro_magnitude = downsample_f32(&self.gyro_samples, 480);
         GpmfMetadata {
             device_name: self.gps_device.or(self.first_real_device),
             gps: self.gps,
             gps_track: track,
             track_distance_m,
+            accel_magnitude,
+            gyro_magnitude,
         }
     }
 }
@@ -349,6 +363,14 @@ pub(crate) fn downsample(pts: &[(f64, f64)], max: usize) -> Vec<(f64, f64)> {
         return pts.to_vec();
     }
     (0..max).map(|i| pts[i * pts.len() / max]).collect()
+}
+
+/// Keep at most `max` evenly-spaced f32 samples.
+fn downsample_f32(samples: &[f32], max: usize) -> Vec<f32> {
+    if samples.len() <= max {
+        return samples.to_vec();
+    }
+    (0..max).map(|i| samples[i * samples.len() / max]).collect()
 }
 
 /// Great-circle distance (metres) summed along the point series.
@@ -466,6 +488,52 @@ fn handle_leaf(
                     acc.gps_device = acc.current_device.clone();
                 }
                 acc.track.push((lat, lon));
+            }
+        }
+        b"ACCL" => {
+            // Accelerometer: 3D vectors of i16 (type 's'), scaled by SCAL.
+            // Each sample = [x, y, z] in the struct.
+            if struct_size < 6 {
+                return; // Need at least 3 × i16
+            }
+            let scal = |i: usize| -> f64 {
+                let s = if acc.last_scal.len() == 1 {
+                    acc.last_scal[0]
+                } else {
+                    acc.last_scal.get(i).copied().unwrap_or(1.0)
+                };
+                if s.abs() < f64::EPSILON { 1.0 } else { s }
+            };
+            for s in 0..repeat {
+                let off = s * struct_size;
+                let x = read_be_int(b's', &data[off..off + 2]).unwrap_or(0) as f64 / scal(0);
+                let y = read_be_int(b's', &data[off + 2..off + 4]).unwrap_or(0) as f64 / scal(1);
+                let z = read_be_int(b's', &data[off + 4..off + 6]).unwrap_or(0) as f64 / scal(2);
+                let magnitude = (x * x + y * y + z * z).sqrt() as f32;
+                acc.accel_samples.push(magnitude);
+            }
+        }
+        b"GYRO" => {
+            // Gyroscope: 3D vectors of i16 (type 's'), scaled by SCAL.
+            // Each sample = [x, y, z] in the struct.
+            if struct_size < 6 {
+                return; // Need at least 3 × i16
+            }
+            let scal = |i: usize| -> f64 {
+                let s = if acc.last_scal.len() == 1 {
+                    acc.last_scal[0]
+                } else {
+                    acc.last_scal.get(i).copied().unwrap_or(1.0)
+                };
+                if s.abs() < f64::EPSILON { 1.0 } else { s }
+            };
+            for s in 0..repeat {
+                let off = s * struct_size;
+                let x = read_be_int(b's', &data[off..off + 2]).unwrap_or(0) as f64 / scal(0);
+                let y = read_be_int(b's', &data[off + 2..off + 4]).unwrap_or(0) as f64 / scal(1);
+                let z = read_be_int(b's', &data[off + 4..off + 6]).unwrap_or(0) as f64 / scal(2);
+                let magnitude = (x * x + y * y + z * z).sqrt() as f32;
+                acc.gyro_samples.push(magnitude);
             }
         }
         _ => {}

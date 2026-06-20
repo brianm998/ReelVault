@@ -466,6 +466,44 @@ impl Database {
             // and later opens read it back. NULL = not yet computed; an empty blob
             // = computed and the video has no usable audio (don't recompute).
             ("metadata.audio_loudness", "ALTER TABLE metadata ADD COLUMN audio_loudness BLOB"),
+            // GoPro GPMF inertial data: accelerometer and gyroscope magnitude series.
+            // Each is a little-endian f32 array of 480 points downsampled from the
+            // full telemetry stream. NULL when no GPMF or no ACCL/GYRO stream.
+            ("metadata.accel_magnitude", "ALTER TABLE metadata ADD COLUMN accel_magnitude BLOB"),
+            ("metadata.gyro_magnitude",  "ALTER TABLE metadata ADD COLUMN gyro_magnitude BLOB"),
+            // IPTC Core / Editorial metadata from the XMP packet (Dublin Core +
+            // Photoshop namespaces). description, creator, rights, headline are
+            // single strings; keywords is a JSON array of strings extracted from
+            // dc:subject.
+            ("metadata.description",    "ALTER TABLE metadata ADD COLUMN description TEXT"),
+            ("metadata.creator",        "ALTER TABLE metadata ADD COLUMN creator TEXT"),
+            ("metadata.rights",         "ALTER TABLE metadata ADD COLUMN rights TEXT"),
+            ("metadata.keywords",       "ALTER TABLE metadata ADD COLUMN keywords TEXT"),
+            ("metadata.headline",       "ALTER TABLE metadata ADD COLUMN headline TEXT"),
+            // Chapter and subtitle track metadata. chapter_count is the number of
+            // chapters (0 when none); chapters_json is a JSON array of
+            // {title, start_ms, end_ms} objects (empty when none). subtitle_tracks
+            // is the count of subtitle streams (0 when none).
+            ("metadata.chapter_count",  "ALTER TABLE metadata ADD COLUMN chapter_count INTEGER DEFAULT 0"),
+            ("metadata.chapters_json",  "ALTER TABLE metadata ADD COLUMN chapters_json TEXT"),
+            ("metadata.subtitle_tracks", "ALTER TABLE metadata ADD COLUMN subtitle_tracks INTEGER DEFAULT 0"),
+            // Dolby Vision profile number (0–9), or NULL when not present.
+            ("metadata.dolby_vision_profile", "ALTER TABLE metadata ADD COLUMN dolby_vision_profile INTEGER"),
+            // Sony Professional XML sidecar metadata: clip name, scene/take for
+            // production tracking, ND filter position, iris F-number, and LUT name.
+            ("metadata.production_scene",  "ALTER TABLE metadata ADD COLUMN production_scene TEXT"),
+            ("metadata.production_take",   "ALTER TABLE metadata ADD COLUMN production_take TEXT"),
+            ("metadata.nd_filter",         "ALTER TABLE metadata ADD COLUMN nd_filter TEXT"),
+            ("metadata.iris_f_number",     "ALTER TABLE metadata ADD COLUMN iris_f_number REAL"),
+            ("metadata.lut_name",          "ALTER TABLE metadata ADD COLUMN lut_name TEXT"),
+            // Extended 360° / spatial audio parameters: initial viewer orientation
+            // (heading/pitch/roll), stereo mode (top-bottom, left-right, mono), and
+            // ambisonics channel ordering convention.
+            ("metadata.spatial_initial_heading", "ALTER TABLE metadata ADD COLUMN spatial_initial_heading REAL"),
+            ("metadata.spatial_initial_pitch",   "ALTER TABLE metadata ADD COLUMN spatial_initial_pitch REAL"),
+            ("metadata.spatial_initial_roll",    "ALTER TABLE metadata ADD COLUMN spatial_initial_roll REAL"),
+            ("metadata.stereo_mode",             "ALTER TABLE metadata ADD COLUMN stereo_mode TEXT"),
+            ("metadata.ambisonics_channel_order", "ALTER TABLE metadata ADD COLUMN ambisonics_channel_order TEXT"),
             // Multi-location tracking: one logical video may exist as copies in
             // multiple watched directories. `video_locations` records every
             // filesystem path for a video_id; tags/metadata/collections are

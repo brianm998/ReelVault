@@ -500,6 +500,44 @@ message VideoMetadata {
   // in metres (0 if none). Detail-only — not on the grid summary.
   string gps_track = 52;
   double gps_track_distance_m = 53;
+  // GoPro GPMF motion series: accelerometer magnitude envelope and gyroscope
+  // magnitude envelope, each downsampled to 480 float32 values stored as
+  // little-endian bytes (empty when no GPMF or non-GoPro).
+  bytes accel_magnitude = 54;
+  bytes gyro_magnitude = 55;
+  // IPTC Core / Editorial metadata from the embedded XMP packet (Dublin Core +
+  // Photoshop namespaces). All empty when not present.
+  string description = 56;
+  string creator = 57;
+  string rights = 58;
+  repeated string keywords = 59;
+  string headline = 60;
+  // Chapter tracks and embedded subtitle tracks. chapter_count is the number of
+  // chapters (0 when none); chapters_json is a JSON array of {title, start_ms,
+  // end_ms} objects (empty when none). subtitle_tracks is the count of subtitle
+  // streams (0 when none).
+  int32 chapter_count = 61;
+  string chapters_json = 62;
+  int32 subtitle_tracks = 63;
+  // Dolby Vision profile number (0–9 for profiles 4, 5, 8.1, 8.4, etc.);
+  // -1 absent. Influences the dynamic_range label when present.
+  int32 dolby_vision_profile = 64;
+  // Sony Professional XML sidecar metadata: production scene and take numbers,
+  // ND filter setting, iris F-number, and LUT name. All empty when not present.
+  string production_scene = 65;
+  string production_take = 66;
+  string nd_filter = 67;
+  double iris_f_number = 68;
+  string lut_name = 69;
+  // Extended 360° / spatial audio parameters: initial viewer orientation (yaw,
+  // pitch, roll in degrees), stereo mode ("top-bottom", "left-right", "mono"),
+  // and ambisonics channel ordering ("ACN", "Furse-Malham"). All empty when not
+  // present or not applicable.
+  double spatial_initial_heading = 70;
+  double spatial_initial_pitch = 71;
+  double spatial_initial_roll = 72;
+  string stereo_mode = 73;
+  string ambisonics_channel_order = 74;
 }
 
 message GetThumbnailRequest {
