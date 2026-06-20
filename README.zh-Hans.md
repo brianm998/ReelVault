@@ -34,7 +34,7 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 
 - **Rust 核心** (`core/`) — 基于 Tonic 的 gRPC 守护进程。负责管理 SQLite 目录、FFprobe 元数据提取、缩略图及擦洗帧生成、扫描/索引、搜索和过滤器聚合。通过 `OpenCatalog` / `CloseCatalog` / `GetCurrentCatalog` RPC 支持在运行时热切换活动目录，因此单个守护进程可在其生命周期内服务多个库。
 
-- **Kotlin Compose 桌面客户端** (`desktop/`) — Compose Multiplatform 界面。自动检测 `127.0.0.1:50051` 上运行的守护进程；如果没有正在运行的守护进程，则自动启动捆绑的守护进程（若 50051 被占用则回退到系统分配的端口）。
+- **Kotlin Compose 桌面客户端** (`kotlin-desktop/`) — Compose Multiplatform 界面。自动检测 `127.0.0.1:50051` 上运行的守护进程；如果没有正在运行的守护进程，则自动启动捆绑的守护进程（若 50051 被占用则回退到系统分配的端口）。
 
 - **SwiftUI macOS 客户端** (`macos/`) — 功能对等的原生 macOS 应用，具有相同的自动启动流程、真正的 macOS 文件菜单（Commands 组）以及跟踪已打开目录的响应式窗口标题。
 
@@ -123,7 +123,7 @@ cargo build --release
 ### 运行 Kotlin Compose 桌面客户端
 
 ```bash
-cd desktop
+cd kotlin-desktop
 ./gradlew run
 ```
 

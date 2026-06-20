@@ -48,7 +48,7 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
   `GetCurrentCatalog`, dzięki czemu jeden proces demona może obsługiwać wiele bibliotek
   przez cały czas swojego działania.
 
-- **Kotlin Compose desktop client** (`desktop/`) — UI Compose Multiplatform.
+- **Kotlin Compose desktop client** (`kotlin-desktop/`) — UI Compose Multiplatform.
   Automatycznie wykrywa działającego demona na `127.0.0.1:50051`; jeśli żaden nie działa,
   uruchamia dołączonego demona (korzystając z portu przydzielonego przez system, gdy
   50051 jest zajęty).
@@ -187,7 +187,7 @@ którą klienty parsują, aby odkryć przydzielony port.
 ### Uruchamianie Kotlin Compose desktop client
 
 ```bash
-cd desktop
+cd kotlin-desktop
 ./gradlew run
 ```
 

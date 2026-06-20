@@ -53,9 +53,9 @@ jobs:
         run: cargo test
         working-directory: core
 
-  # ── Kotlin desktop: compile check ────────────────────────────────────────
-  desktop:
-    name: Desktop / ${{ matrix.os }}
+  # ── Kotlin Compose Desktop: compile check ───────────────────────────────────
+  kotlin-desktop:
+    name: Kotlin Desktop / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -65,7 +65,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # shared/ targets Java 17; desktop/ targets Java 21.
+      # shared/ targets Java 17; kotlin-desktop/ targets Java 21.
       # Install 17 first so Gradle's toolchain resolver can find it, then
       # install 21 last so JAVA_HOME points to the newer JDK by default.
       - uses: actions/setup-java@v4
@@ -83,12 +83,12 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ci-gradle-${{ matrix.os }}-${{ hashFiles('shared/build.gradle.kts', 'desktop/build.gradle.kts') }}
+          key: ci-gradle-${{ matrix.os }}-${{ hashFiles('shared/build.gradle.kts', 'kotlin-desktop/build.gradle.kts') }}
           restore-keys: ci-gradle-${{ matrix.os }}-
 
       - name: Compile Kotlin
         shell: bash
-        run: ./gradlew :shared:compileKotlin :desktop:compileKotlin --no-daemon
+        run: ./gradlew :shared:compileKotlin :kotlin-desktop:compileKotlin --no-daemon
 
   # ── SwiftUI macOS: build check ────────────────────────────────────────────
   macos-swift:

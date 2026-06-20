@@ -69,7 +69,7 @@ The core philosophy: **fast, native browsing of massive video collections withou
 - QuickLook and Finder integration (post-MVP)
 - Premium, highly optimized experience
 
-**Desktop Client (`desktop/`)**
+**Kotlin Desktop Client (`kotlin-desktop/`)**
 - Kotlin Compose for cross-platform support
 - Works on Linux, Windows, and macOS
 - MVP priority
@@ -236,7 +236,7 @@ ReelVault/
 │   │   ├── search.rs
 │   │   └── ipc.rs
 │   └── schema.sql
-├── desktop/               # Kotlin Compose client
+├── kotlin-desktop/        # Kotlin Compose desktop client (Linux, Windows, macOS)
 │   ├── build.gradle.kts
 │   ├── src/main/kotlin/
 │   │   ├── ui/
@@ -247,7 +247,7 @@ ReelVault/
 ├── android/               # Kotlin Compose Android client
 │   ├── build.gradle.kts
 │   └── src/main/kotlin/com/reelvault/android/
-├── shared/                # Shared Kotlin library (desktop + android)
+├── shared/                # Shared Kotlin library (kotlin-desktop + android)
 │   ├── build.gradle.kts
 │   └── src/main/kotlin/com/reelvault/
 ├── macos/                # SwiftUI macOS client (SwiftPM; depends on kit/)

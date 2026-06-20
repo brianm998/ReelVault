@@ -14,7 +14,7 @@
 # └──────────────────────────────────────────────────────────────────────┘
 #
 # Usage:
-#   ./release-desktop.sh [OPTIONS]
+#   ./release-kotlin-desktop.sh [OPTIONS]
 #
 # Options:
 #   --core-bin PATH   Path to the reelvault-core binary to bundle.
@@ -30,7 +30,7 @@
 #   --standalone      Compile out remote discovery; the app always starts its own
 #                     embedded daemon on loopback.  Use for the "standalone" package
 #                     that bundles the core daemon and needs no server setup.
-#   --out DIR         Output directory (default: dist/desktop)
+#   --out DIR         Output directory (default: dist/kotlin-desktop)
 #   --help            Show this message
 #
 # The resulting package is placed in --out together with the core bundle.
@@ -43,7 +43,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DESKTOP_DIR="${SCRIPT_DIR}/desktop"
+KOTLIN_DESKTOP_DIR="${SCRIPT_DIR}/kotlin-desktop"
 CORE_DIR="${SCRIPT_DIR}/core"
 
 # ---------------------------------------------------------------------------
@@ -53,7 +53,7 @@ CORE_BIN=""
 SIGN_IDENTITY=""
 NOTARIZE=0
 STANDALONE=0
-OUT_DIR="${SCRIPT_DIR}/dist/desktop"
+OUT_DIR="${SCRIPT_DIR}/dist/kotlin-desktop"
 
 # ---------------------------------------------------------------------------
 # Argument parsing
@@ -113,7 +113,7 @@ fi
 # Bundle the core daemon binary into desktop/release-bin/
 # This directory is picked up by build.gradle.kts appResourcesRootDir.
 # ---------------------------------------------------------------------------
-RELEASE_BIN_DIR="${DESKTOP_DIR}/release-bin"
+RELEASE_BIN_DIR="${KOTLIN_DESKTOP_DIR}/release-bin"
 mkdir -p "$RELEASE_BIN_DIR"
 
 if FOUND_BIN="$(locate_core_bin 2>/dev/null)"; then
@@ -138,7 +138,7 @@ fi
 # ---------------------------------------------------------------------------
 # Read version from Gradle
 # ---------------------------------------------------------------------------
-VERSION="$(grep 'packageVersion' "${DESKTOP_DIR}/build.gradle.kts" \
+VERSION="$(grep 'packageVersion' "${KOTLIN_DESKTOP_DIR}/build.gradle.kts" \
     | head -1 | sed 's/.*"\(.*\)".*/\1/')"
 echo "==> Package version: ${VERSION}"
 
@@ -147,7 +147,7 @@ echo "==> Package version: ${VERSION}"
 # ---------------------------------------------------------------------------
 mkdir -p "$OUT_DIR"
 
-BUILD_MAIN="${DESKTOP_DIR}/build/compose/binaries/main"
+BUILD_MAIN="${KOTLIN_DESKTOP_DIR}/build/compose/binaries/main"
 
 # helper: copy glob-matched files into OUT_DIR (used by Linux / Windows)
 copy_artifacts() {
@@ -179,7 +179,7 @@ if [[ "$OS" == "Darwin" ]]; then
     # -----------------------------------------------------------------------
 
     echo "==> Building distributable app bundle…"
-    (cd "$DESKTOP_DIR" && \
+    (cd "$KOTLIN_DESKTOP_DIR" && \
         CARGO_TERM_COLOR=always \
         ./gradlew createDistributable --no-daemon $GRADLE_STANDALONE_FLAG 2>&1)
 
@@ -305,7 +305,7 @@ else
     # -----------------------------------------------------------------------
     # Linux / Windows: standard Gradle native packaging
     # -----------------------------------------------------------------------
-    (cd "$DESKTOP_DIR" && \
+    (cd "$KOTLIN_DESKTOP_DIR" && \
         CARGO_TERM_COLOR=always \
         ./gradlew packageDistributionForCurrentOS --no-daemon $GRADLE_STANDALONE_FLAG 2>&1)
 

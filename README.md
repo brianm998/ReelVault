@@ -51,7 +51,7 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
   `GetCurrentCatalog` RPCs, so a single daemon process can serve multiple
   libraries over its lifetime.
 
-- **Kotlin Compose desktop client** (`desktop/`) — Compose Multiplatform UI.
+- **Kotlin Compose desktop client** (`kotlin-desktop/`) — Compose Multiplatform UI.
   Auto-detects a running daemon on `127.0.0.1:50051`; if none is running,
   spawns the bundled daemon itself (falling back to an OS-assigned port if
   50051 is busy).
@@ -191,7 +191,7 @@ stdout that the clients parse to discover the assigned port.
 ### Run the Kotlin Compose desktop client
 
 ```bash
-cd desktop
+cd kotlin-desktop
 ./gradlew run
 ```
 

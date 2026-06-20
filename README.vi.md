@@ -34,7 +34,7 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 
 - **Rust core** (`core/`) — Daemon gRPC dựa trên Tonic. Quản lý danh mục SQLite, trích xuất metadata FFprobe, tạo thumbnail + scrub-frame, quét/lập chỉ mục, tìm kiếm và tổng hợp bộ lọc. Hỗ trợ hot-swap danh mục đang hoạt động lúc chạy qua các RPC `OpenCatalog` / `CloseCatalog` / `GetCurrentCatalog`, để một tiến trình daemon duy nhất có thể phục vụ nhiều thư viện trong suốt vòng đời của nó.
 
-- **Client desktop Kotlin Compose** (`desktop/`) — Giao diện Compose Multiplatform. Tự động phát hiện daemon đang chạy trên `127.0.0.1:50051`; nếu không có daemon nào chạy, nó tự khởi chạy daemon đi kèm (dự phòng sang cổng do OS cấp nếu 50051 bận).
+- **Client desktop Kotlin Compose** (`kotlin-desktop/`) — Giao diện Compose Multiplatform. Tự động phát hiện daemon đang chạy trên `127.0.0.1:50051`; nếu không có daemon nào chạy, nó tự khởi chạy daemon đi kèm (dự phòng sang cổng do OS cấp nếu 50051 bận).
 
 - **Client SwiftUI macOS** (`macos/`) — Ứng dụng macOS native tương đương tính năng với cùng luồng tự động khởi chạy, menu File macOS thực sự (nhóm Commands) và tiêu đề cửa sổ phản ứng theo dõi danh mục đang mở.
 
@@ -123,7 +123,7 @@ Daemon in dòng `REELVAULT_LISTENING_ON=127.0.0.1:N` ổn định ra stdout mà 
 ### Chạy client desktop Kotlin Compose
 
 ```bash
-cd desktop
+cd kotlin-desktop
 ./gradlew run
 ```
 

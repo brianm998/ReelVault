@@ -34,7 +34,7 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 
 - **Nucleo Rust** (`core/`) — Daemon gRPC basato su Tonic. Gestisce il catalogo SQLite, l'estrazione di metadati con FFprobe, la generazione di miniature e fotogrammi di scrub, la scansione/indicizzazione, la ricerca e l'aggregazione dei filtri. Supporta lo scambio a caldo del catalogo attivo a runtime tramite le RPC `OpenCatalog` / `CloseCatalog` / `GetCurrentCatalog`, così un singolo processo daemon può servire più librerie nel corso della sua vita.
 
-- **Client desktop Kotlin Compose** (`desktop/`) — Interfaccia Compose Multiplatform. Rileva automaticamente un daemon in esecuzione su `127.0.0.1:50051`; se nessuno è attivo, avvia il daemon in bundle (con fallback a una porta assegnata dal SO se la 50051 è occupata).
+- **Client desktop Kotlin Compose** (`kotlin-desktop/`) — Interfaccia Compose Multiplatform. Rileva automaticamente un daemon in esecuzione su `127.0.0.1:50051`; se nessuno è attivo, avvia il daemon in bundle (con fallback a una porta assegnata dal SO se la 50051 è occupata).
 
 - **Client macOS SwiftUI** (`macos/`) — App macOS nativa con parità di funzionalità, lo stesso flusso di avvio automatico, un vero menu File di macOS (gruppo Commands) e un titolo di finestra reattivo che segue il catalogo aperto.
 
@@ -123,7 +123,7 @@ Il daemon stampa una riga stabile `REELVAULT_LISTENING_ON=127.0.0.1:N` su stdout
 ### Eseguire il client desktop Kotlin Compose
 
 ```bash
-cd desktop
+cd kotlin-desktop
 ./gradlew run
 ```
 

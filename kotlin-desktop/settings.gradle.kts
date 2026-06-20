@@ -13,6 +13,6 @@ plugins {
 
 rootProject.name = "reelvault-desktop"
 
-// Allow `./gradlew run` from inside desktop/ — shared as a composite build
+// Allow `./gradlew run` from inside kotlin-desktop/ — shared as a composite build
 // keeps its Kotlin classpath isolated from the desktop JVM classpath.
 includeBuild("../shared")
