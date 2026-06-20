@@ -87,11 +87,17 @@ struct NavHistoryButtons: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            Button(action: goBack) { Image(systemName: "chevron.backward") }
+            Button(action: goBack) {
+                Image(systemName: "chevron.backward")
+                    .font(.system(size: 20, weight: .semibold))
+            }
                 .buttonStyle(.borderless)
                 .disabled(!history.canGoBack)
                 .help("Back")
-            Button(action: goForward) { Image(systemName: "chevron.forward") }
+            Button(action: goForward) {
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 20, weight: .semibold))
+            }
                 .buttonStyle(.borderless)
                 .disabled(!history.canGoForward)
                 .help("Forward")

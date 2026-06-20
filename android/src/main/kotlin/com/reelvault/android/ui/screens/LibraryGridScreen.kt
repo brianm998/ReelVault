@@ -786,7 +786,21 @@ private fun LibraryTopAppBar(
     } else {
         TopAppBar(
             title = {
-                if (isMultiSelect) {
+                if (!isMultiSelect) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(0.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        NavHistoryButtons(
+                            canGoBack = canGoBack,
+                            canGoForward = canGoForward,
+                            onBack = onHistoryBack,
+                            onForward = onHistoryForward,
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                } else {
                     Text(stringResource(R.string.grid_selected_count, multiSelectCount))
                 }
             },
@@ -848,13 +862,6 @@ private fun LibraryTopAppBar(
                     }
                 } else {
                     // ── Normal actions ───────────────────────────────────
-                    // Browser-style back/forward across the session's browse path.
-                    NavHistoryButtons(
-                        canGoBack = canGoBack,
-                        canGoForward = canGoForward,
-                        onBack = onHistoryBack,
-                        onForward = onHistoryForward,
-                    )
                     // Search
                     IconButton(onClick = { onSearchActiveChange(true) }) {
                         Icon(Icons.Default.Search, contentDescription = stringResource(R.string.grid_search))
