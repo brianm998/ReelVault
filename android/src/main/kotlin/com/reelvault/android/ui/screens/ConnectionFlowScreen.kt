@@ -564,7 +564,7 @@ private fun EnterPinView(
             Spacer(Modifier.height(24.dp))
             OutlinedTextField(
                 value = pin,
-                onValueChange = { new -> pin = new.filter { it.isDigit() }.take(6) },
+                onValueChange = { new -> pin = formatPairingCode(new) },
                 placeholder = { Text(stringResource(R.string.conn_pin_placeholder), fontFamily = FontFamily.Monospace) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
@@ -572,7 +572,7 @@ private fun EnterPinView(
                     imeAction = ImeAction.Done,
                 ),
                 keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-                    onDone = { if (canSubmit) onSubmit(pin) }
+                    onDone = { if (canSubmit) onSubmit(pin.trim()) }
                 ),
                 textStyle = MaterialTheme.typography.headlineMedium.copy(
                     fontFamily = FontFamily.Monospace,
@@ -592,6 +592,15 @@ private fun EnterPinView(
                 }
             }
         }
+    }
+}
+
+private fun formatPairingCode(input: String): String {
+    val digits = input.filter { it.isDigit() }.take(6)
+    return if (digits.length <= 3) {
+        digits
+    } else {
+        digits.substring(0, 3) + " " + digits.substring(3)
     }
 }
 

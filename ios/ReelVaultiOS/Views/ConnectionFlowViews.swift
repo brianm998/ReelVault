@@ -93,6 +93,9 @@ struct PairingCodeView: View {
                         .keyboardType(.numberPad)
                         .textContentType(.oneTimeCode)
                         .font(.system(.title2, design: .monospaced))
+                        .onChange(of: code) { old, new in
+                            code = formatPairingCode(new)
+                        }
                     Button("Pair") {
                         router.submitPairingCode(code.trimmingCharacters(in: .whitespaces))
                     }
@@ -104,6 +107,15 @@ struct PairingCodeView: View {
             }
             .navigationTitle("Enter Pairing Code")
         }
+    }
+
+    private func formatPairingCode(_ input: String) -> String {
+        let digits = input.filter { $0.isNumber }.prefix(6)
+        let digitsStr = String(digits)
+        if digitsStr.count <= 3 {
+            return digitsStr
+        }
+        return String(digitsStr.prefix(3)) + " " + String(digitsStr.dropFirst(3))
     }
 }
 

@@ -256,6 +256,9 @@ struct PairingCodeEntryView: View {
                 .font(.system(.title2, design: .monospaced))
                 .multilineTextAlignment(.center)
                 .frame(width: 160)
+                .onChange(of: code) { old, new in
+                    code = formatPairingCode(new)
+                }
                 .onSubmit { if !code.isEmpty { onSubmit(code) } }
             HStack(spacing: 12) {
                 Button("Cancel", role: .cancel) { onCancel() }
@@ -266,5 +269,14 @@ struct PairingCodeEntryView: View {
         }
         .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func formatPairingCode(_ input: String) -> String {
+        let digits = input.filter { $0.isNumber }.prefix(6)
+        let digitsStr = String(digits)
+        if digitsStr.count <= 3 {
+            return digitsStr
+        }
+        return String(digitsStr.prefix(3)) + " " + String(digitsStr.dropFirst(3))
     }
 }
