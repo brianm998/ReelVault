@@ -688,6 +688,12 @@ public nonisolated struct Reelvault_VideoSummary: @unchecked Sendable {
     set {_uniqueStorage()._gpsTrackDistanceM = newValue}
   }
 
+  /// True when this video is a derived/synced copy imported from a remote peer.
+  public var isDerived: Bool {
+    get {_storage._isDerived}
+    set {_uniqueStorage()._isDerived = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3008,6 +3014,456 @@ public nonisolated struct Reelvault_Response: Sendable {
   public init() {}
 }
 
+public nonisolated struct Reelvault_SyncManifestRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var filter: Reelvault_ListVideosRequest {
+    get {_filter ?? Reelvault_ListVideosRequest()}
+    set {_filter = newValue}
+  }
+  /// Returns true if `filter` has been explicitly set.
+  public var hasFilter: Bool {self._filter != nil}
+  /// Clears the value of `filter`. Subsequent reads from it will return its default value.
+  public mutating func clearFilter() {self._filter = nil}
+
+  public var smartFilterJson: String = String()
+
+  public var cursor: String = String()
+
+  public var pageSize: Int32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _filter: Reelvault_ListVideosRequest? = nil
+}
+
+public nonisolated struct Reelvault_SyncManifestEntry: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var videoID: String = String()
+
+  public var contentHash: String = String()
+
+  public var hashPending: Bool = false
+
+  public var marksRev: Int64 = 0
+
+  public var sizeBytes: Int64 = 0
+
+  public var durationMs: Int64 = 0
+
+  public var creationDateMs: Int64 = 0
+
+  public var filename: String = String()
+
+  public var width: Int32 = 0
+
+  public var height: Int32 = 0
+
+  public var codecVideo: String = String()
+
+  public var isDerived: Bool = false
+
+  public var hasStreamableProxy_p: Bool = false
+
+  public var nextCursor: String = String()
+
+  /// Unix milliseconds when this video was deleted on the source, or 0 if live.
+  /// Destinations that have a sync_links entry for this video should soft-delete
+  /// (is_online = 0) when deleted_at_ms > 0.
+  public var deletedAtMs: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Reelvault_LookupByContentHashRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var contentHash: [String] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Reelvault_LookupByContentHashResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var hits: [Reelvault_LookupByContentHashResponse.Hit] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public nonisolated struct Hit: Sendable {
+    // SwiftProtobuf.Message conformance is added in an extension below. See the
+    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+    // methods supported on all messages.
+
+    public var contentHash: String = String()
+
+    public var videoID: String = String()
+
+    public var marksRev: Int64 = 0
+
+    public var durationMs: Int64 = 0
+
+    public var creationDateMs: Int64 = 0
+
+    public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+    public init() {}
+  }
+
+  public init() {}
+}
+
+public nonisolated struct Reelvault_VideoCatalogDataRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var videoID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Reelvault_SmartCollectionSpec: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var name: String = String()
+
+  public var filterJson: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Reelvault_GroupSpec: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var name: String = String()
+
+  public var baseName: String = String()
+
+  public var preferredOriginHash: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Reelvault_VideoCatalogData: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var tags: [String] = []
+
+  public var tagColors: [String] = []
+
+  public var collections: [String] = []
+
+  public var smart: [Reelvault_SmartCollectionSpec] = []
+
+  public var rating: Int32 = 0
+
+  public var colorLabel: String = String()
+
+  public var notes: String = String()
+
+  public var creationDateMs: Int64 = 0
+
+  public var gpsLat: Double = 0
+
+  public var gpsLon: Double = 0
+
+  public var gpsValid: Bool = false
+
+  public var marksRev: Int64 = 0
+
+  public var group: Reelvault_GroupSpec {
+    get {_group ?? Reelvault_GroupSpec()}
+    set {_group = newValue}
+  }
+  /// Returns true if `group` has been explicitly set.
+  public var hasGroup: Bool {self._group != nil}
+  /// Clears the value of `group`. Subsequent reads from it will return its default value.
+  public mutating func clearGroup() {self._group = nil}
+
+  /// Local video id that this video is a proxy/derived copy of. Empty when
+  /// not a proxy. Applied by apply_video_catalog_data to write videos.proxy_of.
+  public var proxyOfID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _group: Reelvault_GroupSpec? = nil
+}
+
+public nonisolated struct Reelvault_ApplyCatalogDataRequest: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var videoID: String {
+    get {_storage._videoID}
+    set {_uniqueStorage()._videoID = newValue}
+  }
+
+  public var data: Reelvault_VideoCatalogData {
+    get {_storage._data ?? Reelvault_VideoCatalogData()}
+    set {_uniqueStorage()._data = newValue}
+  }
+  /// Returns true if `data` has been explicitly set.
+  public var hasData: Bool {_storage._data != nil}
+  /// Clears the value of `data`. Subsequent reads from it will return its default value.
+  public mutating func clearData() {_uniqueStorage()._data = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+public nonisolated struct Reelvault_PrepareRenditionRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var videoID: String = String()
+
+  public var targetHeight: Int32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Reelvault_PrepareRenditionProgress: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var phase: Reelvault_PrepareRenditionProgress.Phase = .queued
+
+  public var fraction: Float = 0
+
+  public var detail: String = String()
+
+  public var readyHeight: Int32 = 0
+
+  public var renditionBytes: Int64 = 0
+
+  public var downloadPath: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public nonisolated enum Phase: SwiftProtobuf.Enum, Swift.CaseIterable {
+    public typealias RawValue = Int
+    case queued // = 0
+    case transcoding // = 1
+    case promoting // = 2
+    case ready // = 3
+    case failed // = 4
+    case UNRECOGNIZED(Int)
+
+    public init() {
+      self = .queued
+    }
+
+    public init?(rawValue: Int) {
+      switch rawValue {
+      case 0: self = .queued
+      case 1: self = .transcoding
+      case 2: self = .promoting
+      case 3: self = .ready
+      case 4: self = .failed
+      default: self = .UNRECOGNIZED(rawValue)
+      }
+    }
+
+    public var rawValue: Int {
+      switch self {
+      case .queued: return 0
+      case .transcoding: return 1
+      case .promoting: return 2
+      case .ready: return 3
+      case .failed: return 4
+      case .UNRECOGNIZED(let i): return i
+      }
+    }
+
+    // The compiler won't synthesize support with the UNRECOGNIZED case.
+    public static let allCases: [Reelvault_PrepareRenditionProgress.Phase] = [
+      .queued,
+      .transcoding,
+      .promoting,
+      .ready,
+      .failed,
+    ]
+
+  }
+
+  public init() {}
+}
+
+public nonisolated struct Reelvault_ListSyncProfilesRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Reelvault_SyncProfileProto: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var id: String = String()
+
+  public var name: String = String()
+
+  public var peerKey: String = String()
+
+  public var direction: String = String()
+
+  public var filterJson: String = String()
+
+  public var targetHeight: Int32 = 0
+
+  public var collectionResolutions: String = String()
+
+  public var deviceLabel: String = String()
+
+  public var lastRunMs: Int64 = 0
+
+  public var createdMs: Int64 = 0
+
+  public var updatedMs: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Reelvault_ListSyncProfilesResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var profiles: [Reelvault_SyncProfileProto] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Reelvault_UpsertSyncProfileRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var profile: Reelvault_SyncProfileProto {
+    get {_profile ?? Reelvault_SyncProfileProto()}
+    set {_profile = newValue}
+  }
+  /// Returns true if `profile` has been explicitly set.
+  public var hasProfile: Bool {self._profile != nil}
+  /// Clears the value of `profile`. Subsequent reads from it will return its default value.
+  public mutating func clearProfile() {self._profile = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _profile: Reelvault_SyncProfileProto? = nil
+}
+
+public nonisolated struct Reelvault_SyncProfileResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var id: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Reelvault_DeleteSyncProfileRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var id: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Reelvault_GetSyncRunRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var runID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Reelvault_SyncRunResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var id: String = String()
+
+  public var state: String = String()
+
+  public var total: Int64 = 0
+
+  public var completed: Int64 = 0
+
+  public var failed: Int64 = 0
+
+  public var conflicts: Int64 = 0
+
+  public var startedMs: Int64 = 0
+
+  public var finishedMs: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "reelvault"
@@ -3281,7 +3737,7 @@ nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftP
 
 nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".VideoSummary"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0\u{1}rating\0\u{3}color_label\0\u{3}camera_model\0\u{3}camera_display_name\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}lens_model\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}full_resolution\0\u{3}is_online\0\u{1}bitrate\0\u{3}frame_count\0\u{3}dynamic_range\0\u{1}timecode\0\u{3}capture_fps\0\u{3}bit_depth\0\u{3}audio_bit_depth\0\u{3}audio_language\0\u{3}audio_track_count\0\u{1}spatial\0\u{1}projection\0\u{3}gps_track_distance_m\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0\u{1}rating\0\u{3}color_label\0\u{3}camera_model\0\u{3}camera_display_name\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}lens_model\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}full_resolution\0\u{3}is_online\0\u{1}bitrate\0\u{3}frame_count\0\u{3}dynamic_range\0\u{1}timecode\0\u{3}capture_fps\0\u{3}bit_depth\0\u{3}audio_bit_depth\0\u{3}audio_language\0\u{3}audio_track_count\0\u{1}spatial\0\u{1}projection\0\u{3}gps_track_distance_m\0\u{3}is_derived\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -3330,6 +3786,7 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
     var _spatial: Bool = false
     var _projection: String = String()
     var _gpsTrackDistanceM: Double = 0
+    var _isDerived: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3386,6 +3843,7 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       _spatial = source._spatial
       _projection = source._projection
       _gpsTrackDistanceM = source._gpsTrackDistanceM
+      _isDerived = source._isDerived
     }
   }
 
@@ -3450,6 +3908,7 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         case 44: try { try decoder.decodeSingularBoolField(value: &_storage._spatial) }()
         case 45: try { try decoder.decodeSingularStringField(value: &_storage._projection) }()
         case 46: try { try decoder.decodeSingularDoubleField(value: &_storage._gpsTrackDistanceM) }()
+        case 47: try { try decoder.decodeSingularBoolField(value: &_storage._isDerived) }()
         default: break
         }
       }
@@ -3596,6 +4055,9 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       if _storage._gpsTrackDistanceM.bitPattern != 0 {
         try visitor.visitSingularDoubleField(value: _storage._gpsTrackDistanceM, fieldNumber: 46)
       }
+      if _storage._isDerived != false {
+        try visitor.visitSingularBoolField(value: _storage._isDerived, fieldNumber: 47)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3651,6 +4113,7 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         if _storage._spatial != rhs_storage._spatial {return false}
         if _storage._projection != rhs_storage._projection {return false}
         if _storage._gpsTrackDistanceM != rhs_storage._gpsTrackDistanceM {return false}
+        if _storage._isDerived != rhs_storage._isDerived {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -7921,6 +8384,958 @@ nonisolated extension Reelvault_Response: SwiftProtobuf.Message, SwiftProtobuf._
     if lhs.message != rhs.message {return false}
     if lhs.error != rhs.error {return false}
     if lhs.errorCode != rhs.errorCode {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_SyncManifestRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SyncManifestRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}filter\0\u{3}smart_filter_json\0\u{1}cursor\0\u{3}page_size\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._filter) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.smartFilterJson) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.cursor) }()
+      case 4: try { try decoder.decodeSingularInt32Field(value: &self.pageSize) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._filter {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if !self.smartFilterJson.isEmpty {
+      try visitor.visitSingularStringField(value: self.smartFilterJson, fieldNumber: 2)
+    }
+    if !self.cursor.isEmpty {
+      try visitor.visitSingularStringField(value: self.cursor, fieldNumber: 3)
+    }
+    if self.pageSize != 0 {
+      try visitor.visitSingularInt32Field(value: self.pageSize, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_SyncManifestRequest, rhs: Reelvault_SyncManifestRequest) -> Bool {
+    if lhs._filter != rhs._filter {return false}
+    if lhs.smartFilterJson != rhs.smartFilterJson {return false}
+    if lhs.cursor != rhs.cursor {return false}
+    if lhs.pageSize != rhs.pageSize {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_SyncManifestEntry: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SyncManifestEntry"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{3}content_hash\0\u{3}hash_pending\0\u{3}marks_rev\0\u{3}size_bytes\0\u{3}duration_ms\0\u{3}creation_date_ms\0\u{1}filename\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}is_derived\0\u{3}has_streamable_proxy\0\u{3}next_cursor\0\u{3}deleted_at_ms\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.videoID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.contentHash) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.hashPending) }()
+      case 4: try { try decoder.decodeSingularInt64Field(value: &self.marksRev) }()
+      case 5: try { try decoder.decodeSingularInt64Field(value: &self.sizeBytes) }()
+      case 6: try { try decoder.decodeSingularInt64Field(value: &self.durationMs) }()
+      case 7: try { try decoder.decodeSingularInt64Field(value: &self.creationDateMs) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.filename) }()
+      case 9: try { try decoder.decodeSingularInt32Field(value: &self.width) }()
+      case 10: try { try decoder.decodeSingularInt32Field(value: &self.height) }()
+      case 11: try { try decoder.decodeSingularStringField(value: &self.codecVideo) }()
+      case 12: try { try decoder.decodeSingularBoolField(value: &self.isDerived) }()
+      case 13: try { try decoder.decodeSingularBoolField(value: &self.hasStreamableProxy_p) }()
+      case 14: try { try decoder.decodeSingularStringField(value: &self.nextCursor) }()
+      case 15: try { try decoder.decodeSingularInt64Field(value: &self.deletedAtMs) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.videoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
+    }
+    if !self.contentHash.isEmpty {
+      try visitor.visitSingularStringField(value: self.contentHash, fieldNumber: 2)
+    }
+    if self.hashPending != false {
+      try visitor.visitSingularBoolField(value: self.hashPending, fieldNumber: 3)
+    }
+    if self.marksRev != 0 {
+      try visitor.visitSingularInt64Field(value: self.marksRev, fieldNumber: 4)
+    }
+    if self.sizeBytes != 0 {
+      try visitor.visitSingularInt64Field(value: self.sizeBytes, fieldNumber: 5)
+    }
+    if self.durationMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.durationMs, fieldNumber: 6)
+    }
+    if self.creationDateMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.creationDateMs, fieldNumber: 7)
+    }
+    if !self.filename.isEmpty {
+      try visitor.visitSingularStringField(value: self.filename, fieldNumber: 8)
+    }
+    if self.width != 0 {
+      try visitor.visitSingularInt32Field(value: self.width, fieldNumber: 9)
+    }
+    if self.height != 0 {
+      try visitor.visitSingularInt32Field(value: self.height, fieldNumber: 10)
+    }
+    if !self.codecVideo.isEmpty {
+      try visitor.visitSingularStringField(value: self.codecVideo, fieldNumber: 11)
+    }
+    if self.isDerived != false {
+      try visitor.visitSingularBoolField(value: self.isDerived, fieldNumber: 12)
+    }
+    if self.hasStreamableProxy_p != false {
+      try visitor.visitSingularBoolField(value: self.hasStreamableProxy_p, fieldNumber: 13)
+    }
+    if !self.nextCursor.isEmpty {
+      try visitor.visitSingularStringField(value: self.nextCursor, fieldNumber: 14)
+    }
+    if self.deletedAtMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.deletedAtMs, fieldNumber: 15)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_SyncManifestEntry, rhs: Reelvault_SyncManifestEntry) -> Bool {
+    if lhs.videoID != rhs.videoID {return false}
+    if lhs.contentHash != rhs.contentHash {return false}
+    if lhs.hashPending != rhs.hashPending {return false}
+    if lhs.marksRev != rhs.marksRev {return false}
+    if lhs.sizeBytes != rhs.sizeBytes {return false}
+    if lhs.durationMs != rhs.durationMs {return false}
+    if lhs.creationDateMs != rhs.creationDateMs {return false}
+    if lhs.filename != rhs.filename {return false}
+    if lhs.width != rhs.width {return false}
+    if lhs.height != rhs.height {return false}
+    if lhs.codecVideo != rhs.codecVideo {return false}
+    if lhs.isDerived != rhs.isDerived {return false}
+    if lhs.hasStreamableProxy_p != rhs.hasStreamableProxy_p {return false}
+    if lhs.nextCursor != rhs.nextCursor {return false}
+    if lhs.deletedAtMs != rhs.deletedAtMs {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_LookupByContentHashRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".LookupByContentHashRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}content_hash\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedStringField(value: &self.contentHash) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.contentHash.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.contentHash, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_LookupByContentHashRequest, rhs: Reelvault_LookupByContentHashRequest) -> Bool {
+    if lhs.contentHash != rhs.contentHash {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_LookupByContentHashResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".LookupByContentHashResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}hits\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.hits) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.hits.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.hits, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_LookupByContentHashResponse, rhs: Reelvault_LookupByContentHashResponse) -> Bool {
+    if lhs.hits != rhs.hits {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_LookupByContentHashResponse.Hit: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = Reelvault_LookupByContentHashResponse.protoMessageName + ".Hit"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}content_hash\0\u{3}video_id\0\u{3}marks_rev\0\u{3}duration_ms\0\u{3}creation_date_ms\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.contentHash) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.videoID) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.marksRev) }()
+      case 4: try { try decoder.decodeSingularInt64Field(value: &self.durationMs) }()
+      case 5: try { try decoder.decodeSingularInt64Field(value: &self.creationDateMs) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.contentHash.isEmpty {
+      try visitor.visitSingularStringField(value: self.contentHash, fieldNumber: 1)
+    }
+    if !self.videoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 2)
+    }
+    if self.marksRev != 0 {
+      try visitor.visitSingularInt64Field(value: self.marksRev, fieldNumber: 3)
+    }
+    if self.durationMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.durationMs, fieldNumber: 4)
+    }
+    if self.creationDateMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.creationDateMs, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_LookupByContentHashResponse.Hit, rhs: Reelvault_LookupByContentHashResponse.Hit) -> Bool {
+    if lhs.contentHash != rhs.contentHash {return false}
+    if lhs.videoID != rhs.videoID {return false}
+    if lhs.marksRev != rhs.marksRev {return false}
+    if lhs.durationMs != rhs.durationMs {return false}
+    if lhs.creationDateMs != rhs.creationDateMs {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_VideoCatalogDataRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".VideoCatalogDataRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.videoID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.videoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_VideoCatalogDataRequest, rhs: Reelvault_VideoCatalogDataRequest) -> Bool {
+    if lhs.videoID != rhs.videoID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_SmartCollectionSpec: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SmartCollectionSpec"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{3}filter_json\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.filterJson) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 1)
+    }
+    if !self.filterJson.isEmpty {
+      try visitor.visitSingularStringField(value: self.filterJson, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_SmartCollectionSpec, rhs: Reelvault_SmartCollectionSpec) -> Bool {
+    if lhs.name != rhs.name {return false}
+    if lhs.filterJson != rhs.filterJson {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_GroupSpec: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GroupSpec"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{3}base_name\0\u{3}preferred_origin_hash\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.baseName) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.preferredOriginHash) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 1)
+    }
+    if !self.baseName.isEmpty {
+      try visitor.visitSingularStringField(value: self.baseName, fieldNumber: 2)
+    }
+    if !self.preferredOriginHash.isEmpty {
+      try visitor.visitSingularStringField(value: self.preferredOriginHash, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_GroupSpec, rhs: Reelvault_GroupSpec) -> Bool {
+    if lhs.name != rhs.name {return false}
+    if lhs.baseName != rhs.baseName {return false}
+    if lhs.preferredOriginHash != rhs.preferredOriginHash {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_VideoCatalogData: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".VideoCatalogData"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}tags\0\u{3}tag_colors\0\u{1}collections\0\u{1}smart\0\u{1}rating\0\u{3}color_label\0\u{1}notes\0\u{3}creation_date_ms\0\u{3}gps_lat\0\u{3}gps_lon\0\u{3}gps_valid\0\u{3}marks_rev\0\u{1}group\0\u{3}proxy_of_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedStringField(value: &self.tags) }()
+      case 2: try { try decoder.decodeRepeatedStringField(value: &self.tagColors) }()
+      case 3: try { try decoder.decodeRepeatedStringField(value: &self.collections) }()
+      case 4: try { try decoder.decodeRepeatedMessageField(value: &self.smart) }()
+      case 5: try { try decoder.decodeSingularInt32Field(value: &self.rating) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.colorLabel) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.notes) }()
+      case 8: try { try decoder.decodeSingularInt64Field(value: &self.creationDateMs) }()
+      case 9: try { try decoder.decodeSingularDoubleField(value: &self.gpsLat) }()
+      case 10: try { try decoder.decodeSingularDoubleField(value: &self.gpsLon) }()
+      case 11: try { try decoder.decodeSingularBoolField(value: &self.gpsValid) }()
+      case 12: try { try decoder.decodeSingularInt64Field(value: &self.marksRev) }()
+      case 13: try { try decoder.decodeSingularMessageField(value: &self._group) }()
+      case 14: try { try decoder.decodeSingularStringField(value: &self.proxyOfID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.tags.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.tags, fieldNumber: 1)
+    }
+    if !self.tagColors.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.tagColors, fieldNumber: 2)
+    }
+    if !self.collections.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.collections, fieldNumber: 3)
+    }
+    if !self.smart.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.smart, fieldNumber: 4)
+    }
+    if self.rating != 0 {
+      try visitor.visitSingularInt32Field(value: self.rating, fieldNumber: 5)
+    }
+    if !self.colorLabel.isEmpty {
+      try visitor.visitSingularStringField(value: self.colorLabel, fieldNumber: 6)
+    }
+    if !self.notes.isEmpty {
+      try visitor.visitSingularStringField(value: self.notes, fieldNumber: 7)
+    }
+    if self.creationDateMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.creationDateMs, fieldNumber: 8)
+    }
+    if self.gpsLat.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.gpsLat, fieldNumber: 9)
+    }
+    if self.gpsLon.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.gpsLon, fieldNumber: 10)
+    }
+    if self.gpsValid != false {
+      try visitor.visitSingularBoolField(value: self.gpsValid, fieldNumber: 11)
+    }
+    if self.marksRev != 0 {
+      try visitor.visitSingularInt64Field(value: self.marksRev, fieldNumber: 12)
+    }
+    try { if let v = self._group {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+    } }()
+    if !self.proxyOfID.isEmpty {
+      try visitor.visitSingularStringField(value: self.proxyOfID, fieldNumber: 14)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_VideoCatalogData, rhs: Reelvault_VideoCatalogData) -> Bool {
+    if lhs.tags != rhs.tags {return false}
+    if lhs.tagColors != rhs.tagColors {return false}
+    if lhs.collections != rhs.collections {return false}
+    if lhs.smart != rhs.smart {return false}
+    if lhs.rating != rhs.rating {return false}
+    if lhs.colorLabel != rhs.colorLabel {return false}
+    if lhs.notes != rhs.notes {return false}
+    if lhs.creationDateMs != rhs.creationDateMs {return false}
+    if lhs.gpsLat != rhs.gpsLat {return false}
+    if lhs.gpsLon != rhs.gpsLon {return false}
+    if lhs.gpsValid != rhs.gpsValid {return false}
+    if lhs.marksRev != rhs.marksRev {return false}
+    if lhs._group != rhs._group {return false}
+    if lhs.proxyOfID != rhs.proxyOfID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_ApplyCatalogDataRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ApplyCatalogDataRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{1}data\0")
+
+  fileprivate class _StorageClass {
+    var _videoID: String = String()
+    var _data: Reelvault_VideoCatalogData? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _videoID = source._videoID
+      _data = source._data
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._videoID) }()
+        case 2: try { try decoder.decodeSingularMessageField(value: &_storage._data) }()
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._videoID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._videoID, fieldNumber: 1)
+      }
+      try { if let v = _storage._data {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      } }()
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_ApplyCatalogDataRequest, rhs: Reelvault_ApplyCatalogDataRequest) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._videoID != rhs_storage._videoID {return false}
+        if _storage._data != rhs_storage._data {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_PrepareRenditionRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PrepareRenditionRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{3}target_height\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.videoID) }()
+      case 2: try { try decoder.decodeSingularInt32Field(value: &self.targetHeight) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.videoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
+    }
+    if self.targetHeight != 0 {
+      try visitor.visitSingularInt32Field(value: self.targetHeight, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_PrepareRenditionRequest, rhs: Reelvault_PrepareRenditionRequest) -> Bool {
+    if lhs.videoID != rhs.videoID {return false}
+    if lhs.targetHeight != rhs.targetHeight {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_PrepareRenditionProgress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PrepareRenditionProgress"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}phase\0\u{1}fraction\0\u{1}detail\0\u{3}ready_height\0\u{3}rendition_bytes\0\u{3}download_path\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularEnumField(value: &self.phase) }()
+      case 2: try { try decoder.decodeSingularFloatField(value: &self.fraction) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.detail) }()
+      case 4: try { try decoder.decodeSingularInt32Field(value: &self.readyHeight) }()
+      case 5: try { try decoder.decodeSingularInt64Field(value: &self.renditionBytes) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.downloadPath) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.phase != .queued {
+      try visitor.visitSingularEnumField(value: self.phase, fieldNumber: 1)
+    }
+    if self.fraction.bitPattern != 0 {
+      try visitor.visitSingularFloatField(value: self.fraction, fieldNumber: 2)
+    }
+    if !self.detail.isEmpty {
+      try visitor.visitSingularStringField(value: self.detail, fieldNumber: 3)
+    }
+    if self.readyHeight != 0 {
+      try visitor.visitSingularInt32Field(value: self.readyHeight, fieldNumber: 4)
+    }
+    if self.renditionBytes != 0 {
+      try visitor.visitSingularInt64Field(value: self.renditionBytes, fieldNumber: 5)
+    }
+    if !self.downloadPath.isEmpty {
+      try visitor.visitSingularStringField(value: self.downloadPath, fieldNumber: 6)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_PrepareRenditionProgress, rhs: Reelvault_PrepareRenditionProgress) -> Bool {
+    if lhs.phase != rhs.phase {return false}
+    if lhs.fraction != rhs.fraction {return false}
+    if lhs.detail != rhs.detail {return false}
+    if lhs.readyHeight != rhs.readyHeight {return false}
+    if lhs.renditionBytes != rhs.renditionBytes {return false}
+    if lhs.downloadPath != rhs.downloadPath {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_PrepareRenditionProgress.Phase: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0QUEUED\0\u{1}TRANSCODING\0\u{1}PROMOTING\0\u{1}READY\0\u{1}FAILED\0")
+}
+
+nonisolated extension Reelvault_ListSyncProfilesRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ListSyncProfilesRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_ListSyncProfilesRequest, rhs: Reelvault_ListSyncProfilesRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_SyncProfileProto: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SyncProfileProto"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{3}peer_key\0\u{1}direction\0\u{3}filter_json\0\u{3}target_height\0\u{3}collection_resolutions\0\u{3}device_label\0\u{3}last_run_ms\0\u{3}created_ms\0\u{3}updated_ms\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.peerKey) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.direction) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.filterJson) }()
+      case 6: try { try decoder.decodeSingularInt32Field(value: &self.targetHeight) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.collectionResolutions) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.deviceLabel) }()
+      case 9: try { try decoder.decodeSingularInt64Field(value: &self.lastRunMs) }()
+      case 10: try { try decoder.decodeSingularInt64Field(value: &self.createdMs) }()
+      case 11: try { try decoder.decodeSingularInt64Field(value: &self.updatedMs) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
+    }
+    if !self.peerKey.isEmpty {
+      try visitor.visitSingularStringField(value: self.peerKey, fieldNumber: 3)
+    }
+    if !self.direction.isEmpty {
+      try visitor.visitSingularStringField(value: self.direction, fieldNumber: 4)
+    }
+    if !self.filterJson.isEmpty {
+      try visitor.visitSingularStringField(value: self.filterJson, fieldNumber: 5)
+    }
+    if self.targetHeight != 0 {
+      try visitor.visitSingularInt32Field(value: self.targetHeight, fieldNumber: 6)
+    }
+    if !self.collectionResolutions.isEmpty {
+      try visitor.visitSingularStringField(value: self.collectionResolutions, fieldNumber: 7)
+    }
+    if !self.deviceLabel.isEmpty {
+      try visitor.visitSingularStringField(value: self.deviceLabel, fieldNumber: 8)
+    }
+    if self.lastRunMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.lastRunMs, fieldNumber: 9)
+    }
+    if self.createdMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.createdMs, fieldNumber: 10)
+    }
+    if self.updatedMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.updatedMs, fieldNumber: 11)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_SyncProfileProto, rhs: Reelvault_SyncProfileProto) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.name != rhs.name {return false}
+    if lhs.peerKey != rhs.peerKey {return false}
+    if lhs.direction != rhs.direction {return false}
+    if lhs.filterJson != rhs.filterJson {return false}
+    if lhs.targetHeight != rhs.targetHeight {return false}
+    if lhs.collectionResolutions != rhs.collectionResolutions {return false}
+    if lhs.deviceLabel != rhs.deviceLabel {return false}
+    if lhs.lastRunMs != rhs.lastRunMs {return false}
+    if lhs.createdMs != rhs.createdMs {return false}
+    if lhs.updatedMs != rhs.updatedMs {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_ListSyncProfilesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ListSyncProfilesResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}profiles\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.profiles) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.profiles.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.profiles, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_ListSyncProfilesResponse, rhs: Reelvault_ListSyncProfilesResponse) -> Bool {
+    if lhs.profiles != rhs.profiles {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_UpsertSyncProfileRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UpsertSyncProfileRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}profile\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._profile) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._profile {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_UpsertSyncProfileRequest, rhs: Reelvault_UpsertSyncProfileRequest) -> Bool {
+    if lhs._profile != rhs._profile {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_SyncProfileResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SyncProfileResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_SyncProfileResponse, rhs: Reelvault_SyncProfileResponse) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_DeleteSyncProfileRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeleteSyncProfileRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_DeleteSyncProfileRequest, rhs: Reelvault_DeleteSyncProfileRequest) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_GetSyncRunRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetSyncRunRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}run_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.runID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.runID.isEmpty {
+      try visitor.visitSingularStringField(value: self.runID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_GetSyncRunRequest, rhs: Reelvault_GetSyncRunRequest) -> Bool {
+    if lhs.runID != rhs.runID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_SyncRunResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SyncRunResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}state\0\u{1}total\0\u{1}completed\0\u{1}failed\0\u{1}conflicts\0\u{3}started_ms\0\u{3}finished_ms\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.state) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.total) }()
+      case 4: try { try decoder.decodeSingularInt64Field(value: &self.completed) }()
+      case 5: try { try decoder.decodeSingularInt64Field(value: &self.failed) }()
+      case 6: try { try decoder.decodeSingularInt64Field(value: &self.conflicts) }()
+      case 7: try { try decoder.decodeSingularInt64Field(value: &self.startedMs) }()
+      case 8: try { try decoder.decodeSingularInt64Field(value: &self.finishedMs) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    if !self.state.isEmpty {
+      try visitor.visitSingularStringField(value: self.state, fieldNumber: 2)
+    }
+    if self.total != 0 {
+      try visitor.visitSingularInt64Field(value: self.total, fieldNumber: 3)
+    }
+    if self.completed != 0 {
+      try visitor.visitSingularInt64Field(value: self.completed, fieldNumber: 4)
+    }
+    if self.failed != 0 {
+      try visitor.visitSingularInt64Field(value: self.failed, fieldNumber: 5)
+    }
+    if self.conflicts != 0 {
+      try visitor.visitSingularInt64Field(value: self.conflicts, fieldNumber: 6)
+    }
+    if self.startedMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.startedMs, fieldNumber: 7)
+    }
+    if self.finishedMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.finishedMs, fieldNumber: 8)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_SyncRunResponse, rhs: Reelvault_SyncRunResponse) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.state != rhs.state {return false}
+    if lhs.total != rhs.total {return false}
+    if lhs.completed != rhs.completed {return false}
+    if lhs.failed != rhs.failed {return false}
+    if lhs.conflicts != rhs.conflicts {return false}
+    if lhs.startedMs != rhs.startedMs {return false}
+    if lhs.finishedMs != rhs.finishedMs {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
