@@ -776,12 +776,32 @@ fun ReelVaultApp(
     val navTagId by gridViewModel.filterTagId.collectAsState()
     val navLocationPaths by gridViewModel.selectedLocationPaths.collectAsState()
     val navSelectedVideoId by gridViewModel.selectedVideoId.collectAsState()
+    val navSearchQuery by gridViewModel.searchQuery.collectAsState()
+    val navFilterMinRating by gridViewModel.filterMinRating.collectAsState()
+    val navFilterColorLabel by gridViewModel.filterColorLabel.collectAsState()
+    val navFilterHasLocation by gridViewModel.filterHasLocation.collectAsState()
+    val navFilterHasKeywords by gridViewModel.filterHasKeywords.collectAsState()
+    val navFilterHasProxies by gridViewModel.filterHasProxies.collectAsState()
+    val navFilterFullResolution by gridViewModel.filterFullResolution.collectAsState()
+    val navFilterHasAudio by gridViewModel.filterHasAudio.collectAsState()
+    val navFilterOrientation by gridViewModel.filterOrientation.collectAsState()
+    val navMetadataColumns by gridViewModel.metadataColumns.collectAsState()
     val currentNav = com.reelvault.viewmodel.NavState(
         viewMode = viewMode,
         locationPaths = navLocationPaths,
         collectionId = navCollectionId,
         tagId = navTagId,
         videoId = navSelectedVideoId,
+        searchQuery = navSearchQuery,
+        filterMinRating = navFilterMinRating,
+        filterColorLabel = navFilterColorLabel,
+        filterHasLocation = navFilterHasLocation,
+        filterHasKeywords = navFilterHasKeywords,
+        filterHasProxies = navFilterHasProxies,
+        filterFullResolution = navFilterFullResolution,
+        filterHasAudio = navFilterHasAudio,
+        filterOrientation = navFilterOrientation,
+        metadataColumns = navMetadataColumns,
     )
     LaunchedEffect(currentNav) { history.record(currentNav) }
     val navCanGoBack by history.canGoBack.collectAsState()
@@ -797,6 +817,18 @@ fun ReelVaultApp(
         gridViewModel.setLocationPaths(s.locationPaths)
         gridViewModel.restoreSelectedVideo(s.videoId)
         viewMode = s.viewMode
+        // Restore library filter state after source filters so any smart-collection
+        // side effects are overridden with the exact recorded values.
+        gridViewModel.setSearchQuery(s.searchQuery)
+        gridViewModel.setMinRatingFilter(s.filterMinRating)
+        gridViewModel.setColorLabelFilter(s.filterColorLabel)
+        gridViewModel.setHasLocationFilter(s.filterHasLocation)
+        gridViewModel.setHasKeywordsFilter(s.filterHasKeywords)
+        gridViewModel.setHasProxiesFilter(s.filterHasProxies)
+        gridViewModel.setFullResolutionFilter(s.filterFullResolution)
+        gridViewModel.setHasAudioFilter(s.filterHasAudio)
+        gridViewModel.setOrientationFilter(s.filterOrientation)
+        gridViewModel.setMetadataColumns(s.metadataColumns)
         // Drive the detail inspector for the restored selection. The grid/list/
         // arrow-key selection paths do this on a normal selection; nothing else
         // re-drives it for a history restore.

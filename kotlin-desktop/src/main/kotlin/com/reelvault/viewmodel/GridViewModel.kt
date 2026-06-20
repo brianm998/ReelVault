@@ -1649,6 +1649,15 @@ class GridViewModel(
         else scheduleFacetRefresh()
     }
 
+    /** Bulk-replace the metadata column list for a history restore. Does NOT save
+     *  to prefs (history restores are transient; saved columns only change via
+     *  explicit column-management actions). */
+    fun setMetadataColumns(columns: List<com.reelvault.data.models.MetadataColumn>) {
+        if (_metadataColumns.value == columns) return
+        _metadataColumns.value = columns
+        reloadForFilterChange()
+    }
+
     /** Reset the Library Filter (search + attribute + metadata values) so all
      *  videos show, subject to the higher-level location / keyword filters. The
      *  metadata column layout (keys/order) is preserved. */

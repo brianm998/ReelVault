@@ -50,7 +50,17 @@ struct RootSplitView: View {
 
     /// The current browse location, as recorded in history.
     private var currentNav: NavState {
-        NavState(section: selection, viewMode: viewMode, selectedVideoId: grid.selectedVideoId)
+        NavState(section: selection, viewMode: viewMode, selectedVideoId: grid.selectedVideoId,
+                 searchQuery: grid.searchQuery,
+                 filterMinRating: grid.filterMinRating,
+                 filterColorLabel: grid.filterColorLabel,
+                 filterHasLocation: grid.filterHasLocation,
+                 filterHasKeywords: grid.filterHasKeywords,
+                 filterHasProxies: grid.filterHasProxies,
+                 filterFullResolution: grid.filterFullResolution,
+                 filterHasAudio: grid.filterHasAudio,
+                 filterOrientation: grid.filterOrientation,
+                 metadataColumns: grid.metadataColumns)
     }
 
     private func goBack() { if let s = history.goBack() { restore(s) } }
@@ -65,6 +75,21 @@ struct RootSplitView: View {
         applyFilters(s.section)
         viewMode = s.viewMode
         grid.selectedVideoId = s.selectedVideoId
+        // Restore the library filter state. Called after applyFilters() so any
+        // smart-collection side effects (which rewrite attribute filters) are
+        // overridden with the exact values recorded at this history entry.
+        grid.restoreFilterState(
+            searchQuery: s.searchQuery,
+            filterMinRating: s.filterMinRating,
+            filterColorLabel: s.filterColorLabel,
+            filterHasLocation: s.filterHasLocation,
+            filterHasKeywords: s.filterHasKeywords,
+            filterHasProxies: s.filterHasProxies,
+            filterFullResolution: s.filterFullResolution,
+            filterHasAudio: s.filterHasAudio,
+            filterOrientation: s.filterOrientation,
+            metadataColumns: s.metadataColumns
+        )
     }
 
     /// Apply a sidebar source to the shared view-model. Lightroom-style: one
@@ -95,12 +120,26 @@ struct RootSplitView: View {
 }
 
 /// One browse location for the back/forward history: the active source, the view
-/// mode, and the selected video. (Internal, not private, so the internal
-/// `NavigationHistory` methods can take/return it.)
+/// mode, the selected video, and the complete library filter state (search query,
+/// rating/colour, attribute presence filters, and metadata column constraints).
+/// (Internal, not private, so the internal `NavigationHistory` methods can
+/// take/return it.)
 struct NavState: Equatable {
     var section: LibrarySection
     var viewMode: LibraryViewMode
     var selectedVideoId: String?
+    // Library filter state — included so back/forward restores the exact filter
+    // the user had at that browse location, not whatever is currently active.
+    var searchQuery: String
+    var filterMinRating: Int32
+    var filterColorLabel: String
+    var filterHasLocation: AttributeFilterState
+    var filterHasKeywords: AttributeFilterState
+    var filterHasProxies: AttributeFilterState
+    var filterFullResolution: AttributeFilterState
+    var filterHasAudio: AttributeFilterState
+    var filterOrientation: OrientationFilterState
+    var metadataColumns: [MetadataColumn]
 }
 
 /// Browser-style session navigation history. `record` pushes a new location

@@ -4,6 +4,9 @@
 package com.reelvault.viewmodel
 
 import com.reelvault.ViewMode
+import com.reelvault.data.models.AttributeFilterState
+import com.reelvault.data.models.MetadataColumn
+import com.reelvault.data.models.OrientationFilterState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,10 +21,10 @@ import kotlinx.coroutines.flow.asStateFlow
  * library-location paths be co-active (the daemon AND-combines them), so we
  * capture all three to round-trip losslessly.
  *
- * Facet filters (rating / colour / geo / search / attributes) are deliberately
- * NOT captured — iOS omits them from `NavState` too, so back/forward restores
- * the browse *path*, not every transient filter. Equality (data class) drives
- * the dedup + restore matching.
+ * Library filter state (search / rating / colour / attributes / metadata
+ * columns) is also captured so back/forward restores the exact filter the user
+ * had at each browse location. Equality (data class) drives the dedup + restore
+ * matching.
  *
  * This is a standalone copy, NOT shared with the Android client — the two
  * desktop/Android ViewModels are independent.
@@ -32,6 +35,17 @@ data class NavState(
     val collectionId: String?,
     val tagId: String,
     val videoId: String?,
+    // Library filter state
+    val searchQuery: String,
+    val filterMinRating: Int,
+    val filterColorLabel: String,
+    val filterHasLocation: AttributeFilterState,
+    val filterHasKeywords: AttributeFilterState,
+    val filterHasProxies: AttributeFilterState,
+    val filterFullResolution: AttributeFilterState,
+    val filterHasAudio: AttributeFilterState,
+    val filterOrientation: OrientationFilterState,
+    val metadataColumns: List<MetadataColumn>,
 )
 
 /**
