@@ -26,30 +26,10 @@ impl SyncExecutor {
         self.db.soft_delete_synced_video(local_video_id)
     }
 
-    /// Record that `local_video_id` on this daemon corresponds to
-    /// `remote_video_id` on `peer_key`. Call this after a successful file
-    /// transfer or hash-adoption reconcile so subsequent syncs skip the
-    /// transfer step.
-    pub fn update_sync_link_after_reconcile(
-        &self,
-        local_video_id: &str,
-        peer_key: &str,
-        remote_video_id: &str,
-        origin_hash: Option<&str>,
-        is_derived: bool,
-        derived_height: Option<i32>,
-        local_rev: i64,
-        remote_rev: i64,
-    ) -> Result<()> {
-        self.db.add_sync_link(
-            local_video_id,
-            peer_key,
-            remote_video_id,
-            origin_hash,
-            is_derived,
-            derived_height,
-            local_rev,
-            remote_rev,
-        )
+    /// Record that a local video corresponds to a remote peer video.
+    /// Call this after a successful file transfer or hash-adoption reconcile
+    /// so subsequent syncs skip the transfer step.
+    pub fn update_sync_link_after_reconcile(&self, params: &crate::db::SyncLinkParams) -> Result<()> {
+        self.db.add_sync_link(params)
     }
 }
