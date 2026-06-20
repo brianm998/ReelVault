@@ -318,6 +318,7 @@ fun LibraryGridScreen(
                         onOpenDensity = { showDensitySheet = true },
                         onDisconnect = onDisconnect,
                         onClearMultiSelect = { multiSelectedIds = emptySet() },
+                        onSelectAll = { multiSelectedIds = videos.map { it.id }.toSet() },
                         canUpload = uploadEndpoint != null,
                         onUpload = {
                             val selected = videos.filter { it.id in multiSelectedIds }
@@ -746,6 +747,7 @@ private fun LibraryTopAppBar(
     onOpenDensity: () -> Unit = {},
     onDisconnect: () -> Unit,
     onClearMultiSelect: () -> Unit,
+    onSelectAll: () -> Unit = {},
     canUpload: Boolean = false,
     onUpload: () -> Unit = {},
     showSortMenu: Boolean,
@@ -802,6 +804,13 @@ private fun LibraryTopAppBar(
             actions = {
                 if (isMultiSelect) {
                     // ── Multi-select batch actions ───────────────────────
+                    // Select all visible videos.
+                    IconButton(onClick = onSelectAll) {
+                        Icon(
+                            Icons.Default.DoneAll,
+                            contentDescription = stringResource(R.string.grid_select_all),
+                        )
+                    }
                     // Upload to the paired server (Local mode only).
                     if (canUpload) {
                         IconButton(onClick = onUpload) {

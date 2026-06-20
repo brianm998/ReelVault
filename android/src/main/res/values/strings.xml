@@ -59,6 +59,7 @@
     <string name="grid_search_videos_hint">Search videos…</string>
     <string name="grid_selected_count">%1$d selected</string>
     <string name="grid_clear_selection">Clear selection</string>
+    <string name="grid_select_all">Select all</string>
     <string name="grid_open_library_panel">Open library panel</string>
     <string name="grid_search">Search</string>
     <string name="grid_sort">Sort</string>

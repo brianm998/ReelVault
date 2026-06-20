@@ -234,6 +234,11 @@ struct LibraryGridScreen: View {
                     grid.clearSelection()
                 }
             }
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Select All") {
+                    grid.selectAllVisible()
+                }
+            }
         } else {
             ToolbarItem(placement: .primaryAction) {
                 Button {
