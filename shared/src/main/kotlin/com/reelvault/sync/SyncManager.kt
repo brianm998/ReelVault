@@ -127,14 +127,15 @@ class SyncManager(
                 entries.map { entry ->
                     async {
                         if (cancelled) return@async
-                        semaphore.withPermit {
-                            try {
-                                pushVideo(entry, profile)
-                                completed++
-                            } catch (e: Exception) {
-                                failed++
-                                errors.add(e.message ?: "push failed for ${entry.filename}")
-                            }
+                        semaphore.acquire()
+                        try {
+                            pushVideo(entry, profile)
+                            completed++
+                        } catch (e: Exception) {
+                            failed++
+                            errors.add(e.message ?: "push failed for ${entry.filename}")
+                        } finally {
+                            semaphore.release()
                         }
                     }
                 }.awaitAll()
@@ -205,14 +206,15 @@ class SyncManager(
                 entries.map { entry ->
                     async {
                         if (cancelled) return@async
-                        semaphore.withPermit {
-                            try {
-                                pullVideo(entry, profile, remoteStub)
-                                completed++
-                            } catch (e: Exception) {
-                                failed++
-                                errors.add(e.message ?: "pull failed for ${entry.filename}")
-                            }
+                        semaphore.acquire()
+                        try {
+                            pullVideo(entry, profile, remoteStub)
+                            completed++
+                        } catch (e: Exception) {
+                            failed++
+                            errors.add(e.message ?: "pull failed for ${entry.filename}")
+                        } finally {
+                            semaphore.release()
                         }
                     }
                 }.awaitAll()
