@@ -157,8 +157,8 @@ fun LensNamesDialog(
                     OutlinedTextField(
                         value = newRaw,
                         onValueChange = { newRaw = it },
-                        label = { Text("Recorded name") },
-                        placeholder = { Text("e.g. 14mm F1.8 DG HSM | Art 018") },
+                        label = { Text(Strings["ui_recorded_name"]) },
+                        placeholder = { Text(Strings["ui_e_g_14mm_f1_8_dg_hsm_art_018"]) },
                         singleLine = true,
                         modifier = Modifier.weight(1f).trackTextEntryFocus(),
                         textStyle = MaterialTheme.typography.bodySmall.copy(
@@ -175,8 +175,8 @@ fun LensNamesDialog(
                     OutlinedTextField(
                         value = newAlias,
                         onValueChange = { newAlias = it },
-                        label = { Text("Display name") },
-                        placeholder = { Text("e.g. Sigma 14mm F1.8 Art") },
+                        label = { Text(Strings["ui_display_name"]) },
+                        placeholder = { Text(Strings["ui_e_g_sigma_14mm_f1_8_art"]) },
                         singleLine = true,
                         modifier = Modifier.weight(1f).trackTextEntryFocus(),
                     )
@@ -219,11 +219,11 @@ fun LensNamesDialog(
                 },
                 enabled = canSave && !loading
             ) {
-                Text("Save alias")
+                Text(Strings["ui_save_alias"])
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Done") }
+            TextButton(onClick = onDismiss) { Text(Strings["ui_done"]) }
         },
         modifier = Modifier.widthIn(min = 640.dp, max = 720.dp)
     )
@@ -232,7 +232,7 @@ fun LensNamesDialog(
     pendingDelete?.let { row ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
-            title = { Text("Clear this lens alias?") },
+            title = { Text(Strings["ui_clear_this_lens_alias"]) },
             text = {
                 Text("\"${row.rawName}\" will go back to showing its recorded name after removal.")
             },
@@ -256,7 +256,7 @@ fun LensNamesDialog(
                 ) { Text("Remove", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) { Text("Cancel") }
+                TextButton(onClick = { pendingDelete = null }) { Text(Strings["ui_cancel"]) }
             }
         )
     }

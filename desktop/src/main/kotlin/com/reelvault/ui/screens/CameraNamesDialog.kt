@@ -156,8 +156,8 @@ fun CameraNamesDialog(
                     OutlinedTextField(
                         value = newInternal,
                         onValueChange = { newInternal = it },
-                        label = { Text("Internal name") },
-                        placeholder = { Text("e.g. SONY ILCE-7RM3A") },
+                        label = { Text(Strings["ui_internal_name"]) },
+                        placeholder = { Text(Strings["ui_e_g_sony_ilce_7rm3a"]) },
                         singleLine = true,
                         modifier = Modifier.weight(1f).trackTextEntryFocus(),
                         textStyle = MaterialTheme.typography.bodySmall.copy(
@@ -174,8 +174,8 @@ fun CameraNamesDialog(
                     OutlinedTextField(
                         value = newMarketing,
                         onValueChange = { newMarketing = it },
-                        label = { Text("Marketing name") },
-                        placeholder = { Text("e.g. Sony a7R IIIA") },
+                        label = { Text(Strings["ui_marketing_name"]) },
+                        placeholder = { Text(Strings["ui_e_g_sony_a7r_iiia"]) },
                         singleLine = true,
                         modifier = Modifier.weight(1f).trackTextEntryFocus(),
                     )
@@ -218,11 +218,11 @@ fun CameraNamesDialog(
                 },
                 enabled = canSave && !loading
             ) {
-                Text("Add / Override")
+                Text(Strings["ui_add_override"])
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Done") }
+            TextButton(onClick = onDismiss) { Text(Strings["ui_done"]) }
         },
         modifier = Modifier.widthIn(min = 640.dp, max = 720.dp)
     )
@@ -231,7 +231,7 @@ fun CameraNamesDialog(
     pendingDelete?.let { row ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
-            title = { Text("Remove this custom mapping?") },
+            title = { Text(Strings["ui_remove_this_custom_mapping"]) },
             text = {
                 Text(
                     if (row.isBuiltin) {
@@ -261,7 +261,7 @@ fun CameraNamesDialog(
                 ) { Text("Remove", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) { Text("Cancel") }
+                TextButton(onClick = { pendingDelete = null }) { Text(Strings["ui_cancel"]) }
             }
         )
     }

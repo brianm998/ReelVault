@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.reelvault.data.models.VideoSummary
+import com.reelvault.util.Strings
 
 /**
  * Resolution picker shown when the user clicks "Create proxy…". Five
@@ -125,11 +126,11 @@ fun ProxyResolutionDialog(
         },
         confirmButton = {
             Button(onClick = { onConfirm(selectedHeight) }) {
-                Text("Create ${selectedHeight}p proxy")
+                Text(Strings.format("ui_create_proxy_height", selectedHeight))
             }
         },
         dismissButton = {
-            TextButton(onClick = onCancel) { Text("Cancel") }
+            TextButton(onClick = onCancel) { Text(Strings["ui_cancel"]) }
         },
     )
 }

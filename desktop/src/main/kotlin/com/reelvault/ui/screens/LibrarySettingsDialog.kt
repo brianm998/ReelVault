@@ -18,6 +18,7 @@ import com.reelvault.data.repository.VideoRepository
 import com.reelvault.ui.components.FilenameDateInferenceControls
 import com.reelvault.util.FilenameDateInference
 import kotlinx.coroutines.launch
+import com.reelvault.util.Strings
 
 /**
  * Library-wide behaviors that aren't about appearance, playback, or
@@ -204,7 +205,7 @@ fun LibrarySettingsDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(Strings["ui_cancel"]) }
         },
     )
 }

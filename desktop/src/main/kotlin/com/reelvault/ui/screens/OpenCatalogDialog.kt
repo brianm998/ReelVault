@@ -23,6 +23,7 @@ import com.reelvault.data.server.RecentCatalogs
 import com.reelvault.ui.components.Tooltip
 import com.reelvault.ui.theme.ReelVaultSpacing
 import java.io.File
+import com.reelvault.util.Strings
 
 /**
  * Dialog shown when the client can't find a catalog to open — at startup
@@ -80,7 +81,7 @@ fun OpenCatalogDialog(
                         }) {
                             Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Open File…")
+                            Text(Strings["ui_open_file"])
                         }
                     }
                     Tooltip(text = "Pick a folder and create a fresh catalog.db inside it. Use this for a brand-new library.") {
@@ -89,7 +90,7 @@ fun OpenCatalogDialog(
                         }) {
                             Icon(Icons.Default.CreateNewFolder, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("New Catalog…")
+                            Text(Strings["ui_new_catalog"])
                         }
                     }
                 }
@@ -130,12 +131,12 @@ fun OpenCatalogDialog(
                         // closing the JVM is fine.
                         System.exit(0)
                     }) {
-                        Text("Quit")
+                        Text(Strings["ui_quit"])
                     }
                 }
             } else {
                 Tooltip(text = "Close this dialog without changing the currently open catalog.") {
-                    Button(onClick = onDismiss) { Text("Cancel") }
+                    Button(onClick = onDismiss) { Text(Strings["ui_cancel"]) }
                 }
             }
         },

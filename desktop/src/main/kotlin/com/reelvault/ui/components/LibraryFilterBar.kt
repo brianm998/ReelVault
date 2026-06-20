@@ -84,6 +84,7 @@ import com.reelvault.ui.theme.ReelVaultSpacing
 import com.reelvault.viewmodel.GridViewModel
 import java.awt.Cursor
 import java.util.prefs.Preferences
+import com.reelvault.util.Strings
 
 /**
  * The Library Filter bar. Sits at the top of the centre content column (below
@@ -762,7 +763,7 @@ private fun MetadataColumnView(
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     if (availableKeys.isEmpty()) {
-                        DropdownMenuItem(text = { Text("No metadata available") }, onClick = {}, enabled = false)
+                        DropdownMenuItem(text = { Text(Strings["ui_no_metadata_available"]) }, onClick = {}, enabled = false)
                     }
                     availableKeys.forEach { info ->
                         DropdownMenuItem(
@@ -814,11 +815,11 @@ private fun MetadataColumnView(
                     }
                     DropdownMenu(expanded = negMenuOpen, onDismissRequest = { negMenuOpen = false }) {
                         DropdownMenuItem(
-                            text = { Text("is") },
+                            text = { Text(Strings["ui_is"]) },
                             onClick = { onSetNegate(false); negMenuOpen = false },
                         )
                         DropdownMenuItem(
-                            text = { Text("is not") },
+                            text = { Text(Strings["ui_is_not"]) },
                             onClick = { onSetNegate(true); negMenuOpen = false },
                         )
                     }

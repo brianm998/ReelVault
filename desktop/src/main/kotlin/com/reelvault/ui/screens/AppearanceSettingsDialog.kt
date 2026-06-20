@@ -22,6 +22,7 @@ import androidx.compose.ui.window.rememberDialogState
 import com.reelvault.ui.theme.AccentScheme
 import com.reelvault.ui.theme.ReelVaultTheme
 import java.util.prefs.Preferences
+import com.reelvault.util.Strings
 
 /**
  * Appearance & Browse settings: accent color scheme and scrub-frame count.
@@ -212,7 +213,7 @@ fun AppearanceSettingsDialog(
                             .padding(horizontal = 20.dp, vertical = 12.dp),
                         horizontalArrangement = Arrangement.End,
                     ) {
-                        TextButton(onClick = onDismiss) { Text("Done") }
+                        TextButton(onClick = onDismiss) { Text(Strings["ui_done"]) }
                     }
                 }
             }

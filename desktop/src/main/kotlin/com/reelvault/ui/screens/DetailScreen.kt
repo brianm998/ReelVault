@@ -39,6 +39,7 @@ import com.reelvault.data.models.FullResolutionStatus
 import com.reelvault.data.models.GridStatKey
 import com.reelvault.ui.theme.ReelVaultSpacing
 import com.reelvault.viewmodel.DetailViewModel
+import com.reelvault.util.Strings
 
 @Composable
 fun DetailScreen(
@@ -552,7 +553,7 @@ fun DetailScreen(
                             .fillMaxWidth()
                             .height(80.dp)
                             .trackTextEntryFocus(),
-                        placeholder = { Text("Add notes...") },
+                        placeholder = { Text(Strings["ui_add_notes"]) },
                         colors = TextFieldDefaults.colors(
                             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
                         )
@@ -1834,7 +1835,7 @@ private fun SmartCollectionCriteria(
     pending?.let { row ->
         AlertDialog(
             onDismissRequest = { pending = null },
-            title = { Text("Remove rule?") },
+            title = { Text(Strings["ui_remove_rule"]) },
             text = {
                 Text(
                     "Remove “${row.label}: ${row.value}” from smart collection “$name”? " +
@@ -1845,10 +1846,10 @@ private fun SmartCollectionCriteria(
                 TextButton(onClick = {
                     onDeleteCriterion(row.criterion)
                     pending = null
-                }) { Text("Remove") }
+                }) { Text(Strings["ui_remove"]) }
             },
             dismissButton = {
-                TextButton(onClick = { pending = null }) { Text("Cancel") }
+                TextButton(onClick = { pending = null }) { Text(Strings["ui_cancel"]) }
             },
         )
     }

@@ -57,6 +57,7 @@ import com.reelvault.util.openUrl
 import com.reelvault.viewmodel.GridViewModel
 import org.jetbrains.skia.Image as SkiaImage
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import com.reelvault.util.Strings
 
 @Composable
 fun ListScreen(
@@ -203,7 +204,7 @@ fun ListScreen(
                     tint = MaterialTheme.colorScheme.error
                 )
             },
-            title = { Text("VLC not installed") },
+            title = { Text(Strings["ui_vlc_not_installed"]) },
             text = {
                 Text(
                     "Inline video playback requires VLC (libvlc) to be installed " +
@@ -215,12 +216,12 @@ fun ListScreen(
                     openUrl(url)
                     showVlcErrorDialog = false
                 }) {
-                    Text("Download VLC")
+                    Text(Strings["ui_download_vlc"])
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showVlcErrorDialog = false }) {
-                    Text("Dismiss")
+                    Text(Strings["ui_dismiss"])
                 }
             }
         )

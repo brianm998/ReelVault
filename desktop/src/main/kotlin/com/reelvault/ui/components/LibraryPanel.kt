@@ -41,6 +41,7 @@ import com.reelvault.data.models.LibraryLocation
 import com.reelvault.data.models.LibraryRow
 import com.reelvault.trackTextEntryFocus
 import com.reelvault.ui.theme.ReelVaultSpacing
+import com.reelvault.util.Strings
 
 /**
  * Left-side panel that lists scanned library locations with their video counts
@@ -364,12 +365,12 @@ fun LibraryPanel(
     if (showNewCollectionDialog) {
         AlertDialog(
             onDismissRequest = { showNewCollectionDialog = false },
-            title = { Text("New Collection") },
+            title = { Text(Strings["ui_new_collection"]) },
             text = {
                 TextField(
                     value = newCollectionName,
                     onValueChange = { newCollectionName = it },
-                    placeholder = { Text("Collection name") },
+                    placeholder = { Text(Strings["ui_collection_name"]) },
                     singleLine = true,
                     modifier = Modifier.trackTextEntryFocus(),
                     colors = TextFieldDefaults.colors(
@@ -387,10 +388,10 @@ fun LibraryPanel(
                         }
                         showNewCollectionDialog = false
                     }
-                ) { Text("Create") }
+                ) { Text(Strings["ui_create"]) }
             },
             dismissButton = {
-                TextButton(onClick = { showNewCollectionDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showNewCollectionDialog = false }) { Text(Strings["ui_cancel"]) }
             }
         )
     }

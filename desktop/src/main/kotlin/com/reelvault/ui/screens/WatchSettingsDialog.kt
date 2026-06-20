@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.reelvault.data.models.WatchSettings
 import com.reelvault.data.repository.VideoRepository
 import kotlinx.coroutines.launch
+import com.reelvault.util.Strings
 
 /**
  * Sheet that surfaces the daemon's real-time file-watcher knobs.
@@ -99,7 +100,7 @@ fun WatchSettingsDialog(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Enable live updates")
+                            Text(Strings["ui_enable_live_updates"])
                             Text(
                                 "When off, ReelVault only sees new files after you run \"Scan Library\".",
                                 style = MaterialTheme.typography.bodySmall,
@@ -188,7 +189,7 @@ fun WatchSettingsDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !saving) { Text("Cancel") }
+            TextButton(onClick = onDismiss, enabled = !saving) { Text(Strings["ui_cancel"]) }
         },
     )
 }

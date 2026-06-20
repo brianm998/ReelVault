@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.reelvault.data.repository.VideoRepository
 import kotlinx.coroutines.launch
+import com.reelvault.util.Strings
 
 /**
  * Preferences sheet for the playback resolution gate and the default
@@ -130,7 +131,7 @@ fun PlaybackSettingsDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(Strings["ui_cancel"]) }
         },
     )
 }

@@ -30,6 +30,7 @@ import com.reelvault.util.openWithDefault
 import com.reelvault.util.revealInFileManager
 import com.reelvault.viewmodel.GridViewModel
 import org.slf4j.LoggerFactory
+import com.reelvault.util.Strings
 
 private val gridScreenLogger = LoggerFactory.getLogger("com.reelvault.ui.screens.GridScreen")
 
@@ -198,7 +199,7 @@ fun GridScreen(
                     tint = MaterialTheme.colorScheme.error
                 )
             },
-            title = { Text("VLC not installed") },
+            title = { Text(Strings["ui_vlc_not_installed"]) },
             text = {
                 Text(
                     "Inline video playback requires VLC (libvlc) to be installed " +
@@ -210,12 +211,12 @@ fun GridScreen(
                     openUrl(url)
                     showVlcErrorDialog = false
                 }) {
-                    Text("Download VLC")
+                    Text(Strings["ui_download_vlc"])
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showVlcErrorDialog = false }) {
-                    Text("Dismiss")
+                    Text(Strings["ui_dismiss"])
                 }
             }
         )
@@ -310,7 +311,7 @@ fun GridScreen(
                     if (viewModel.hasActiveLibraryFilter()) {
                         Spacer(modifier = Modifier.height(ReelVaultSpacing.Medium))
                         Button(onClick = { viewModel.clearLibraryFilter() }) {
-                            Text("Reset filter")
+                            Text(Strings["ui_reset_filter"])
                         }
                     }
                 }

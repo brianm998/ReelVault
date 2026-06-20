@@ -23,6 +23,7 @@ import androidx.compose.ui.window.rememberDialogState
 import com.reelvault.requestFocusSafely
 import com.reelvault.ui.theme.AccentScheme
 import com.reelvault.ui.theme.ReelVaultTheme
+import com.reelvault.util.Strings
 
 /**
  * Name / rename a map location. Rendered as a top-level [DialogWindow] (not an
@@ -89,7 +90,7 @@ fun LocationNameDialog(
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
-                        label = { Text("Location name") },
+                        label = { Text(Strings["ui_location_name"]) },
                         singleLine = true,
                         keyboardActions = KeyboardActions(onDone = { commit() }),
                         modifier = Modifier
@@ -111,10 +112,10 @@ fun LocationNameDialog(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End,
                     ) {
-                        TextButton(onClick = onDismiss) { Text("Cancel") }
+                        TextButton(onClick = onDismiss) { Text(Strings["ui_cancel"]) }
                         Spacer(Modifier.width(8.dp))
                         Button(onClick = commit, enabled = name.trim().isNotEmpty()) {
-                            Text("Save")
+                            Text(Strings["ui_save"])
                         }
                     }
                 }

@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.reelvault.data.repository.VideoRepository
 import kotlinx.coroutines.delay
+import com.reelvault.util.Strings
 
 /**
  * "Pair a New Device" dialog. Asks the daemon (over the loopback connection) to
@@ -106,11 +107,11 @@ fun PairDeviceDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Done") }
+            TextButton(onClick = onDismiss) { Text(Strings["ui_done"]) }
         },
         dismissButton = {
             if (failed) {
-                TextButton(onClick = { reloadTick++ }) { Text("Try Again") }
+                TextButton(onClick = { reloadTick++ }) { Text(Strings["ui_try_again"]) }
             }
         },
     )

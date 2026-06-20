@@ -35,6 +35,7 @@ import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.sin
 import kotlin.math.sqrt
+import com.reelvault.util.Strings
 
 /** Radius (m) within which an unnamed candidate counts other videos as being
  *  "at the same spot". Tight, so the count reflects the exact spot the user
@@ -341,7 +342,7 @@ fun LocationPickerDialog(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Tooltip(text = "Close without changing any location.") {
-                            TextButton(onClick = onDismiss) { Text("Cancel") }
+                            TextButton(onClick = onDismiss) { Text(Strings["ui_cancel"]) }
                         }
                         Spacer(modifier = Modifier.width(ReelVaultSpacing.Small))
                         val lat = pinLat; val lon = pinLon
@@ -361,7 +362,7 @@ fun LocationPickerDialog(
                                     }
                                 },
                                 enabled = enabled,
-                            ) { Text("Save") }
+                            ) { Text(Strings["ui_save"]) }
                         }
                     }
                 }
