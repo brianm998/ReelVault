@@ -28,8 +28,8 @@ import com.reelvault.data.repository.VideoRepository
 import com.reelvault.data.models.VideoLocation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -1207,7 +1207,7 @@ class GridViewModel(
         catalogEventsJob = viewModelScope.launch {
             var attempt = 0
             var lastErrorSignature: String? = null
-            while (isActive && _liveUpdatesEnabled.value) {
+            while (currentCoroutineContext()[Job]?.isActive == true && _liveUpdatesEnabled.value) {
                 try {
                     repository.subscribeCatalogEvents().collect { event ->
                         if (attempt > 0 || lastErrorSignature != null) {
@@ -1225,7 +1225,7 @@ class GridViewModel(
                         lastErrorSignature = signature
                     }
                 }
-                if (!isActive || !_liveUpdatesEnabled.value) break
+                if (currentCoroutineContext()[Job]?.isActive != true || !_liveUpdatesEnabled.value) break
                 attempt++
                 val delayMs = minOf(60_000L, 1_000L * (1L shl minOf(attempt, 6)))
                 delay(delayMs)
@@ -1613,7 +1613,7 @@ class GridViewModel(
 
     private suspend fun runMonitor(host: String, grpcPort: Int, initialDelayMs: Long) {
         var delayMs = initialDelayMs
-        while (isActive) {
+        while (currentCoroutineContext()[Job]?.isActive == true) {
             delay(delayMs)
             _serverUnreachable.value = !isServerReachable(host, grpcPort)
             delayMs = 30_000L
