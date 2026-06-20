@@ -21,6 +21,8 @@ class MainActivity : ComponentActivity() {
         WindowInsetsControllerCompat(window, window.decorView).apply {
             hide(WindowInsetsCompat.Type.navigationBars())
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            // Use light (white) status bar icons on the dark background.
+            isAppearanceLightStatusBars = false
         }
         setContent {
             ReelVaultTheme {

@@ -17,6 +17,8 @@
 #   make clean-core             remove jniLibs .so files + cargo artefacts
 #
 # Overridable variables:
+#   DEVICE            target device serial (run 'adb devices' to list); default = first device
+#                     e.g. DEVICE=emulator-5554 make installDebug
 #   ABIS              space-separated ABI list; default = device ABI from adb
 #                     (falls back to all four when no device is reachable)
 #   ANDROID_NDK_HOME  path to the NDK (auto-detected from the SDK when unset)
@@ -26,6 +28,17 @@ REPO_ROOT   := $(abspath $(ANDROID_DIR)/..)
 GRADLEW     := $(ANDROID_DIR)/gradlew
 JNI_OUT     := $(ANDROID_DIR)/src/main/jniLibs
 CORE_DIR    := $(REPO_ROOT)/core
+
+# ── Device selection ───────────────────────────────────────────────────────────
+# If DEVICE is specified, pass it to adb and gradle via -s flag.
+# Otherwise use the first connected device (adb's default).
+ifdef DEVICE
+  _ADB_SERIAL := -s $(DEVICE)
+  _GRADLE_SERIAL := -PtargetDevice=$(DEVICE)
+else
+  _ADB_SERIAL :=
+  _GRADLE_SERIAL :=
+endif
 
 # ── NDK ───────────────────────────────────────────────────────────────────────
 # Mirror build-core.sh: honour an explicit ANDROID_NDK_HOME, otherwise pick
@@ -41,13 +54,21 @@ endif
 # ── ABI auto-detection ─────────────────────────────────────────────────────────
 # Ask the connected device/emulator; fall back to all four so CI and offline
 # builds still produce a complete jniLibs tree.
-_DEVICE_ABI := $(shell adb shell getprop ro.product.cpu.abi 2>/dev/null | tr -d '\r\n')
+_DEVICE_ABI := $(shell adb $(_ADB_SERIAL) shell getprop ro.product.cpu.abi 2>/dev/null | tr -d '\r\n')
 ifeq ($(_DEVICE_ABI),)
   ABIS ?= arm64-v8a armeabi-v7a x86_64 x86
-  $(info android/Makefile: no adb device — ABIS=$(ABIS))
+  ifdef DEVICE
+    $(info android/Makefile: device $(DEVICE) not found or offline — ABIS=$(ABIS))
+  else
+    $(info android/Makefile: no adb device — ABIS=$(ABIS))
+  endif
 else
   ABIS ?= $(_DEVICE_ABI)
-  $(info android/Makefile: device ABI=$(ABIS))
+  ifdef DEVICE
+    $(info android/Makefile: device $(DEVICE) ABI=$(ABIS))
+  else
+    $(info android/Makefile: device ABI=$(ABIS))
+  endif
 endif
 
 # ── Rust prerequisites ─────────────────────────────────────────────────────────
@@ -79,24 +100,25 @@ $(JNI_OUT)/.stamp-release-%: $(_RUST_SRCS)
 	@touch $@
 	@rm -f $(JNI_OUT)/.stamp-debug-$*
 
+
 # ── Gradle targets ─────────────────────────────────────────────────────────────
 .PHONY: installDebug installRelease assembleDebug assembleRelease \
         core core-release core-all core-all-release \
-        clean clean-core
+        clean clean-core list-devices
 
 .DEFAULT_GOAL := installDebug
 
 installDebug: core
-	$(GRADLEW) installDebug
+	$(GRADLEW) installDebug $(_GRADLE_SERIAL)
 
 installRelease: core-release
-	$(GRADLEW) installRelease
+	$(GRADLEW) installRelease $(_GRADLE_SERIAL)
 
 assembleDebug: core
-	$(GRADLEW) assembleDebug
+	$(GRADLEW) assembleDebug $(_GRADLE_SERIAL)
 
 assembleRelease: core-release
-	$(GRADLEW) assembleRelease
+	$(GRADLEW) assembleRelease $(_GRADLE_SERIAL)
 
 # ── Native-only targets ────────────────────────────────────────────────────────
 core: $(_DEBUG_STAMPS)
@@ -117,3 +139,8 @@ clean: clean-core
 clean-core:
 	rm -rf $(JNI_OUT)
 	cd $(CORE_DIR) && cargo clean
+
+# ── Utilities ──────────────────────────────────────────────────────────────────
+list-devices:
+	@echo "Connected devices and emulators:"
+	@adb devices -l
