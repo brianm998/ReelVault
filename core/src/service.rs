@@ -702,8 +702,8 @@ impl ReelVaultService {
         let conn = self.db.get_connection().ok();
         let ids: Vec<&str> = seeds.iter().map(|s| s.id.as_str()).collect();
 
-        // (is_online, group_id, proxy_of) straight off the videos row.
-        let mut flags: HashMap<String, (bool, Option<String>, Option<String>)> = HashMap::new();
+        // (is_online, group_id, proxy_of, is_derived) straight off the videos row.
+        let mut flags: HashMap<String, (bool, Option<String>, Option<String>, bool)> = HashMap::new();
         let mut meta: HashMap<String, MetaFields> = HashMap::new();
         let mut tags: HashMap<String, Vec<String>> = HashMap::new();
         let mut marks: HashMap<String, (i32, String)> = HashMap::new();
@@ -714,7 +714,7 @@ impl ReelVaultService {
                 let ph = sql_placeholders(chunk.len());
 
                 if let Ok(mut stmt) = conn.prepare(&format!(
-                    "SELECT id, is_online, group_id, proxy_of FROM videos WHERE id IN ({ph})"
+                    "SELECT id, is_online, group_id, proxy_of, is_derived FROM videos WHERE id IN ({ph})"
                 )) {
                     if let Ok(rows) = stmt.query_map(
                         rusqlite::params_from_iter(chunk.iter()),
@@ -724,11 +724,12 @@ impl ReelVaultService {
                                 row.get::<_, i32>(1)?,
                                 row.get::<_, Option<String>>(2)?,
                                 row.get::<_, Option<String>>(3)?,
+                                row.get::<_, i32>(4)?,
                             ))
                         },
                     ) {
-                        for (id, online, group_id, proxy_of) in rows.flatten() {
-                            flags.insert(id, (online != 0, group_id, proxy_of));
+                        for (id, online, group_id, proxy_of, is_derived) in rows.flatten() {
+                            flags.insert(id, (online != 0, group_id, proxy_of, is_derived != 0));
                         }
                     }
                 }
@@ -853,7 +854,7 @@ impl ReelVaultService {
         // preferred id, and the preferred video's path.
         let group_ids: Vec<String> = {
             let mut set = std::collections::BTreeSet::new();
-            for (_, gid, _) in flags.values() {
+            for (_, gid, _, _) in flags.values() {
                 if let Some(g) = gid {
                     set.insert(g.clone());
                 }
@@ -924,8 +925,8 @@ impl ReelVaultService {
             .into_iter()
             .map(|seed| {
                 let m = meta.remove(&seed.id).unwrap_or_default();
-                let (is_online, group_id_opt, proxy_of_opt) =
-                    flags.remove(&seed.id).unwrap_or((true, None, None));
+                let (is_online, group_id_opt, proxy_of_opt, is_derived) =
+                    flags.remove(&seed.id).unwrap_or((true, None, None, false));
                 let video_tags = tags.remove(&seed.id).unwrap_or_default();
                 let (rating, color_label) =
                     marks.remove(&seed.id).unwrap_or((0, String::new()));
@@ -1044,6 +1045,7 @@ impl ReelVaultService {
                     spatial: m.spatial,
                     projection: m.projection.unwrap_or_default(),
                     gps_track_distance_m: m.gps_track_distance_m.unwrap_or(0.0),
+                    is_derived,
                 }
             })
             .collect()
@@ -1900,6 +1902,7 @@ impl ReelVaultTrait for ReelVaultService {
                             detect_proxies: true,
                             sensor_fetch: true,
                             auto_tag_timelapses,
+                            compute_content_hash: true,
                         },
                         // Publish post-index progress on the catalog-events bus
                         // so a long proxy-detection drain isn't invisible.
@@ -3667,7 +3670,7 @@ impl ReelVaultTrait for ReelVaultService {
                             height: row.height,
                             codec_video: row.codec_video.clone(),
                             is_derived: row.is_derived,
-                            has_streamable_proxy: false,
+                            has_streamable_proxy: row.has_streamable_proxy,
                             next_cursor: if is_last { last_id.clone() } else { String::new() },
                         };
                         if tx.blocking_send(Ok(entry)).is_err() { break; }
@@ -3726,7 +3729,10 @@ impl ReelVaultTrait for ReelVaultService {
                 gps_lon: d.gps_lon,
                 gps_valid: d.has_gps,
                 marks_rev: d.marks_rev,
-                group: None,
+                group: if d.group_name.is_empty() { None } else {
+                    Some(GroupSpec { name: d.group_name, base_name: String::new(), preferred_origin_hash: String::new() })
+                },
+                proxy_of_id: d.proxy_of_id,
             })),
         }
     }
@@ -3752,6 +3758,8 @@ impl ReelVaultTrait for ReelVaultService {
             gps_lat: data.gps_lat,
             gps_lon: data.gps_lon,
             has_gps: data.gps_valid,
+            group_name: data.group.as_ref().map(|g| g.name.clone()).unwrap_or_default(),
+            proxy_of_id: data.proxy_of_id.clone(),
         };
         tokio::task::spawn_blocking(move || db.apply_video_catalog_data(&vid, &catalog_data))
             .await

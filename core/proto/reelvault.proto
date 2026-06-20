@@ -369,6 +369,8 @@ message VideoSummary {
   // is detail-only (VideoMetadata.gps_track) — only the distance stat rides the
   // summary so the inspector can show it without a per-video round-trip.
   double gps_track_distance_m = 46;
+  // True when this video is a derived/synced copy imported from a remote peer.
+  bool is_derived = 47;
 }
 
 enum FullResolutionStatus {
@@ -1414,6 +1416,9 @@ message VideoCatalogData {
   bool gps_valid = 11;
   int64 marks_rev = 12;
   GroupSpec group = 13;
+  // Local video id that this video is a proxy/derived copy of. Empty when
+  // not a proxy. Applied by apply_video_catalog_data to write videos.proxy_of.
+  string proxy_of_id = 14;
 }
 
 message ApplyCatalogDataRequest {

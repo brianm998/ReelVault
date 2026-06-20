@@ -278,6 +278,10 @@ pub struct VideoCatalogData {
     pub gps_lat: f64,
     pub gps_lon: f64,
     pub has_gps: bool,
+    /// Group name to assign this video to (empty = no group assignment).
+    pub group_name: String,
+    /// Local video id that this video is a proxy/derived copy of (empty = no proxy link).
+    pub proxy_of_id: String,
 }
 
 #[derive(Debug, Clone)]
@@ -293,6 +297,7 @@ pub struct SyncManifestRow {
     pub codec_video: String,
     pub is_derived: bool,
     pub proxy_of: Option<String>,
+    pub has_streamable_proxy: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -1265,7 +1270,7 @@ impl Database {
 
         let result = conn
             .query_row(
-                "SELECT id, path, filename, volume_id, hash, file_size_bytes, indexed_at, is_online
+                "SELECT id, path, filename, volume_id, hash, file_size_bytes, indexed_at, is_online, is_derived
                  FROM videos WHERE id = ?",
                 [video_id],
                 |row| {
@@ -1278,6 +1283,7 @@ impl Database {
                         file_size_bytes: row.get(5)?,
                         indexed_at: row.get(6)?,
                         is_online: row.get(7)?,
+                        is_derived: row.get::<_, i32>(8)? != 0,
                     })
                 },
             )
@@ -1329,7 +1335,7 @@ impl Database {
 
         let result = conn
             .query_row(
-                "SELECT id, path, filename, volume_id, hash, file_size_bytes, indexed_at, is_online
+                "SELECT id, path, filename, volume_id, hash, file_size_bytes, indexed_at, is_online, is_derived
                  FROM videos WHERE path = ?",
                 [path],
                 |row| {
@@ -1342,6 +1348,7 @@ impl Database {
                         file_size_bytes: row.get(5)?,
                         indexed_at: row.get(6)?,
                         is_online: row.get(7)?,
+                        is_derived: row.get::<_, i32>(8)? != 0,
                     })
                 },
             )
@@ -1414,7 +1421,7 @@ impl Database {
         };
 
         let sql = format!(
-            "SELECT v.id, v.path, v.filename, v.volume_id, v.hash, v.file_size_bytes, v.indexed_at, v.is_online
+            "SELECT v.id, v.path, v.filename, v.volume_id, v.hash, v.file_size_bytes, v.indexed_at, v.is_online, v.is_derived
              FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
              ORDER BY {} LIMIT ? OFFSET ?",
             order_by
@@ -1435,6 +1442,7 @@ impl Database {
                     file_size_bytes: row.get(5)?,
                     indexed_at: row.get(6)?,
                     is_online: row.get(7)?,
+                    is_derived: row.get::<_, i32>(8)? != 0,
                 })
             })
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
@@ -2616,7 +2624,7 @@ impl Database {
 
         // ---- SELECT page ----
         let sql = format!(
-            "SELECT v.id, v.path, v.filename, v.volume_id, v.hash, v.file_size_bytes, v.indexed_at, v.is_online
+            "SELECT v.id, v.path, v.filename, v.volume_id, v.hash, v.file_size_bytes, v.indexed_at, v.is_online, v.is_derived
              FROM videos v
              LEFT JOIN metadata m ON v.id = m.video_id
              LEFT JOIN video_user_marks um ON v.id = um.video_id
@@ -2645,6 +2653,7 @@ impl Database {
                     file_size_bytes: row.get(5)?,
                     indexed_at: row.get(6)?,
                     is_online: row.get(7)?,
+                    is_derived: row.get::<_, i32>(8)? != 0,
                 })
             })
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
@@ -4233,6 +4242,18 @@ impl Database {
         let (gps_lat, gps_lon, creation_date) = meta_row.unwrap_or((None, None, None));
         let has_gps = gps_lat.is_some() && gps_lon.is_some();
 
+        // Group name + proxy_of
+        let group_name: Option<String> = conn.query_row(
+            "SELECT vg.name FROM videos v JOIN video_groups vg ON vg.id = v.group_id WHERE v.id = ?1",
+            rusqlite::params![video_id],
+            |r| r.get(0)
+        ).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?.flatten();
+        let proxy_of_id: Option<String> = conn.query_row(
+            "SELECT proxy_of FROM videos WHERE id = ?1",
+            rusqlite::params![video_id],
+            |r| r.get(0)
+        ).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?.flatten();
+
         Ok(Some(VideoCatalogData {
             marks_rev,
             tags: tag_rows.iter().map(|(n, _)| n.clone()).collect(),
@@ -4246,6 +4267,8 @@ impl Database {
             gps_lat: gps_lat.unwrap_or(0.0),
             gps_lon: gps_lon.unwrap_or(0.0),
             has_gps,
+            group_name: group_name.unwrap_or_default(),
+            proxy_of_id: proxy_of_id.unwrap_or_default(),
         }))
     }
 
@@ -4311,6 +4334,35 @@ impl Database {
                 .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         }
 
+        // Group membership
+        if !data.group_name.is_empty() {
+            let group_id: Option<String> = conn.query_row(
+                "SELECT id FROM video_groups WHERE name = ?1 LIMIT 1",
+                rusqlite::params![data.group_name], |r| r.get(0)
+            ).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            let group_id = if let Some(id) = group_id {
+                id
+            } else {
+                let new_id = uuid::Uuid::new_v4().to_string();
+                conn.execute("INSERT INTO video_groups (id, name) VALUES (?1, ?2)",
+                    rusqlite::params![new_id, data.group_name])
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                new_id
+            };
+            conn.execute(
+                "UPDATE videos SET group_id = ?1 WHERE id = ?2 AND group_id IS NULL",
+                rusqlite::params![group_id, video_id])
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        }
+
+        // Proxy link
+        if !data.proxy_of_id.is_empty() {
+            conn.execute(
+                "UPDATE videos SET proxy_of = ?1 WHERE id = ?2",
+                rusqlite::params![data.proxy_of_id, video_id])
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        }
+
         Ok(())
     }
 
@@ -4320,9 +4372,12 @@ impl Database {
         cursor: &str,
     ) -> Result<Vec<SyncManifestRow>> {
         let conn = self.get_connection()?;
+        let streamable_subq = "(SELECT COUNT(*) > 0 FROM videos p \
+                                INNER JOIN video_locations pl ON pl.video_id = p.id AND pl.is_online = 1 \
+                                WHERE p.proxy_of = v.id) AS has_streamable_proxy";
         let sql = if cursor.is_empty() {
             format!(
-                "SELECT v.id, v.content_hash, v.marks_rev, vl.file_size_bytes, m.duration_ms, v.filename, m.width, m.height, COALESCE(m.codec_video,''), v.is_derived, v.proxy_of
+                "SELECT v.id, v.content_hash, v.marks_rev, vl.file_size_bytes, m.duration_ms, v.filename, m.width, m.height, COALESCE(m.codec_video,''), v.is_derived, v.proxy_of, {streamable_subq}
                  FROM videos v
                  LEFT JOIN metadata m ON m.video_id = v.id
                  LEFT JOIN video_locations vl ON vl.video_id = v.id AND vl.is_online = 1
@@ -4331,7 +4386,7 @@ impl Database {
             )
         } else {
             format!(
-                "SELECT v.id, v.content_hash, v.marks_rev, vl.file_size_bytes, m.duration_ms, v.filename, m.width, m.height, COALESCE(m.codec_video,''), v.is_derived, v.proxy_of
+                "SELECT v.id, v.content_hash, v.marks_rev, vl.file_size_bytes, m.duration_ms, v.filename, m.width, m.height, COALESCE(m.codec_video,''), v.is_derived, v.proxy_of, {streamable_subq}
                  FROM videos v
                  LEFT JOIN metadata m ON m.video_id = v.id
                  LEFT JOIN video_locations vl ON vl.video_id = v.id AND vl.is_online = 1
@@ -4353,6 +4408,7 @@ impl Database {
                 codec_video: row.get::<_, String>(8)?,
                 is_derived: row.get::<_, i32>(9)? != 0,
                 proxy_of: row.get::<_, Option<String>>(10)?,
+                has_streamable_proxy: row.get::<_, i32>(11)? != 0,
             })
         }).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let mut out = Vec::new();
@@ -4456,6 +4512,7 @@ pub struct VideoRecord {
     pub file_size_bytes: Option<i64>,
     pub indexed_at: i64,
     pub is_online: i32,
+    pub is_derived: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -5227,5 +5284,115 @@ mod tests {
             .count();
         assert_eq!(group_reps, 1, "dangling stack still shows one representative");
         assert_eq!(total, 2, "v1 plus the stack's fallback representative");
+    }
+
+    // ── marks_rev trigger tests ───────────────────────────────────────────────
+    //
+    // The `marks_rev` column is bumped by DB triggers whenever any user-editable
+    // mark (tags, collections, rating, color label, notes) changes. These tests
+    // verify that each trigger type fires correctly.
+
+    fn get_marks_rev(db: &Database, video_id: &str) -> i64 {
+        db.get_connection()
+            .unwrap()
+            .query_row(
+                "SELECT marks_rev FROM videos WHERE id = ?1",
+                [video_id],
+                |r| r.get(0),
+            )
+            .unwrap()
+    }
+
+    #[test]
+    fn marks_rev_incremented_by_tag_add() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let vid = db.add_video("/l/a.mov", "a.mov", None, None, Some(1)).unwrap();
+        let rev0 = get_marks_rev(&db, &vid);
+
+        let tag_id = db.create_tag("test-tag", None).unwrap();
+        db.tag_video(&vid, &tag_id).unwrap();
+
+        let rev1 = get_marks_rev(&db, &vid);
+        assert!(rev1 > rev0, "marks_rev must increase after tag add (was {rev0}, now {rev1})");
+    }
+
+    #[test]
+    fn marks_rev_incremented_by_tag_remove() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let vid = db.add_video("/l/b.mov", "b.mov", None, None, Some(1)).unwrap();
+        let tag_id = db.create_tag("remove-tag", None).unwrap();
+        db.tag_video(&vid, &tag_id).unwrap();
+
+        let rev0 = get_marks_rev(&db, &vid);
+        db.untag_video(&vid, &tag_id).unwrap();
+        let rev1 = get_marks_rev(&db, &vid);
+
+        assert!(rev1 > rev0, "marks_rev must increase after tag remove (was {rev0}, now {rev1})");
+    }
+
+    #[test]
+    fn marks_rev_incremented_by_rating_set() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let vid = db.add_video("/l/c.mov", "c.mov", None, None, Some(1)).unwrap();
+        let rev0 = get_marks_rev(&db, &vid);
+
+        db.update_video_rating(&vid, 4).unwrap();
+        let rev1 = get_marks_rev(&db, &vid);
+
+        assert!(rev1 > rev0, "marks_rev must increase after rating set (was {rev0}, now {rev1})");
+    }
+
+    #[test]
+    fn marks_rev_incremented_by_color_label_set() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let vid = db.add_video("/l/d.mov", "d.mov", None, None, Some(1)).unwrap();
+        let rev0 = get_marks_rev(&db, &vid);
+
+        db.update_video_color_label(&vid, "red").unwrap();
+        let rev1 = get_marks_rev(&db, &vid);
+
+        assert!(
+            rev1 > rev0,
+            "marks_rev must increase after color_label set (was {rev0}, now {rev1})"
+        );
+    }
+
+    #[test]
+    fn marks_rev_incremented_by_collection_add() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let vid = db.add_video("/l/e.mov", "e.mov", None, None, Some(1)).unwrap();
+        let rev0 = get_marks_rev(&db, &vid);
+
+        let coll_id = db.create_collection("my-coll", false, None).unwrap();
+        db.add_to_collection(&coll_id, &vid).unwrap();
+        let rev1 = get_marks_rev(&db, &vid);
+
+        assert!(
+            rev1 > rev0,
+            "marks_rev must increase after collection membership add (was {rev0}, now {rev1})"
+        );
+    }
+
+    #[test]
+    fn marks_rev_incremented_by_collection_remove() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let vid = db.add_video("/l/f.mov", "f.mov", None, None, Some(1)).unwrap();
+        let coll_id = db.create_collection("rm-coll", false, None).unwrap();
+        db.add_to_collection(&coll_id, &vid).unwrap();
+
+        let rev0 = get_marks_rev(&db, &vid);
+        db.remove_from_collection(&coll_id, &vid).unwrap();
+        let rev1 = get_marks_rev(&db, &vid);
+
+        assert!(
+            rev1 > rev0,
+            "marks_rev must increase after collection membership remove (was {rev0}, now {rev1})"
+        );
     }
 }

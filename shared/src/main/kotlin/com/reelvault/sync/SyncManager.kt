@@ -117,8 +117,14 @@ class SyncManager(
         val errors = mutableListOf<String>()
 
         val localChannel = localChannelFactory.createPlaintext("127.0.0.1", localGrpcPort)
+        val remoteChannel = remoteChannelFactory.createPinned(remoteHost, remoteGrpcPort, fingerprint)
         try {
             val localStub = ReelVaultGrpcKt.ReelVaultCoroutineStub(localChannel)
+            val authedChannel: Channel = ClientInterceptors.intercept(
+                remoteChannel, BearerTokenInterceptor(token)
+            )
+            val remoteStub = ReelVaultGrpcKt.ReelVaultCoroutineStub(authedChannel)
+
             val entries = collectManifest(localStub, profile)
             total = entries.size
 
@@ -140,8 +146,18 @@ class SyncManager(
                     }
                 }.awaitAll()
             }
+
+            // Sync smart collections: rewrite tag UUIDs from local → remote.
+            if (!cancelled) {
+                syncSmartCollections(
+                    srcStub = localStub,
+                    dstStub = remoteStub,
+                    errors = errors,
+                )
+            }
         } finally {
             localChannel.shutdown()
+            remoteChannel.shutdown()
         }
 
         return SyncRunResult(total, completed, failed, 0, errors)
@@ -193,11 +209,14 @@ class SyncManager(
         val errors = mutableListOf<String>()
 
         val remoteChannel = remoteChannelFactory.createPinned(remoteHost, remoteGrpcPort, fingerprint)
+        val localChannel = localChannelFactory.createPlaintext("127.0.0.1", localGrpcPort)
         try {
             val authedChannel: Channel = ClientInterceptors.intercept(
                 remoteChannel, BearerTokenInterceptor(token)
             )
             val remoteStub = ReelVaultGrpcKt.ReelVaultCoroutineStub(authedChannel)
+            val localStub = ReelVaultGrpcKt.ReelVaultCoroutineStub(localChannel)
+
             val entries = collectManifest(remoteStub, profile)
             total = entries.size
 
@@ -219,8 +238,18 @@ class SyncManager(
                     }
                 }.awaitAll()
             }
+
+            // Sync smart collections: rewrite tag UUIDs from remote → local.
+            if (!cancelled) {
+                syncSmartCollections(
+                    srcStub = remoteStub,
+                    dstStub = localStub,
+                    errors = errors,
+                )
+            }
         } finally {
             remoteChannel.shutdown()
+            localChannel.shutdown()
         }
 
         return SyncRunResult(total, completed, failed, 0, errors)
@@ -319,6 +348,137 @@ class SyncManager(
 
     private fun updateJobs(transform: (List<SyncJob>) -> List<SyncJob>) {
         _jobs.value = transform(_jobs.value)
+    }
+
+    // ── Smart-collection sync ─────────────────────────────────────────────
+
+    /**
+     * Fetches all tags from [stub] and returns a map of tag-id → tag-name.
+     * Returns an empty map on any error.
+     */
+    private suspend fun fetchTagIdToName(
+        stub: ReelVaultGrpcKt.ReelVaultCoroutineStub,
+    ): Map<String, String> = withContext(Dispatchers.IO) {
+        try {
+            val response = stub.listTags(Reelvault.ListTagsRequest.newBuilder().build())
+            response.tagsList.associate { it.id to it.name }
+        } catch (e: Exception) {
+            emptyMap()
+        }
+    }
+
+    /**
+     * Rewrites tag UUIDs in a smart-collection filter_json from source-catalog
+     * IDs to destination-catalog IDs, matched by tag name.  Tags with no name
+     * match on the destination are dropped silently.
+     *
+     * The filter_json format stores tag IDs in a JSON array keyed "tagIds":
+     *   {"tagIds":["uuid-a","uuid-b"],"minRating":0,...}
+     *
+     * This function uses the same regex-based approach as [SmartCollectionFilters]
+     * so the shared/ module needs no additional JSON library dependency.
+     *
+     * @param filterJson the JSON string from the source catalog
+     * @param srcTags    map of tag-id → tag-name from the source catalog
+     * @param dstTags    map of tag-id → tag-name from the destination catalog
+     * @return           the rewritten JSON string (unchanged on blank input or
+     *                   parse error)
+     */
+    private fun rewriteFilterJson(
+        filterJson: String,
+        srcTags: Map<String, String>,
+        dstTags: Map<String, String>,
+    ): String {
+        if (filterJson.isBlank()) return filterJson
+
+        // Extract the raw "tagIds" array content, e.g. ["uuid-a","uuid-b"]
+        val arrayContentRegex = Regex(""""tagIds"\s*:\s*\[([^\]]*)]""")
+        val match = arrayContentRegex.find(filterJson) ?: return filterJson
+
+        val arrayContent = match.groupValues[1]
+
+        // Parse individual quoted UUID strings out of the array content.
+        val uuidRegex = Regex(""""((?:[^"\\]|\\.)*)"""")
+        val srcIds = uuidRegex.findAll(arrayContent).map { it.groupValues[1] }.toList()
+
+        // Build name → dstId lookup.
+        val nameToDst: Map<String, String> = dstTags.entries.associate { (id, name) -> name to id }
+
+        // Remap: src-id → src-name → dst-id (drop if no dst match).
+        val remapped = srcIds.mapNotNull { srcId ->
+            val name = srcTags[srcId] ?: return@mapNotNull null
+            nameToDst[name]
+        }
+
+        // Rebuild the JSON array string and splice it back into filterJson.
+        val newArray = remapped.joinToString(",") { "\"$it\"" }
+        return filterJson.replace(match.value, "\"tagIds\":[$newArray]")
+    }
+
+    /**
+     * Copies smart collections from [srcStub] to [dstStub], rewriting tag UUIDs
+     * from the source catalog to the destination catalog (matched by name).
+     *
+     * Skips collections that already exist on the destination (matched by name).
+     * Non-smart collections are skipped (they have no filter_json and their
+     * membership is determined by the video sync, not here).
+     * Errors are appended to [errors] but do not abort the video sync.
+     */
+    private suspend fun syncSmartCollections(
+        srcStub: ReelVaultGrpcKt.ReelVaultCoroutineStub,
+        dstStub: ReelVaultGrpcKt.ReelVaultCoroutineStub,
+        errors: MutableList<String>,
+    ) = withContext(Dispatchers.IO) {
+        try {
+            // Fetch tag maps from both catalogs in parallel.
+            val srcTagsDeferred = async { fetchTagIdToName(srcStub) }
+            val dstTagsDeferred = async { fetchTagIdToName(dstStub) }
+            val srcTags = srcTagsDeferred.await()
+            val dstTags = dstTagsDeferred.await()
+
+            // Fetch smart collections from source.
+            val srcCollections = try {
+                srcStub.listCollections(
+                    Reelvault.ListCollectionsRequest.newBuilder().build()
+                ).collectionsList.filter { it.isSmart && it.filterJson.isNotBlank() }
+            } catch (e: Exception) {
+                errors.add("syncSmartCollections: failed to list source collections: ${e.message}")
+                return@withContext
+            }
+
+            if (srcCollections.isEmpty()) return@withContext
+
+            // Fetch existing destination collection names to skip duplicates.
+            val dstCollectionNames: Set<String> = try {
+                dstStub.listCollections(
+                    Reelvault.ListCollectionsRequest.newBuilder().build()
+                ).collectionsList.map { it.name }.toHashSet()
+            } catch (e: Exception) {
+                errors.add("syncSmartCollections: failed to list destination collections: ${e.message}")
+                return@withContext
+            }
+
+            for (col in srcCollections) {
+                if (cancelled) break
+                if (col.name in dstCollectionNames) continue  // already present
+
+                val rewrittenJson = rewriteFilterJson(col.filterJson, srcTags, dstTags)
+
+                try {
+                    dstStub.createCollection(
+                        Reelvault.CreateCollectionRequest.newBuilder()
+                            .setName(col.name)
+                            .setIsSmart(true)
+                            .setFilterJson(rewrittenJson)
+                            .build()
+                    )
+                } catch (e: Exception) {
+                    errors.add("syncSmartCollections: failed to create '${col.name}' on destination: ${e.message}")
+                }
+            }
+        } catch (e: Exception) {
+            errors.add("syncSmartCollections: unexpected error: ${e.message}")
+        }
     }
 }
 

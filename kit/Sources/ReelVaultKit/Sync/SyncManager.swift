@@ -2,6 +2,9 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import Foundation
+import GRPCCore
+import GRPCNIOTransportHTTP2
+import Network
 
 /// Orchestrates catalog sync between the local embedded core (loopback gRPC)
 /// and a remote daemon (pinned-TLS, bearer-token authenticated). Modelled on
@@ -105,11 +108,9 @@ public final class SyncManager: ObservableObject {
         // call as a TODO comment so the compiler accepts the file as-is.
 
         // TODO: replace with generated RPC call once kit/regen-proto.sh is run:
-        //   let localClient = Reelvault_ReelVaultClient(
-        //       wrapping: GRPCClient(transport: loopbackTransport(port: localPort)))
         //   var req = Reelvault_SyncManifestRequest()
         //   req.pageSize = 200
-        //   for try await entry in localClient.getSyncManifest(req).messages {
+        //   for try await entry in localServiceClient.getSyncManifest(req).messages {
         //       manifestEntries.append(entry)
         //   }
 
@@ -117,23 +118,57 @@ public final class SyncManager: ObservableObject {
         let manifestEntries: [SyncManifestEntry] = []
         result.total = manifestEntries.count
 
-        await withTaskGroup(of: Void.self) { group in
+        // Collect per-entry outcomes as (succeeded: Bool, error: String?) tuples.
+        let pushOutcomes = await withTaskGroup(
+            of: (Bool, String?).self,
+            returning: [(Bool, String?)].self
+        ) { group in
             for entry in manifestEntries where !entry.isDerived {
                 group.addTask { [weak self] in
-                    guard let self else { return }
+                    guard let self else { return (false, nil) }
                     await self.semaphore.wait()
                     defer { Task { await self.semaphore.signal() } }
                     do {
                         try await self.pushEntry(entry: entry, profile: profile)
-                        await MainActor.run { result.completed += 1 }
+                        return (true, nil)
                     } catch {
-                        await MainActor.run {
-                            result.failed += 1
-                            result.errors.append(error.localizedDescription)
-                        }
+                        return (false, error.localizedDescription)
                     }
                 }
             }
+            var outcomes: [(Bool, String?)] = []
+            for await outcome in group { outcomes.append(outcome) }
+            return outcomes
+        }
+        for (ok, errMsg) in pushOutcomes {
+            if ok { result.completed += 1 } else {
+                result.failed += 1
+                if let msg = errMsg { result.errors.append(msg) }
+            }
+        }
+
+        // Sync smart collections: local (source) → remote (destination).
+        // We open short-lived transient gRPC connections here so the sync does
+        // not interfere with the VideoRepository's persistent connection.
+        do {
+            guard let remoteTLS = await makeRemoteTLS() else {
+                result.errors.append("push: could not verify remote TLS certificate for smart-collection sync")
+                return result
+            }
+            let localTransport = try makeLocalTransport()
+            let remoteTransport = try makeRemoteTransport(tls: remoteTLS)
+            try await withGRPCClient(transport: localTransport) { localClient in
+                try await withGRPCClient(
+                    transport: remoteTransport,
+                    interceptors: [BearerTokenInterceptor(token: self.token)]
+                ) { remoteClient in
+                    let localSvc = Reelvault_ReelVault.Client(wrapping: localClient)
+                    let remoteSvc = Reelvault_ReelVault.Client(wrapping: remoteClient)
+                    _ = try await self.syncSmartCollections(from: localSvc, to: remoteSvc)
+                }
+            }
+        } catch {
+            result.errors.append("push smart-collection sync: \(error.localizedDescription)")
         }
 
         return result
@@ -170,36 +205,61 @@ public final class SyncManager: ObservableObject {
         var result = SyncRunResult()
 
         // TODO: replace with generated RPC call once kit/regen-proto.sh is run:
-        //   let remoteClient = Reelvault_ReelVaultClient(
-        //       wrapping: GRPCClient(transport: pinnedTLSTransport(
-        //           host: remoteHost, port: remotePort,
-        //           fingerprintHex: fingerprint, token: token)))
         //   var req = Reelvault_SyncManifestRequest()
         //   req.pageSize = 200
-        //   for try await entry in remoteClient.getSyncManifest(req).messages {
+        //   for try await entry in remoteServiceClient.getSyncManifest(req).messages {
         //       manifestEntries.append(entry)
         //   }
 
         let manifestEntries: [SyncManifestEntry] = []
         result.total = manifestEntries.count
 
-        await withTaskGroup(of: Void.self) { group in
+        let pullOutcomes = await withTaskGroup(
+            of: (Bool, String?).self,
+            returning: [(Bool, String?)].self
+        ) { group in
             for entry in manifestEntries where !entry.isDerived {
                 group.addTask { [weak self] in
-                    guard let self else { return }
+                    guard let self else { return (false, nil) }
                     await self.semaphore.wait()
                     defer { Task { await self.semaphore.signal() } }
                     do {
                         try await self.pullEntry(entry: entry, profile: profile)
-                        await MainActor.run { result.completed += 1 }
+                        return (true, nil)
                     } catch {
-                        await MainActor.run {
-                            result.failed += 1
-                            result.errors.append(error.localizedDescription)
-                        }
+                        return (false, error.localizedDescription)
                     }
                 }
             }
+            var outcomes: [(Bool, String?)] = []
+            for await outcome in group { outcomes.append(outcome) }
+            return outcomes
+        }
+        for (ok, errMsg) in pullOutcomes {
+            if ok { result.completed += 1 } else {
+                result.failed += 1
+                if let msg = errMsg { result.errors.append(msg) }
+            }
+        }
+
+        // Sync smart collections: remote (source) → local (destination).
+        do {
+            guard let remoteTLS = await makeRemoteTLS() else {
+                result.errors.append("pull: could not verify remote TLS certificate for smart-collection sync")
+                return result
+            }
+            let localTransport = try makeLocalTransport()
+            let remoteTransport = try makeRemoteTransport(tls: remoteTLS)
+            try await withGRPCClient(transport: remoteTransport,
+                                     interceptors: [BearerTokenInterceptor(token: self.token)]) { remoteClient in
+                try await withGRPCClient(transport: localTransport) { localClient in
+                    let remoteSvc = Reelvault_ReelVault.Client(wrapping: remoteClient)
+                    let localSvc = Reelvault_ReelVault.Client(wrapping: localClient)
+                    _ = try await self.syncSmartCollections(from: remoteSvc, to: localSvc)
+                }
+            }
+        } catch {
+            result.errors.append("pull smart-collection sync: \(error.localizedDescription)")
         }
 
         return result
@@ -247,6 +307,161 @@ public final class SyncManager: ObservableObject {
             jobs[idx].progress = 1.0
         }
         _ = job  // suppress unused warning until fully wired
+    }
+
+    // MARK: - Smart-collection tag-UUID rewrite
+
+    /// Rewrites tag UUIDs in a smart-collection filter_json string from
+    /// source-catalog IDs to destination-catalog IDs, matched by tag name.
+    /// Tags with no name match on the destination are dropped silently.
+    ///
+    /// - Parameters:
+    ///   - filterJson: The raw filter_json string from a smart collection
+    ///     (e.g. `{"tagIds":["uuid-a","uuid-b"],"operator":"AND"}`).
+    ///   - srcTags: id → name mapping for all tags in the SOURCE catalog.
+    ///   - dstTags: id → name mapping for all tags in the DESTINATION catalog.
+    /// - Returns: A new JSON string with the tagIds array replaced by
+    ///   destination-side UUIDs. Returns the original string unchanged if it
+    ///   cannot be parsed or contains no tagIds.
+    nonisolated private func rewriteFilterJson(
+        _ filterJson: String,
+        srcTags: [String: String],
+        dstTags: [String: String]
+    ) -> String {
+        guard !filterJson.isEmpty,
+              let data = filterJson.data(using: .utf8),
+              var dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let tagIds = dict["tagIds"] as? [String]
+        else { return filterJson }
+
+        // Build name → dst-id lookup so we can resolve each source UUID to a name,
+        // then find the matching UUID on the destination side.
+        let nameToDst = Dictionary(uniqueKeysWithValues: dstTags.map { ($0.value, $0.key) })
+
+        let remapped: [String] = tagIds.compactMap { srcId in
+            guard let name = srcTags[srcId],
+                  let dstId = nameToDst[name] else { return nil }
+            return dstId
+        }
+        dict["tagIds"] = remapped
+
+        guard let out = try? JSONSerialization.data(withJSONObject: dict, options: [.sortedKeys]),
+              let str = String(data: out, encoding: .utf8)
+        else { return filterJson }
+        return str
+    }
+
+    /// Fetches all tags from a live gRPC client and returns an id → name map.
+    /// Uses the existing `ListTags` RPC (Reelvault_ListTagsRequest).
+    private func fetchTagMap(
+        client: Reelvault_ReelVault.Client<HTTP2ClientTransport.Posix>
+    ) async throws -> [String: String] {
+        let response = try await client.listTags(Reelvault_ListTagsRequest())
+        return Dictionary(
+            response.tags.map { ($0.id, $0.name) },
+            uniquingKeysWith: { first, _ in first }
+        )
+    }
+
+    /// Syncs smart collections from the source client to the destination client,
+    /// rewriting tag UUIDs so they resolve against the destination catalog.
+    ///
+    /// Algorithm:
+    ///   1. Fetch all tags from both sides to build id→name maps.
+    ///   2. List smart collections from the source.
+    ///   3. For each smart collection whose filter_json is non-empty, rewrite
+    ///      the tagIds array from source UUIDs → destination UUIDs (matched by
+    ///      tag name). Unmatched source tags are dropped silently.
+    ///   4. Call CreateCollection on the destination with the rewritten filter.
+    ///      If a collection with the same name already exists on the destination
+    ///      it is created as a new copy — deduplication is a follow-up once
+    ///      the proto exposes an idempotent upsert RPC.
+    ///
+    /// - Parameters:
+    ///   - srcClient: gRPC client connected to the SOURCE catalog.
+    ///   - dstClient: gRPC client connected to the DESTINATION catalog.
+    /// - Returns: Count of collections successfully synced.
+    @discardableResult
+    private func syncSmartCollections(
+        from srcClient: Reelvault_ReelVault.Client<HTTP2ClientTransport.Posix>,
+        to dstClient: Reelvault_ReelVault.Client<HTTP2ClientTransport.Posix>
+    ) async throws -> Int {
+        // 1. Fetch tag maps from both sides in parallel.
+        async let srcTagsFetch = fetchTagMap(client: srcClient)
+        async let dstTagsFetch = fetchTagMap(client: dstClient)
+        let (srcTags, dstTags) = try await (srcTagsFetch, dstTagsFetch)
+
+        // 2. List smart collections from the source.
+        let collectionsResponse = try await srcClient.listCollections(Reelvault_ListCollectionsRequest())
+        let smartCollections = collectionsResponse.collections.filter { $0.isSmart }
+
+        // 3 + 4. For each smart collection, rewrite filter_json and create on dst.
+        var syncedCount = 0
+        for collection in smartCollections {
+            let rewrittenFilter = rewriteFilterJson(
+                collection.filterJson,
+                srcTags: srcTags,
+                dstTags: dstTags
+            )
+
+            var req = Reelvault_CreateCollectionRequest()
+            req.name = collection.name
+            req.isSmart = true
+            req.filterJson = rewrittenFilter
+
+            // TODO: once the proto exposes an idempotent upsert RPC
+            // (e.g. UpsertSmartCollection), switch to that so re-running sync
+            // doesn't create duplicate collections on the destination.
+            _ = try await dstClient.createCollection(req)
+            syncedCount += 1
+        }
+        return syncedCount
+    }
+
+    // MARK: - gRPC transport construction
+
+    /// Builds an HTTP/2 transport for the LOCAL embedded core (plaintext loopback).
+    private func makeLocalTransport() throws -> HTTP2ClientTransport.Posix {
+        try HTTP2ClientTransport.Posix(
+            target: .ipv4(host: "127.0.0.1", port: localPort),
+            transportSecurity: .plaintext
+        )
+    }
+
+    /// Fetches and verifies the remote daemon's TLS certificate (TOFU pinning).
+    /// Returns nil if the certificate cannot be fetched or the fingerprint does not match.
+    private func makeRemoteTLS() async -> HTTP2ClientTransport.Posix.TransportSecurity? {
+        guard let der = await PinnedTLS.fetchServerCertificate(
+            host: remoteHost,
+            port: remotePort,
+            expectedFingerprintHex: fingerprint
+        ) else {
+            NSLog("SyncManager: could not fetch/verify remote certificate (fingerprint mismatch)")
+            return nil
+        }
+        return PinnedTLS.clientSecurity(pinnedCertDER: der)
+    }
+
+    /// Builds an HTTP/2 transport for the REMOTE daemon using a pre-fetched TLS security value.
+    private func makeRemoteTransport(
+        tls: HTTP2ClientTransport.Posix.TransportSecurity
+    ) throws -> HTTP2ClientTransport.Posix {
+        if IPv4Address(remoteHost) != nil {
+            return try HTTP2ClientTransport.Posix(
+                target: .ipv4(host: remoteHost, port: remotePort),
+                transportSecurity: tls
+            )
+        } else if IPv6Address(remoteHost) != nil {
+            return try HTTP2ClientTransport.Posix(
+                target: .ipv6(host: remoteHost, port: remotePort),
+                transportSecurity: tls
+            )
+        } else {
+            return try HTTP2ClientTransport.Posix(
+                target: .dns(host: remoteHost, port: remotePort),
+                transportSecurity: tls
+            )
+        }
     }
 
     // MARK: - Helpers

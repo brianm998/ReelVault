@@ -269,10 +269,32 @@ async fn pair(State(state): State<MediaState>, Json(req): Json<PairRequest>) -> 
 #[derive(serde::Deserialize)]
 struct UploadQuery {
     filename: String,
+    /// Client-supplied UUID for resumable uploads. Absent for legacy single-shot uploads.
+    upload_id: Option<String>,
+    /// Expected blake3 content hash (hex) of the completed file; verified before indexing.
+    content_hash: Option<String>,
+    /// Total expected file size in bytes; when present, completion is detected automatically.
+    total_size: Option<u64>,
+    /// Byte offset at which this chunk starts. Absent or 0 for the first chunk.
+    offset: Option<u64>,
+}
+
+/// Returns true iff `s` is a safe upload_id: alphanumeric + hyphens, no path separators.
+fn is_safe_upload_id(s: &str) -> bool {
+    !s.is_empty()
+        && s.len() <= 64
+        && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
 }
 
 /// Upload a full-resolution video (streamed) into the configured import dir,
-/// then index it. Single-shot for now; resumable chunking is a follow-up.
+/// then index it. Supports both single-shot (legacy) and resumable chunked uploads.
+///
+/// **Resumable protocol**: supply `?upload_id=UUID&filename=foo.mp4&total_size=N`.
+/// - First chunk: `offset` absent or 0 — file is created/truncated.
+/// - Subsequent chunks: `offset=N` — chunk appended at the given offset.
+/// - When `file_size == total_size`: optional `content_hash` is verified, then the
+///   file is atomically renamed and indexed; response is 200 `{"video_id":…}`.
+/// - Otherwise: 202 `{"bytes_received": N}`.
 async fn upload(
     AxQuery(q): AxQuery<UploadQuery>,
     State(state): State<MediaState>,
@@ -303,6 +325,138 @@ async fn upload(
         tracing::warn!("upload: mkdir failed: {e}");
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
+
+    // ── Resumable path ──────────────────────────────────────────────────────
+    if let Some(ref uid) = q.upload_id {
+        if !is_safe_upload_id(uid) {
+            return (StatusCode::BAD_REQUEST, "invalid upload_id").into_response();
+        }
+        let part_path = uploads.join(format!("{uid}.part"));
+        let offset = q.offset.unwrap_or(0);
+
+        // Open the .part file: create/truncate for chunk 0, open-for-write otherwise.
+        let mut file = if offset == 0 {
+            match tokio::fs::File::create(&part_path).await {
+                Ok(f) => f,
+                Err(e) => {
+                    tracing::warn!("upload(resumable): create part failed: {e}");
+                    return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+                }
+            }
+        } else {
+            // Verify that the file is exactly `offset` bytes so far.
+            let current_size = tokio::fs::metadata(&part_path)
+                .await
+                .map(|m| m.len())
+                .unwrap_or(0);
+            if current_size != offset {
+                return (
+                    StatusCode::CONFLICT,
+                    format!("offset mismatch: file has {current_size} bytes, expected {offset}"),
+                )
+                    .into_response();
+            }
+            let mut f = match tokio::fs::OpenOptions::new()
+                .write(true)
+                .open(&part_path)
+                .await
+            {
+                Ok(f) => f,
+                Err(e) => {
+                    tracing::warn!("upload(resumable): open part failed: {e}");
+                    return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+                }
+            };
+            if let Err(e) = f.seek(std::io::SeekFrom::Start(offset)).await {
+                tracing::warn!("upload(resumable): seek failed: {e}");
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            }
+            f
+        };
+
+        // Stream the body into the file.
+        let mut stream = body.into_data_stream();
+        while let Some(chunk) = stream.next().await {
+            match chunk {
+                Ok(bytes) => {
+                    if let Err(e) = file.write_all(&bytes).await {
+                        tracing::warn!("upload(resumable): write failed: {e}");
+                        let _ = tokio::fs::remove_file(&part_path).await;
+                        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("upload(resumable): body stream error: {e}");
+                    let _ = tokio::fs::remove_file(&part_path).await;
+                    return StatusCode::BAD_REQUEST.into_response();
+                }
+            }
+        }
+        let _ = file.flush().await;
+        drop(file);
+
+        // Check if the upload is complete.
+        let bytes_received = tokio::fs::metadata(&part_path)
+            .await
+            .map(|m| m.len())
+            .unwrap_or(0);
+
+        let is_complete = q.total_size.map(|ts| bytes_received == ts).unwrap_or(false);
+        if !is_complete {
+            return Json(serde_json::json!({ "bytes_received": bytes_received }))
+                .into_response()
+                .into_response();
+        }
+
+        // Optionally verify the content hash.
+        if let Some(ref expected_hash) = q.content_hash {
+            let path_for_hash = part_path.clone();
+            let actual_hash = tokio::task::spawn_blocking(move || {
+                crate::content_hash::sparse_content_hash(&path_for_hash)
+            })
+            .await;
+            let ok = match actual_hash {
+                Ok(Ok(ref h)) => h == expected_hash,
+                _ => false,
+            };
+            if !ok {
+                tracing::warn!("upload(resumable): content_hash mismatch for {uid}");
+                let _ = tokio::fs::remove_file(&part_path).await;
+                return StatusCode::UNPROCESSABLE_ENTITY.into_response();
+            }
+        }
+
+        // Atomic move + index.
+        let final_path = dedup_path(&import_dir, &fname);
+        if let Err(e) = std::fs::rename(&part_path, &final_path) {
+            tracing::warn!("upload(resumable): rename failed: {e}");
+            let _ = std::fs::remove_file(&part_path);
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+        let db = Arc::clone(&state.db);
+        let cache = state.cache_dir.clone();
+        let path = final_path.clone();
+        let indexed = tokio::task::spawn_blocking(move || {
+            crate::indexing::IndexingEngine::scan_single_file(&db, &path, &cache, None)
+        })
+        .await;
+        return match indexed {
+            Ok(Ok((id, _))) => {
+                tracing::info!("Uploaded (resumable) + indexed {}", final_path.display());
+                Json(serde_json::json!({ "video_id": id, "filename": fname })).into_response()
+            }
+            other => {
+                tracing::warn!(
+                    "upload(resumable): indexing {} failed: {other:?}",
+                    final_path.display()
+                );
+                Json(serde_json::json!({ "video_id": serde_json::Value::Null, "filename": fname }))
+                    .into_response()
+            }
+        };
+    }
+
+    // ── Legacy single-shot path ─────────────────────────────────────────────
     let tmp = uploads.join(format!("{}.part", uuid::Uuid::new_v4().simple()));
 
     // Stream the request body to the temp file.
@@ -375,7 +529,10 @@ async fn upload_status(
         return StatusCode::UNAUTHORIZED.into_response();
     }
     // Find the .part file and return its current size.
-    let part_path = std::env::temp_dir().join(format!("{upload_id}.part"));
+    let part_path = match &state.import_dir {
+        Some(d) => d.join(".uploads").join(format!("{upload_id}.part")),
+        None => return StatusCode::CONFLICT.into_response(),
+    };
     let bytes = std::fs::metadata(&part_path).map(|m| m.len()).unwrap_or(0);
     axum::Json(serde_json::json!({"bytes_received": bytes})).into_response()
 }
