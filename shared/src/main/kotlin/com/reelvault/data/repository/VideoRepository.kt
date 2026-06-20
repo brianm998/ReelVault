@@ -310,6 +310,7 @@ class VideoRepository(private val channelFactory: ChannelFactory) {
             chapterCount = proto.chapterCount,
             chaptersJson = proto.chaptersJson,
             subtitleTracks = proto.subtitleTracks,
+            dolbyVisionProfile = proto.dolbyVisionProfile,
         )
     }
 

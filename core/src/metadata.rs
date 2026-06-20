@@ -415,6 +415,18 @@ impl MetadataExtractor {
                 .map(|sd| sd.projection.clone().unwrap_or_else(|| "spherical".to_string()))
         });
 
+        // Dolby Vision. ffprobe surfaces it as a "DOVI configuration record"
+        // side-data entry on the video stream; extract the profile number.
+        let dolby_vision_profile: Option<i32> = video_stream.side_data_list.as_ref().and_then(|sds| {
+            sds.iter().find_map(|sd| {
+                if sd.side_data_type.as_deref() == Some("DOVI configuration record") {
+                    sd.dv_profile.map(|p| p as i32)
+                } else {
+                    None
+                }
+            })
+        });
+
         // Color space + HDR. ffprobe reports the transfer characteristic on the
         // video stream; an HDR EOTF (PQ/HLG/DCI) is what makes a clip HDR — both
         // the FX3 ProRes and the iPhone 16 Pro (HLG) footage land here, where
@@ -467,8 +479,8 @@ impl MetadataExtractor {
               lens_model, gps_latitude, gps_longitude, gps_altitude, gps_track, gps_track_distance_m,
               iso, aperture, exposure_time_s, focal_length_mm,
               exposure_mode, exposure_program, white_balance, accel_magnitude, gyro_magnitude,
-              description, creator, rights, keywords, headline, chapter_count, chapters_json, subtitle_tracks, metadata_json)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              description, creator, rights, keywords, headline, chapter_count, chapters_json, subtitle_tracks, dolby_vision_profile, metadata_json)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(video_id) DO UPDATE SET
              duration_ms=excluded.duration_ms,
              frame_count=excluded.frame_count,
@@ -522,6 +534,7 @@ impl MetadataExtractor {
              chapter_count=excluded.chapter_count,
              chapters_json=excluded.chapters_json,
              subtitle_tracks=excluded.subtitle_tracks,
+             dolby_vision_profile=excluded.dolby_vision_profile,
              metadata_json=excluded.metadata_json,
              -- Invalidate the lazily-cached loudness series: the file content may
              -- have changed (an in-place edit re-runs this UPSERT), so force a
@@ -578,6 +591,7 @@ impl MetadataExtractor {
                 chapter_count,
                 chapters_json,
                 subtitle_tracks,
+                dolby_vision_profile,
                 metadata_json
             ],
         )
@@ -1280,6 +1294,9 @@ pub struct FFProbeSideData {
     /// normalizes both the GSpherical (v1 XMP) and sv3d (v2 box) markers here.
     #[serde(default)]
     pub projection: Option<String>,
+    /// Dolby Vision profile number. Present only for
+    /// `side_data_type = "DOVI configuration record"` entries.
+    pub dv_profile: Option<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

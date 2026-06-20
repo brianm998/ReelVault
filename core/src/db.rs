@@ -487,6 +487,8 @@ impl Database {
             ("metadata.chapter_count",  "ALTER TABLE metadata ADD COLUMN chapter_count INTEGER DEFAULT 0"),
             ("metadata.chapters_json",  "ALTER TABLE metadata ADD COLUMN chapters_json TEXT"),
             ("metadata.subtitle_tracks", "ALTER TABLE metadata ADD COLUMN subtitle_tracks INTEGER DEFAULT 0"),
+            // Dolby Vision profile number (0–9), or NULL when not present.
+            ("metadata.dolby_vision_profile", "ALTER TABLE metadata ADD COLUMN dolby_vision_profile INTEGER"),
             // Multi-location tracking: one logical video may exist as copies in
             // multiple watched directories. `video_locations` records every
             // filesystem path for a video_id; tags/metadata/collections are

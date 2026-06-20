@@ -265,6 +265,9 @@ data class VideoMetadata(
     val chapterCount: Int = 0,
     val chaptersJson: String = "",
     val subtitleTracks: Int = 0,
+    /** Dolby Vision profile number (0–9 for profiles 4, 5, 8.1, 8.4, etc.);
+     *  -1 when absent. Influences the dynamic_range label when present. */
+    val dolbyVisionProfile: Int = -1,
 ) {
     val resolution: String get() = "$width x $height"
     /** True when the clip is 360°/spherical. */

@@ -1130,6 +1130,13 @@ public nonisolated struct Reelvault_VideoMetadata: @unchecked Sendable {
     set {_uniqueStorage()._subtitleTracks = newValue}
   }
 
+  /// Dolby Vision profile number (0–9 for profiles 4, 5, 8.1, 8.4, etc.);
+  /// -1 absent. Influences the dynamic_range label when present.
+  public var dolbyVisionProfile: Int32 {
+    get {_storage._dolbyVisionProfile}
+    set {_uniqueStorage()._dolbyVisionProfile = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3749,7 +3756,7 @@ nonisolated extension Reelvault_GetMetadataRequest: SwiftProtobuf.Message, Swift
 
 nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".VideoMetadata"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0\u{3}camera_display_name\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}exposure_mode\0\u{3}exposure_program\0\u{3}white_balance\0\u{3}full_resolution\0\u{3}frame_count\0\u{3}color_transfer\0\u{3}color_primaries\0\u{3}dynamic_range\0\u{1}timecode\0\u{3}capture_fps\0\u{3}bit_depth\0\u{3}audio_bit_depth\0\u{3}audio_language\0\u{3}audio_track_count\0\u{1}spatial\0\u{1}projection\0\u{3}gps_track\0\u{3}gps_track_distance_m\0\u{3}accel_magnitude\0\u{3}gyro_magnitude\0\u{1}description\0\u{1}creator\0\u{1}rights\0\u{1}keywords\0\u{1}headline\0\u{3}chapter_count\0\u{3}chapters_json\0\u{3}subtitle_tracks\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0\u{3}camera_display_name\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}exposure_mode\0\u{3}exposure_program\0\u{3}white_balance\0\u{3}full_resolution\0\u{3}frame_count\0\u{3}color_transfer\0\u{3}color_primaries\0\u{3}dynamic_range\0\u{1}timecode\0\u{3}capture_fps\0\u{3}bit_depth\0\u{3}audio_bit_depth\0\u{3}audio_language\0\u{3}audio_track_count\0\u{1}spatial\0\u{1}projection\0\u{3}gps_track\0\u{3}gps_track_distance_m\0\u{3}accel_magnitude\0\u{3}gyro_magnitude\0\u{1}description\0\u{1}creator\0\u{1}rights\0\u{1}keywords\0\u{1}headline\0\u{3}chapter_count\0\u{3}chapters_json\0\u{3}subtitle_tracks\0\u{3}dolby_vision_profile\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -3815,6 +3822,7 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
     var _chapterCount: Int32 = 0
     var _chaptersJson: String = String()
     var _subtitleTracks: Int32 = 0
+    var _dolbyVisionProfile: Int32 = 0
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3888,6 +3896,7 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       _chapterCount = source._chapterCount
       _chaptersJson = source._chaptersJson
       _subtitleTracks = source._subtitleTracks
+      _dolbyVisionProfile = source._dolbyVisionProfile
     }
   }
 
@@ -3969,6 +3978,7 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         case 61: try { try decoder.decodeSingularInt32Field(value: &_storage._chapterCount) }()
         case 62: try { try decoder.decodeSingularStringField(value: &_storage._chaptersJson) }()
         case 63: try { try decoder.decodeSingularInt32Field(value: &_storage._subtitleTracks) }()
+        case 64: try { try decoder.decodeSingularInt32Field(value: &_storage._dolbyVisionProfile) }()
         default: break
         }
       }
@@ -4166,6 +4176,9 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       if _storage._subtitleTracks != 0 {
         try visitor.visitSingularInt32Field(value: _storage._subtitleTracks, fieldNumber: 63)
       }
+      if _storage._dolbyVisionProfile != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._dolbyVisionProfile, fieldNumber: 64)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4238,6 +4251,7 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         if _storage._chapterCount != rhs_storage._chapterCount {return false}
         if _storage._chaptersJson != rhs_storage._chaptersJson {return false}
         if _storage._subtitleTracks != rhs_storage._subtitleTracks {return false}
+        if _storage._dolbyVisionProfile != rhs_storage._dolbyVisionProfile {return false}
         return true
       }
       if !storagesAreEqual {return false}

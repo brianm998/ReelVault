@@ -405,7 +405,7 @@ impl ReelVaultService {
                     bit_depth, audio_bit_depth, audio_language, audio_track_count, spatial, projection,
                     gps_track, gps_track_distance_m, accel_magnitude, gyro_magnitude,
                     description, creator, rights, keywords, headline,
-                    chapter_count, chapters_json, subtitle_tracks
+                    chapter_count, chapters_json, subtitle_tracks, dolby_vision_profile
                  FROM metadata WHERE video_id = ?",
                 [video_id],
                 |row| {
@@ -457,6 +457,7 @@ impl ReelVaultService {
                         row.get::<_, Option<i32>>(44)?,
                         row.get::<_, Option<String>>(45)?,
                         row.get::<_, Option<i32>>(46)?,
+                        row.get::<_, Option<i32>>(47)?,
                     ))
                 },
             )
@@ -483,13 +484,13 @@ impl ReelVaultService {
              bit_depth, audio_bit_depth, audio_language, audio_track_count, spatial, projection,
              gps_track, gps_track_distance_m, accel_magnitude, gyro_magnitude,
              description, creator, rights, keywords, headline,
-             chapter_count, chapters_json, subtitle_tracks) =
+             chapter_count, chapters_json, subtitle_tracks, dolby_vision_profile) =
             row.unwrap_or((0, None, None, 0, 0, 0.0, 0, None, false, 0, 0, None, None, None, None, None, None,
                            None, None, None, None, None, None, None,
                            None, None, None, None, None,
                            None, None, None, None, false, None,
                            None, None, None, None, None, None, None, None, None,
-                           None, None, None));
+                           None, None, None, None));
 
         let camera_model_str = camera_model.unwrap_or_default();
         // Resolve marketing name with the user's custom overrides
@@ -564,6 +565,7 @@ impl ReelVaultService {
             chapter_count: chapter_count.unwrap_or(0),
             chapters_json: chapters_json.unwrap_or_default(),
             subtitle_tracks: subtitle_tracks.unwrap_or(0),
+            dolby_vision_profile: dolby_vision_profile.unwrap_or(-1),
             tags,
             collections: db.get_video_collections(video_id).unwrap_or_default(),
             notes,

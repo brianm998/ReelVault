@@ -519,6 +519,9 @@ message VideoMetadata {
   int32 chapter_count = 61;
   string chapters_json = 62;
   int32 subtitle_tracks = 63;
+  // Dolby Vision profile number (0–9 for profiles 4, 5, 8.1, 8.4, etc.);
+  // -1 absent. Influences the dynamic_range label when present.
+  int32 dolby_vision_profile = 64;
 }
 
 message GetThumbnailRequest {
