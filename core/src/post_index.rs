@@ -49,6 +49,7 @@ use crate::error::Result;
 use crate::grouping::{self, AutoGroupOptions};
 use crate::proxies::{self, PROXY_SIMILARITY_THRESHOLD};
 use crate::watcher::CatalogChange;
+use rusqlite::OptionalExtension;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::mpsc::{self, SyncSender};
@@ -90,6 +91,11 @@ pub struct Options {
     /// the user untags a timelapse-flagged video, the auto-tagger
     /// won't re-apply it (history table in `auto_tag_history`).
     pub auto_tag_timelapses: bool,
+    /// Compute a sparse blake3 content hash for videos that don't yet have
+    /// one. This backs the catalog-sync deduplication path. Best-effort:
+    /// skipped when the file isn't readable; retried on the next pass.
+    /// Default is **on**.
+    pub compute_content_hash: bool,
 }
 
 impl Default for Options {
@@ -99,6 +105,7 @@ impl Default for Options {
             detect_proxies: true,
             sensor_fetch: true,
             auto_tag_timelapses: true,
+            compute_content_hash: true,
         }
     }
 }
@@ -130,12 +137,15 @@ const PHASE_GROUPING: u8 = 0;
 const PHASE_PROXIES: u8 = 1;
 const PHASE_SENSORS: u8 = 2;
 const PHASE_TAGGING: u8 = 3;
+const PHASE_HASHING: u8 = 4;
 
 fn phase_label(code: u8) -> &'static str {
     match code {
         PHASE_GROUPING => "grouping",
         PHASE_PROXIES => "proxies",
         PHASE_SENSORS => "sensors",
+        PHASE_TAGGING => "tagging",
+        PHASE_HASHING => "hashing",
         _ => "tagging",
     }
 }
@@ -689,6 +699,36 @@ fn process_one(
                 "post-index timelapse auto-tag skipped");
         }
     }
+    if options.compute_content_hash {
+        token.set_phase(PHASE_HASHING);
+        // Best-effort: skip on error — the hash can be computed on the next pass.
+        if let Err(e) = compute_hash_for(db, video_id) {
+            tracing::debug!(video_id = %video_id, error = %e,
+                "post-index content_hash skipped");
+        }
+    }
+    Ok(())
+}
+
+fn compute_hash_for(db: &Database, video_id: &str) -> crate::error::Result<()> {
+    // Only hash videos that don't already have a content_hash.
+    let conn = db.get_connection()?;
+    let row: Option<(Option<String>, String)> = conn.query_row(
+        "SELECT content_hash, path FROM videos WHERE id = ?1 AND is_derived = 0 AND proxy_of IS NULL",
+        [video_id],
+        |r| Ok((r.get::<_, Option<String>>(0)?, r.get::<_, String>(1)?))
+    ).optional().map_err(|e| crate::error::ReelVaultError::DatabaseError(e.to_string()))?;
+
+    let (existing_hash, path) = match row {
+        Some(r) => r,
+        None => return Ok(()), // proxy or derived — skip
+    };
+    if existing_hash.is_some() {
+        return Ok(()); // already hashed
+    }
+
+    let hash = crate::content_hash::sparse_content_hash(std::path::Path::new(&path))?;
+    db.set_content_hash(video_id, &hash)?;
     Ok(())
 }
 

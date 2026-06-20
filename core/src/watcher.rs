@@ -483,6 +483,7 @@ fn sweep_pending(
             detect_proxies: true,
             sensor_fetch: true,
             auto_tag_timelapses,
+            compute_content_hash: true,
         },
         Some(events.clone()),
         wave_total,
