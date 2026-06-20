@@ -16,6 +16,8 @@ import com.reelvault.android.ReelVaultApp
 import com.reelvault.android.core.LocalCore
 import com.reelvault.android.core.ReelVaultCore
 import com.reelvault.android.data.UploadEndpoint
+import com.reelvault.data.models.Tag
+import com.reelvault.data.models.Collection as VideoCollection
 import com.reelvault.sync.SyncDirection
 import com.reelvault.sync.SyncManager
 import com.reelvault.sync.SyncProfile
@@ -45,6 +47,24 @@ fun SyncSetupSheet(
     var isRunning by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<SyncRunResult?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var availableTags by remember { mutableStateOf<List<Tag>>(emptyList()) }
+    var availableCollections by remember { mutableStateOf<List<VideoCollection>>(emptyList()) }
+    var selectedTagId by remember { mutableStateOf("") }
+    var selectedCollectionId by remember { mutableStateOf("") }
+    var filterMinRating by remember { mutableIntStateOf(0) }
+    var filterColorLabel by remember { mutableStateOf("") }
+    var showTagDropdown by remember { mutableStateOf(false) }
+    var showCollectionDropdown by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val repo = ReelVaultApp.instance.videoRepository
+            availableTags = repo.listTags().sortedBy { it.name.lowercase() }
+            availableCollections = repo.listCollections()
+                .filter { !it.isSmart }
+                .sortedBy { it.name.lowercase() }
+        } catch (_: Exception) { /* filter options stay empty */ }
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -80,6 +100,94 @@ fun SyncSetupSheet(
                             label = { Text(label) },
                         )
                     }
+                }
+            }
+
+            // Filter section
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Filter (optional)", style = MaterialTheme.typography.labelLarge)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Tag dropdown
+            ExposedDropdownMenuBox(
+                expanded = showTagDropdown,
+                onExpandedChange = { showTagDropdown = it },
+            ) {
+                OutlinedTextField(
+                    value = if (selectedTagId.isEmpty()) "Any tag"
+                            else availableTags.find { it.id == selectedTagId }?.name ?: "Any tag",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Tag") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showTagDropdown) },
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth(),
+                )
+                ExposedDropdownMenu(expanded = showTagDropdown, onDismissRequest = { showTagDropdown = false }) {
+                    DropdownMenuItem(text = { Text("Any tag") }, onClick = { selectedTagId = ""; showTagDropdown = false })
+                    availableTags.forEach { tag ->
+                        DropdownMenuItem(
+                            text = { Text(tag.name) },
+                            onClick = { selectedTagId = tag.id; showTagDropdown = false },
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Collection dropdown
+            ExposedDropdownMenuBox(
+                expanded = showCollectionDropdown,
+                onExpandedChange = { showCollectionDropdown = it },
+            ) {
+                OutlinedTextField(
+                    value = if (selectedCollectionId.isEmpty()) "Any collection"
+                            else availableCollections.find { it.id == selectedCollectionId }?.name ?: "Any collection",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Collection") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showCollectionDropdown) },
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth(),
+                )
+                ExposedDropdownMenu(expanded = showCollectionDropdown, onDismissRequest = { showCollectionDropdown = false }) {
+                    DropdownMenuItem(text = { Text("Any collection") }, onClick = { selectedCollectionId = ""; showCollectionDropdown = false })
+                    availableCollections.forEach { coll ->
+                        DropdownMenuItem(
+                            text = { Text(coll.name) },
+                            onClick = { selectedCollectionId = coll.id; showCollectionDropdown = false },
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Rating chips
+            Text("Min Rating", style = MaterialTheme.typography.labelMedium)
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf(0 to "Any", 1 to "★+", 2 to "★★+", 3 to "★★★+", 4 to "★★★★+", 5 to "★★★★★").forEach { (rating, label) ->
+                    FilterChip(
+                        selected = filterMinRating == rating,
+                        onClick = { filterMinRating = rating },
+                        label = { Text(label) },
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Color label chips
+            Text("Color Label", style = MaterialTheme.typography.labelMedium)
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("" to "Any", "red" to "Red", "yellow" to "Yellow", "green" to "Green", "blue" to "Blue", "purple" to "Purple").forEach { (key, label) ->
+                    FilterChip(
+                        selected = filterColorLabel == key,
+                        onClick = { filterColorLabel = key },
+                        label = { Text(label) },
+                    )
                 }
             }
 
@@ -134,6 +242,7 @@ fun SyncSetupSheet(
                                     name = "Quick Sync",
                                     peerKey = endpoint.fingerprintHex,
                                     direction = direction,
+                                    filterJson = buildSyncFilterJson(selectedTagId, selectedCollectionId, filterMinRating, filterColorLabel),
                                     targetHeight = targetHeight,
                                 )
                                 val manager = SyncManager(
@@ -176,4 +285,18 @@ fun SyncSetupSheet(
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
+}
+
+private fun buildSyncFilterJson(
+    tagId: String,
+    collectionId: String,
+    minRating: Int,
+    colorLabel: String,
+): String {
+    val obj = org.json.JSONObject()
+    if (tagId.isNotEmpty()) obj.put("filterTags", org.json.JSONArray().apply { put(tagId) })
+    if (collectionId.isNotEmpty()) obj.put("collectionId", collectionId)
+    if (minRating > 0) obj.put("filterMinRating", minRating)
+    if (colorLabel.isNotEmpty()) obj.put("filterColorLabel", colorLabel)
+    return if (obj.length() == 0) "" else obj.toString()
 }

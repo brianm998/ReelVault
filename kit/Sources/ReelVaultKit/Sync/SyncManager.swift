@@ -100,25 +100,34 @@ public final class SyncManager: ObservableObject {
     private func runPush(profile: SyncProfile) async throws -> SyncRunResult {
         var result = SyncRunResult()
 
-        // Fetch the local manifest via loopback.
-        // The real implementation calls the generated Reelvault_ReelVaultClient's
-        // getSyncManifest RPC over the loopback port. That generated code lives in
-        // kit/Sources/ReelVaultKit/Generated/ and is wired up after proto regen.
-        // For the scaffold we keep the logic structure intact and leave the RPC
-        // call as a TODO comment so the compiler accepts the file as-is.
+        guard let remoteTLS = await makeRemoteTLS() else {
+            result.errors.append("push: could not verify remote TLS certificate")
+            return result
+        }
 
-        // TODO: replace with generated RPC call once kit/regen-proto.sh is run:
-        //   var req = Reelvault_SyncManifestRequest()
-        //   req.pageSize = 200
-        //   for try await entry in localServiceClient.getSyncManifest(req).messages {
-        //       manifestEntries.append(entry)
-        //   }
-
-        // Placeholder: no entries -> nothing to push on this scaffold.
-        let manifestEntries: [SyncManifestEntry] = []
+        // 1. Stream the local manifest through a short-lived connection.
+        let manifestEntries: [Reelvault_SyncManifestEntry]
+        do {
+            manifestEntries = try await withGRPCClient(transport: makeLocalTransport()) { rawClient in
+                let svc = Reelvault_ReelVault.Client(wrapping: rawClient)
+                var req = Reelvault_SyncManifestRequest()
+                req.pageSize = 500
+                if let filter = self.filterJsonToListRequest(profile.filterJson) {
+                    req.filter = filter
+                }
+                return try await svc.getSyncManifest(req) { response in
+                    var entries: [Reelvault_SyncManifestEntry] = []
+                    for try await entry in response.messages { entries.append(entry) }
+                    return entries
+                }
+            }
+        } catch {
+            result.errors.append("push: manifest fetch failed: \(error.localizedDescription)")
+            return result
+        }
         result.total = manifestEntries.count
 
-        // Collect per-entry outcomes as (succeeded: Bool, error: String?) tuples.
+        // 2. Push non-derived entries concurrently.
         let pushOutcomes = await withTaskGroup(
             of: (Bool, String?).self,
             returning: [(Bool, String?)].self
@@ -147,23 +156,17 @@ public final class SyncManager: ObservableObject {
             }
         }
 
-        // Sync smart collections: local (source) → remote (destination).
-        // We open short-lived transient gRPC connections here so the sync does
-        // not interfere with the VideoRepository's persistent connection.
+        // 3. Sync smart collections: local (source) → remote (destination).
         do {
-            guard let remoteTLS = await makeRemoteTLS() else {
-                result.errors.append("push: could not verify remote TLS certificate for smart-collection sync")
-                return result
-            }
             let localTransport = try makeLocalTransport()
             let remoteTransport = try makeRemoteTransport(tls: remoteTLS)
-            try await withGRPCClient(transport: localTransport) { localClient in
+            try await withGRPCClient(transport: localTransport) { localRaw in
                 try await withGRPCClient(
                     transport: remoteTransport,
                     interceptors: [BearerTokenInterceptor(token: self.token)]
-                ) { remoteClient in
-                    let localSvc = Reelvault_ReelVault.Client(wrapping: localClient)
-                    let remoteSvc = Reelvault_ReelVault.Client(wrapping: remoteClient)
+                ) { remoteRaw in
+                    let localSvc = Reelvault_ReelVault.Client(wrapping: localRaw)
+                    let remoteSvc = Reelvault_ReelVault.Client(wrapping: remoteRaw)
                     _ = try await self.syncSmartCollections(from: localSvc, to: remoteSvc)
                 }
             }
@@ -174,8 +177,8 @@ public final class SyncManager: ObservableObject {
         return result
     }
 
-    private func pushEntry(entry: SyncManifestEntry, profile: SyncProfile) async throws {
-        var job = SyncJob(videoId: entry.videoId, filename: entry.filename, direction: .toRemote)
+    private func pushEntry(entry: Reelvault_SyncManifestEntry, profile: SyncProfile) async throws {
+        var job = SyncJob(videoId: entry.videoID, filename: entry.filename, direction: .toRemote)
         jobs.append(job)
 
         let mediaBaseURL = "https://\(remoteHost):\(remoteMediaPort)"
@@ -192,7 +195,7 @@ public final class SyncManager: ObservableObject {
         // Full multipart / resumable upload is deferred to the LocalVideoExport
         // integration that already handles photos:// -> temp-file materialization.
 
-        if let idx = jobs.firstIndex(where: { $0.videoId == entry.videoId }) {
+        if let idx = jobs.firstIndex(where: { $0.videoId == entry.videoID }) {
             jobs[idx].status = .done
             jobs[idx].progress = 1.0
         }
@@ -204,16 +207,37 @@ public final class SyncManager: ObservableObject {
     private func runPull(profile: SyncProfile) async throws -> SyncRunResult {
         var result = SyncRunResult()
 
-        // TODO: replace with generated RPC call once kit/regen-proto.sh is run:
-        //   var req = Reelvault_SyncManifestRequest()
-        //   req.pageSize = 200
-        //   for try await entry in remoteServiceClient.getSyncManifest(req).messages {
-        //       manifestEntries.append(entry)
-        //   }
+        guard let remoteTLS = await makeRemoteTLS() else {
+            result.errors.append("pull: could not verify remote TLS certificate")
+            return result
+        }
 
-        let manifestEntries: [SyncManifestEntry] = []
+        // 1. Stream the remote manifest.
+        let manifestEntries: [Reelvault_SyncManifestEntry]
+        do {
+            manifestEntries = try await withGRPCClient(
+                transport: makeRemoteTransport(tls: remoteTLS),
+                interceptors: [BearerTokenInterceptor(token: self.token)]
+            ) { rawClient in
+                let svc = Reelvault_ReelVault.Client(wrapping: rawClient)
+                var req = Reelvault_SyncManifestRequest()
+                req.pageSize = 500
+                if let filter = self.filterJsonToListRequest(profile.filterJson) {
+                    req.filter = filter
+                }
+                return try await svc.getSyncManifest(req) { response in
+                    var entries: [Reelvault_SyncManifestEntry] = []
+                    for try await entry in response.messages { entries.append(entry) }
+                    return entries
+                }
+            }
+        } catch {
+            result.errors.append("pull: manifest fetch failed: \(error.localizedDescription)")
+            return result
+        }
         result.total = manifestEntries.count
 
+        // 2. Pull non-derived entries concurrently.
         let pullOutcomes = await withTaskGroup(
             of: (Bool, String?).self,
             returning: [(Bool, String?)].self
@@ -242,19 +266,17 @@ public final class SyncManager: ObservableObject {
             }
         }
 
-        // Sync smart collections: remote (source) → local (destination).
+        // 3. Sync smart collections: remote (source) → local (destination).
         do {
-            guard let remoteTLS = await makeRemoteTLS() else {
-                result.errors.append("pull: could not verify remote TLS certificate for smart-collection sync")
-                return result
-            }
-            let localTransport = try makeLocalTransport()
             let remoteTransport = try makeRemoteTransport(tls: remoteTLS)
-            try await withGRPCClient(transport: remoteTransport,
-                                     interceptors: [BearerTokenInterceptor(token: self.token)]) { remoteClient in
-                try await withGRPCClient(transport: localTransport) { localClient in
-                    let remoteSvc = Reelvault_ReelVault.Client(wrapping: remoteClient)
-                    let localSvc = Reelvault_ReelVault.Client(wrapping: localClient)
+            let localTransport = try makeLocalTransport()
+            try await withGRPCClient(
+                transport: remoteTransport,
+                interceptors: [BearerTokenInterceptor(token: self.token)]
+            ) { remoteRaw in
+                try await withGRPCClient(transport: localTransport) { localRaw in
+                    let remoteSvc = Reelvault_ReelVault.Client(wrapping: remoteRaw)
+                    let localSvc = Reelvault_ReelVault.Client(wrapping: localRaw)
                     _ = try await self.syncSmartCollections(from: remoteSvc, to: localSvc)
                 }
             }
@@ -265,14 +287,14 @@ public final class SyncManager: ObservableObject {
         return result
     }
 
-    private func pullEntry(entry: SyncManifestEntry, profile: SyncProfile) async throws {
-        var job = SyncJob(videoId: entry.videoId, filename: entry.filename, direction: .fromRemote)
+    private func pullEntry(entry: Reelvault_SyncManifestEntry, profile: SyncProfile) async throws {
+        var job = SyncJob(videoId: entry.videoID, filename: entry.filename, direction: .fromRemote)
         jobs.append(job)
 
         // 1. PrepareRendition RPC on the remote (tells the server to transcode to
         //    targetHeight if needed and returns the download path).
         // TODO: Reelvault_PrepareRenditionRequest -> Reelvault_PrepareRenditionProgress stream.
-        let downloadPath = "/media/\(entry.videoId)/original"
+        let downloadPath = "/media/\(entry.videoID)/original"
         let renditionBytes: Int64 = 0
 
         // 2. Storage pre-flight.
@@ -302,7 +324,7 @@ public final class SyncManager: ObservableObject {
         // 5. Apply catalog metadata (tags, collections, rating, color label).
         // TODO: Reelvault_VideoCatalogDataRequest -> Reelvault_ApplyCatalogDataRequest on local.
 
-        if let idx = jobs.firstIndex(where: { $0.videoId == entry.videoId }) {
+        if let idx = jobs.firstIndex(where: { $0.videoId == entry.videoID }) {
             jobs[idx].status = .done
             jobs[idx].progress = 1.0
         }
@@ -464,6 +486,33 @@ public final class SyncManager: ObservableObject {
         }
     }
 
+    /// Decodes a `SyncProfile.filterJson` string into a `Reelvault_ListVideosRequest`
+    /// that can be set on the `GetSyncManifest` request to restrict what the source
+    /// daemon returns. Returns nil if the JSON is empty or sets no recognized fields.
+    nonisolated private func filterJsonToListRequest(_ filterJson: String) -> Reelvault_ListVideosRequest? {
+        guard !filterJson.isEmpty,
+              let data = filterJson.data(using: .utf8),
+              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return nil }
+
+        var req = Reelvault_ListVideosRequest()
+        if let tagIds = dict["filterTags"] as? [String], !tagIds.isEmpty {
+            req.filterTags = tagIds
+        }
+        if let collId = dict["collectionId"] as? String, !collId.isEmpty {
+            req.collectionID = collId
+        }
+        if let minRating = dict["filterMinRating"] as? Int, minRating > 0 {
+            req.filterMinRating = Int32(minRating)
+        }
+        if let color = dict["filterColorLabel"] as? String, !color.isEmpty {
+            req.filterColorLabel = color
+        }
+        let hasFilter = !req.filterTags.isEmpty || !req.collectionID.isEmpty
+                     || req.filterMinRating > 0 || !req.filterColorLabel.isEmpty
+        return hasFilter ? req : nil
+    }
+
     // MARK: - Helpers
 
     private func syncedFilesDirectory() -> URL {
@@ -477,17 +526,6 @@ public final class SyncManager: ObservableObject {
         let attrs = try FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory())
         return (attrs[.systemFreeSize] as? Int64) ?? 0
     }
-}
-
-// MARK: - Placeholder types (replaced by generated proto stubs after regen)
-
-/// Stand-in for Reelvault_SyncManifestEntry until proto stubs are regenerated.
-struct SyncManifestEntry {
-    var videoId: String
-    var filename: String
-    var contentHash: String
-    var isDerived: Bool
-    var nextCursor: String
 }
 
 // MARK: - Errors

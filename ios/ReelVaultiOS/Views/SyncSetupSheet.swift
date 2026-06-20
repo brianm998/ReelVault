@@ -23,6 +23,12 @@ struct SyncSetupSheet: View {
     @State private var isRunning = false
     @State private var runResult: SyncRunResult?
     @State private var errorMessage: String?
+    @State private var selectedTagId: String = ""
+    @State private var selectedCollectionId: String = ""
+    @State private var filterMinRating: Int32 = 0
+    @State private var filterColorLabel: String = ""
+    @State private var availableTags: [Tag] = []
+    @State private var availableCollections: [Collection] = []
 
     var body: some View {
         NavigationStack {
@@ -47,6 +53,37 @@ struct SyncSetupSheet: View {
                             Text("Original").tag(Int32(0))
                         }
                         .pickerStyle(.menu)
+                    }
+                }
+
+                Section("Filter (optional)") {
+                    Picker("Tag", selection: $selectedTagId) {
+                        Text("Any tag").tag("")
+                        ForEach(availableTags) { tag in
+                            Text(tag.name).tag(tag.id)
+                        }
+                    }
+                    Picker("Collection", selection: $selectedCollectionId) {
+                        Text("Any collection").tag("")
+                        ForEach(availableCollections) { coll in
+                            Text(coll.name).tag(coll.id)
+                        }
+                    }
+                    Picker("Min Rating", selection: $filterMinRating) {
+                        Text("Any rating").tag(Int32(0))
+                        Text("★ or better").tag(Int32(1))
+                        Text("★★ or better").tag(Int32(2))
+                        Text("★★★ or better").tag(Int32(3))
+                        Text("★★★★ or better").tag(Int32(4))
+                        Text("★★★★★ only").tag(Int32(5))
+                    }
+                    Picker("Color Label", selection: $filterColorLabel) {
+                        Text("Any color").tag("")
+                        Text("Red").tag("red")
+                        Text("Yellow").tag("yellow")
+                        Text("Green").tag("green")
+                        Text("Blue").tag("blue")
+                        Text("Purple").tag("purple")
                     }
                 }
 
@@ -92,6 +129,7 @@ struct SyncSetupSheet: View {
                     }
                 }
             }
+            .task { await loadFilterOptions() }
             .navigationTitle(direction == .toRemote ? "Sync to Remote" : "Sync from Remote")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -129,6 +167,7 @@ struct SyncSetupSheet: View {
             name: "Quick Sync",
             peerKey: endpoint.fingerprintHex ?? "",
             direction: direction,
+            filterJson: buildFilterJson(),
             targetHeight: targetHeight
         )
 
@@ -150,6 +189,28 @@ struct SyncSetupSheet: View {
 
         await manager.startSync(profile: profile)
         runResult = manager.lastResult
+    }
+
+    private func buildFilterJson() -> String {
+        var dict: [String: Any] = [:]
+        if !selectedTagId.isEmpty { dict["filterTags"] = [selectedTagId] }
+        if !selectedCollectionId.isEmpty { dict["collectionId"] = selectedCollectionId }
+        if filterMinRating > 0 { dict["filterMinRating"] = Int(filterMinRating) }
+        if !filterColorLabel.isEmpty { dict["filterColorLabel"] = filterColorLabel }
+        guard !dict.isEmpty,
+              let data = try? JSONSerialization.data(withJSONObject: dict, options: .sortedKeys),
+              let str = String(data: data, encoding: .utf8)
+        else { return "" }
+        return str
+    }
+
+    private func loadFilterOptions() async {
+        if let tags = try? await VideoRepository.shared.listTags() {
+            availableTags = tags.sorted { $0.name < $1.name }
+        }
+        if let colls = try? await VideoRepository.shared.listCollections() {
+            availableCollections = colls.filter { !$0.isSmart }.sorted { $0.name < $1.name }
+        }
     }
 }
 
