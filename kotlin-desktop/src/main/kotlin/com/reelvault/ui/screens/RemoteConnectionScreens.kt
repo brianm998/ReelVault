@@ -150,7 +150,7 @@ fun PairingCodeEntryScreen(
             Spacer(Modifier.height(8.dp))
             Text(
                 “Enter the 6-digit code shown on the server. Reveal it there with “ +
-                    “”Pair a New Device”, the daemon log, or `reelvault-core pairing-code`.”,
+                    “\”Pair a New Device\”, the daemon log, or `reelvault-core pairing-code`.”,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
