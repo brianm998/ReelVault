@@ -489,6 +489,21 @@ impl Database {
             ("metadata.subtitle_tracks", "ALTER TABLE metadata ADD COLUMN subtitle_tracks INTEGER DEFAULT 0"),
             // Dolby Vision profile number (0–9), or NULL when not present.
             ("metadata.dolby_vision_profile", "ALTER TABLE metadata ADD COLUMN dolby_vision_profile INTEGER"),
+            // Sony Professional XML sidecar metadata: clip name, scene/take for
+            // production tracking, ND filter position, iris F-number, and LUT name.
+            ("metadata.production_scene",  "ALTER TABLE metadata ADD COLUMN production_scene TEXT"),
+            ("metadata.production_take",   "ALTER TABLE metadata ADD COLUMN production_take TEXT"),
+            ("metadata.nd_filter",         "ALTER TABLE metadata ADD COLUMN nd_filter TEXT"),
+            ("metadata.iris_f_number",     "ALTER TABLE metadata ADD COLUMN iris_f_number REAL"),
+            ("metadata.lut_name",          "ALTER TABLE metadata ADD COLUMN lut_name TEXT"),
+            // Extended 360° / spatial audio parameters: initial viewer orientation
+            // (heading/pitch/roll), stereo mode (top-bottom, left-right, mono), and
+            // ambisonics channel ordering convention.
+            ("metadata.spatial_initial_heading", "ALTER TABLE metadata ADD COLUMN spatial_initial_heading REAL"),
+            ("metadata.spatial_initial_pitch",   "ALTER TABLE metadata ADD COLUMN spatial_initial_pitch REAL"),
+            ("metadata.spatial_initial_roll",    "ALTER TABLE metadata ADD COLUMN spatial_initial_roll REAL"),
+            ("metadata.stereo_mode",             "ALTER TABLE metadata ADD COLUMN stereo_mode TEXT"),
+            ("metadata.ambisonics_channel_order", "ALTER TABLE metadata ADD COLUMN ambisonics_channel_order TEXT"),
             // Multi-location tracking: one logical video may exist as copies in
             // multiple watched directories. `video_locations` records every
             // filesystem path for a video_id; tags/metadata/collections are

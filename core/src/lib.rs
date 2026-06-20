@@ -30,6 +30,7 @@ pub mod xmp;
 pub mod quicktime;
 pub mod gpmf;
 pub mod dji;
+pub mod sony_xml;
 pub mod metadata_keys;
 
 /// Platform-agnostic in-process embed logic (loopback gRPC boot, ingest, prune),

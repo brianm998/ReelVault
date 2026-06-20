@@ -522,6 +522,22 @@ message VideoMetadata {
   // Dolby Vision profile number (0–9 for profiles 4, 5, 8.1, 8.4, etc.);
   // -1 absent. Influences the dynamic_range label when present.
   int32 dolby_vision_profile = 64;
+  // Sony Professional XML sidecar metadata: production scene and take numbers,
+  // ND filter setting, iris F-number, and LUT name. All empty when not present.
+  string production_scene = 65;
+  string production_take = 66;
+  string nd_filter = 67;
+  double iris_f_number = 68;
+  string lut_name = 69;
+  // Extended 360° / spatial audio parameters: initial viewer orientation (yaw,
+  // pitch, roll in degrees), stereo mode ("top-bottom", "left-right", "mono"),
+  // and ambisonics channel ordering ("ACN", "Furse-Malham"). All empty when not
+  // present or not applicable.
+  double spatial_initial_heading = 70;
+  double spatial_initial_pitch = 71;
+  double spatial_initial_roll = 72;
+  string stereo_mode = 73;
+  string ambisonics_channel_order = 74;
 }
 
 message GetThumbnailRequest {
