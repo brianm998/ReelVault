@@ -175,6 +175,11 @@ enum NativeMedia {
                 if let a = try await asset.loadTracks(withMediaType: .audio).first {
                     var s: [String: Any] = ["index": streams.count, "codec_type": "audio"]
                     if let codec = try? await codecName(of: a) { s["codec_name"] = codec }
+                    if let info = try? await audioStreamInfo(of: a) {
+                        if info.channels > 0 { s["channels"] = info.channels }
+                        if info.sampleRate > 0 { s["sample_rate"] = String(info.sampleRate) }
+                        if info.bitDepth > 0 { s["bits_per_sample"] = info.bitDepth }
+                    }
                     streams.append(s)
                 }
 
@@ -247,6 +252,23 @@ enum NativeMedia {
             return nil
         }()
         return (transfer, primaries)
+    }
+
+    /// Channel count, sample rate (Hz), and PCM bit depth for an audio track.
+    /// Extracted from the AudioStreamBasicDescription embedded in the track's
+    /// format description — the same data ffprobe surfaces as `channels`,
+    /// `sample_rate`, and `bits_per_sample` on the audio stream. `bitDepth` is
+    /// 0 for compressed codecs (AAC) and only written when > 0.
+    static func audioStreamInfo(of track: AVAssetTrack) async throws -> (channels: Int, sampleRate: Int, bitDepth: Int)? {
+        guard let desc = try await track.load(.formatDescriptions).first else { return nil }
+        guard let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(desc) else { return nil }
+        let channels = Int(asbd.pointee.mChannelsPerFrame)
+        guard channels > 0 else { return nil }
+        return (
+            channels: channels,
+            sampleRate: Int(asbd.pointee.mSampleRate.rounded()),
+            bitDepth: Int(asbd.pointee.mBitsPerChannel)
+        )
     }
 
     /// Harvest the container/track metadata the core's extractor reads —
