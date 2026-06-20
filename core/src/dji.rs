@@ -82,17 +82,16 @@ fn read_full(path: &Path) -> std::io::Result<String> {
 /// timestamp) are taken from the first informative record; GPS is collected
 /// from every frame to build the full flight path.
 pub fn parse_srt(text: &str) -> DjiTelemetry {
-    let mut out = DjiTelemetry::default();
-    out.gps = parse_gps_first(text);
-    out.iso = first_capture(text, r"(?i)\biso\s*[:=]\s*(\d+)").and_then(|s| s.parse().ok());
-    out.aperture = parse_aperture(text);
-    out.exposure_time_s = parse_shutter(text);
-    out.creation_date_ms = parse_datetime(text);
-
     let all_fixes = collect_gps_track(text);
-    out.track_distance_m = crate::gpmf::track_distance(&all_fixes);
-    out.gps_track = crate::gpmf::downsample(&all_fixes, MAX_TRACK_POINTS);
-    out
+    DjiTelemetry {
+        gps: parse_gps_first(text),
+        iso: first_capture(text, r"(?i)\biso\s*[:=]\s*(\d+)").and_then(|s| s.parse().ok()),
+        aperture: parse_aperture(text),
+        exposure_time_s: parse_shutter(text),
+        creation_date_ms: parse_datetime(text),
+        track_distance_m: crate::gpmf::track_distance(&all_fixes),
+        gps_track: crate::gpmf::downsample(&all_fixes, MAX_TRACK_POINTS),
+    }
 }
 
 /// Maximum GPS points stored after downsampling — matches the GPMF limit.
