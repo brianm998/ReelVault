@@ -527,10 +527,23 @@ class GridViewModel(
 
     /** Build the entry for a settled browse route from live state. [viewMode] is
      *  only meaningful for GRID, so it is normalised to "" elsewhere — a
-     *  Detail/Map entry then compares equal regardless of the grid/list toggle. */
+     *  Detail/Map entry must compare equal regardless of the grid/list toggle. */
     private fun snapshotEntry(route: NavRoute, videoId: String?): NavEntry =
-        NavEntry(route, currentNavSource(),
-                 if (route == NavRoute.GRID) _viewMode.value else "", videoId)
+        NavEntry(
+            route = route,
+            source = currentNavSource(),
+            viewMode = if (route == NavRoute.GRID) _viewMode.value else "",
+            videoId = videoId,
+            searchQuery = _searchQuery.value,
+            filterMinRating = _filterMinRating.value,
+            filterColorLabel = _filterColorLabel.value,
+            filterHasLocation = _filterHasLocation.value,
+            filterHasKeywords = _filterHasKeywords.value,
+            filterHasProxies = _filterHasProxies.value,
+            filterFullResolution = _filterFullResolution.value,
+            filterHasAudio = _filterHasAudio.value,
+            filterOrientation = _filterOrientation.value,
+        )
 
     /** Record a settled browse location, unless a restore is in flight — then
      *  the fire is absorbed (and the latch released once the target is reached). */
@@ -544,10 +557,12 @@ class GridViewModel(
         navHistory.record(e)
     }
 
-    /** Re-apply the non-route part of an entry (source + grid/list + selection),
-     *  routing through the existing setters so the smart-collection snapshot
-     *  machinery runs identically to user-driven navigation. The collection is
-     *  resolved FIRST because setCollectionFilter rewrites locationPathFilter. */
+    /** Re-apply the non-route part of an entry (source + grid/list + selection +
+     *  library filter state), routing through the existing setters so the
+     *  smart-collection snapshot machinery runs identically to user-driven
+     *  navigation. The collection is resolved FIRST because setCollectionFilter
+     *  rewrites locationPathFilter; library filter state is restored LAST so any
+     *  smart-collection side effects are overridden with the recorded values. */
     fun applyEntryState(e: NavEntry) {
         val s = e.source
         // Collection first: setCollectionFilter expands smart-collection filters
@@ -558,6 +573,16 @@ class GridViewModel(
         setLocationFilter(s.locationPath)
         if (e.route == NavRoute.GRID) setViewMode(e.viewMode)
         if (e.videoId != null) selectVideo(e.videoId)
+        // Restore library filter state last.
+        searchVideos(e.searchQuery)
+        setMinRatingFilter(e.filterMinRating)
+        setColorLabelFilter(e.filterColorLabel)
+        setHasLocationFilter(e.filterHasLocation)
+        setHasKeywordsFilter(e.filterHasKeywords)
+        setHasProxiesFilter(e.filterHasProxies)
+        setFullResolutionFilter(e.filterFullResolution)
+        setHasAudioFilter(e.filterHasAudio)
+        setOrientationFilter(e.filterOrientation)
     }
 
     /** Move the history cursor back/forward and latch the target so the resulting

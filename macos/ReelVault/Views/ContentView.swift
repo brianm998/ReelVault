@@ -527,7 +527,17 @@ struct ContentView: View {
                  locationPaths: gridViewModel.selectedLocationPaths,
                  collectionId: gridViewModel.selectedCollectionId,
                  tagId: gridViewModel.filterTagId,
-                 selectedVideoId: gridViewModel.selectedVideoId)
+                 selectedVideoId: gridViewModel.selectedVideoId,
+                 searchQuery: gridViewModel.searchQuery,
+                 filterMinRating: gridViewModel.filterMinRating,
+                 filterColorLabel: gridViewModel.filterColorLabel,
+                 filterHasLocation: gridViewModel.filterHasLocation,
+                 filterHasKeywords: gridViewModel.filterHasKeywords,
+                 filterHasProxies: gridViewModel.filterHasProxies,
+                 filterFullResolution: gridViewModel.filterFullResolution,
+                 filterHasAudio: gridViewModel.filterHasAudio,
+                 filterOrientation: gridViewModel.filterOrientation,
+                 metadataColumns: gridViewModel.metadataColumns)
     }
 
     private func goBack() { if let s = history.goBack() { restore(s) } }
@@ -544,6 +554,20 @@ struct ContentView: View {
         gridViewModel.setLocationPaths(s.locationPaths)
         viewMode = s.viewMode
         gridViewModel.selectedVideoId = s.selectedVideoId
+        // Restore the library filter state. Called after source filters so any
+        // smart-collection side effects are overridden with the recorded values.
+        gridViewModel.restoreFilterState(
+            searchQuery: s.searchQuery,
+            filterMinRating: s.filterMinRating,
+            filterColorLabel: s.filterColorLabel,
+            filterHasLocation: s.filterHasLocation,
+            filterHasKeywords: s.filterHasKeywords,
+            filterHasProxies: s.filterHasProxies,
+            filterFullResolution: s.filterFullResolution,
+            filterHasAudio: s.filterHasAudio,
+            filterOrientation: s.filterOrientation,
+            metadataColumns: s.metadataColumns
+        )
         // Sync the cached summary + detail metadata for the restored selection so
         // the loupe and inspector show the right video. The grid/list/arrow-key
         // selection paths do this on a normal selection; nothing else re-drives it

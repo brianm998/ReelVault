@@ -2,25 +2,37 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import SwiftUI
+import ReelVaultKit
 
 /// One browse location for the back/forward history: the active view mode, the
-/// grid "source" filters, and the selected video. The macOS analogue of iOS's
-/// `NavState` (RootSplitView.swift).
+/// grid "source" filters, the selected video, and the complete library filter
+/// state. The macOS analogue of iOS's `NavState` (RootSplitView.swift).
 ///
 /// iOS captures a single mutually-exclusive `LibrarySection`, but the macOS
 /// sidebar lets a collection, a keyword tag, and one *or more* library-location
 /// paths be co-active (the daemon AND-combines them), so we capture all three to
 /// round-trip losslessly — the same approach the Android client takes.
 ///
-/// Facet filters (rating / colour / geo / search / attributes) are deliberately
-/// NOT captured — iOS omits them from `NavState` too, so back/forward restores
-/// the browse *path*, not every transient filter.
+/// Library filter state (search / rating / colour / attributes / metadata
+/// columns) is also captured so back/forward restores the exact filter the user
+/// had at each browse location, not whatever is currently active.
 struct NavState: Equatable {
     var viewMode: ContentView.ViewMode
     var locationPaths: [String]
     var collectionId: String?
     var tagId: String
     var selectedVideoId: String?
+    // Library filter state
+    var searchQuery: String
+    var filterMinRating: Int32
+    var filterColorLabel: String
+    var filterHasLocation: AttributeFilterState
+    var filterHasKeywords: AttributeFilterState
+    var filterHasProxies: AttributeFilterState
+    var filterFullResolution: AttributeFilterState
+    var filterHasAudio: AttributeFilterState
+    var filterOrientation: OrientationFilterState
+    var metadataColumns: [MetadataColumn]
 }
 
 /// Browser-style session navigation history — a port of iOS's `NavigationHistory`.

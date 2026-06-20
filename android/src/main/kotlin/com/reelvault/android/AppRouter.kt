@@ -24,6 +24,8 @@ import com.reelvault.android.viewmodel.NavEntry
 import com.reelvault.android.viewmodel.NavRoute
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.map
 
 sealed class Screen(val route: String) {
     object Connection : Screen("connection")
@@ -103,6 +105,25 @@ fun AppRouter() {
                 if (navController.currentDestination?.route == Screen.Grid.route)
                     gridViewModel.recordNav(NavRoute.GRID, null)
             }
+    }
+    LaunchedEffect(navController) {
+        // Library filter changes (search / rating / colour / attribute presence),
+        // while browsing the grid. Each stream drops(1) to skip the initial
+        // conflated replay; merge() fires as soon as any one of them emits.
+        merge(
+            gridViewModel.searchQuery.drop(1).map {},
+            gridViewModel.filterMinRating.drop(1).map {},
+            gridViewModel.filterColorLabel.drop(1).map {},
+            gridViewModel.filterHasLocation.drop(1).map {},
+            gridViewModel.filterHasKeywords.drop(1).map {},
+            gridViewModel.filterHasProxies.drop(1).map {},
+            gridViewModel.filterFullResolution.drop(1).map {},
+            gridViewModel.filterHasAudio.drop(1).map {},
+            gridViewModel.filterOrientation.drop(1).map {},
+        ).collect {
+            if (navController.currentDestination?.route == Screen.Grid.route)
+                gridViewModel.recordNav(NavRoute.GRID, null)
+        }
     }
 
     // The single funnel every chevron / history-back goes through: apply the

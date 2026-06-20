@@ -1642,6 +1642,39 @@ public class GridViewModel: ObservableObject {
         else { scheduleFacetRefresh() }
     }
 
+    /// Bulk-restore all facet filter fields from a history entry, then trigger a
+    /// single reload. Avoids the multiple-reload cost of calling each individual
+    /// setter and sidesteps the 0.5 s searchQuery debounce for the immediate load
+    /// (the debounce subscriber will fire again 0.5 s later, but with identical
+    /// state so the extra reload is harmless). Does NOT persist metadataColumns to
+    /// prefs — history restores are transient; the user's saved columns are
+    /// overwritten only by an explicit column-management action.
+    public func restoreFilterState(
+        searchQuery: String,
+        filterMinRating: Int32,
+        filterColorLabel: String,
+        filterHasLocation: AttributeFilterState,
+        filterHasKeywords: AttributeFilterState,
+        filterHasProxies: AttributeFilterState,
+        filterFullResolution: AttributeFilterState,
+        filterHasAudio: AttributeFilterState,
+        filterOrientation: OrientationFilterState,
+        metadataColumns: [MetadataColumn]
+    ) {
+        var needsReload = false
+        if self.searchQuery != searchQuery { self.searchQuery = searchQuery; needsReload = true }
+        if self.filterMinRating != filterMinRating { self.filterMinRating = filterMinRating; needsReload = true }
+        if self.filterColorLabel != filterColorLabel { self.filterColorLabel = filterColorLabel; needsReload = true }
+        if self.filterHasLocation != filterHasLocation { self.filterHasLocation = filterHasLocation; needsReload = true }
+        if self.filterHasKeywords != filterHasKeywords { self.filterHasKeywords = filterHasKeywords; needsReload = true }
+        if self.filterHasProxies != filterHasProxies { self.filterHasProxies = filterHasProxies; needsReload = true }
+        if self.filterFullResolution != filterFullResolution { self.filterFullResolution = filterFullResolution; needsReload = true }
+        if self.filterHasAudio != filterHasAudio { self.filterHasAudio = filterHasAudio; needsReload = true }
+        if self.filterOrientation != filterOrientation { self.filterOrientation = filterOrientation; needsReload = true }
+        if self.metadataColumns != metadataColumns { self.metadataColumns = metadataColumns; needsReload = true }
+        if needsReload { reloadForFilterChange() }
+    }
+
     /// Reset the Library Filter (search + attribute + metadata values) so all
     /// videos show, subject to the higher-level location / keyword filters. The
     /// metadata column layout (keys/order) is preserved.
