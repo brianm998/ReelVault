@@ -9,6 +9,7 @@ import ReelVaultKit
 struct ConnectedRootView: View {
     @EnvironmentObject private var router: AppRouter
     @StateObject private var grid = GridViewModel()
+    @ObservedObject private var offline = OfflineLibrary.shared
 
     var body: some View {
         // On-device ingest only runs in the foreground, so a thin banner tells the
@@ -27,12 +28,31 @@ struct ConnectedRootView: View {
                 // — by a remote server's file-watcher/uploads, or by Local mode's
                 // background Photos ingest, which streams in row-by-row.
                 grid.startCatalogEventStream()
+                // Start the live server health monitor (remote mode only; no-op
+                // when connection is nil / Local mode).
+                router.startConnectionMonitor()
             }
             // Switching library mode tears this view down. Stop the long-lived
-            // stream so it (a) doesn't keep the connection's runConnections()
-            // alive — which would hang the disconnect/mode-switch — and (b)
-            // releases its strong `self`, letting the view-model dealloc.
-            .onDisappear { grid.stopCatalogEventStream() }
+            // stream and the monitor so they don't keep the connection alive.
+            .onDisappear {
+                grid.stopCatalogEventStream()
+                router.stopConnectionMonitor()
+            }
+            // Prompt to go offline when the server drops and the user has
+            // downloaded videos to fall back on. The alert only surfaces when
+            // offline.entries is non-empty; in remote-only sessions it stays
+            // hidden and the gRPC errors surface normally.
+            .alert("Server Unreachable",
+                   isPresented: Binding(
+                    get: { router.serverUnreachable && !offline.entries.isEmpty },
+                    set: { _ in }
+                   )
+            ) {
+                Button("Go Offline") { router.enterOffline() }
+                Button("Keep Waiting", role: .cancel) { router.keepWaiting() }
+            } message: {
+                Text("The ReelVault server is no longer reachable. You can browse your downloaded videos offline.")
+            }
     }
 }
 

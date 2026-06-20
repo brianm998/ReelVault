@@ -133,10 +133,18 @@ fun ConnectionFlowScreen(
             onConnected()
             return@LaunchedEffect
         }
-        // Auto-connect failed; fall through to normal discovery.
+        // Auto-connect failed; fall through to discovery.
         RemoteConnection.endpoint = null
         autoConnecting = false
-        state = ConnectionState.Discovering
+        // If the user has offline downloads, skip the NSD timeout and show the
+        // server list (with "Browse Downloads" button) immediately — the server
+        // is unreachable and waiting 4 s for NSD to time out just delays the
+        // offline option. NSD keeps running in the background; if it finds a
+        // server the ChooseServer view updates automatically.
+        state = if (com.reelvault.android.data.OfflineLibrary.entries.value.isNotEmpty())
+            ConnectionState.ChooseServer(discovered.toList())
+        else
+            ConnectionState.Discovering
     }
 
     // ── NSD discovery ─────────────────────────────────────────────────────────

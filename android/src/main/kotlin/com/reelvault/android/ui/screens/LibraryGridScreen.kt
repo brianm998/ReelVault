@@ -85,6 +85,7 @@ fun LibraryGridScreen(
     onOpenSettings: () -> Unit,
     onOpenMap: () -> Unit,
     onDisconnect: () -> Unit,
+    onGoOffline: () -> Unit = {},
     // Catalog source switching. [isLocal] true = on-device (embedded core) mode;
     // [onOpenLocalMedia] switches server→local, [onSwitchToServer] local→server.
     isLocal: Boolean = false,
@@ -121,6 +122,10 @@ fun LibraryGridScreen(
     val gridDensity by vm.gridDensity.collectAsStateWithLifecycle()
     // On-device ingest progress (Local mode) — drives the "importing" banner.
     val isIngesting by MediaStoreIngest.isIngesting.collectAsStateWithLifecycle()
+    // Server health monitor — shows offline-mode prompt when the server drops.
+    val serverUnreachable by vm.serverUnreachable.collectAsStateWithLifecycle()
+    val offlineEntries by com.reelvault.android.data.OfflineLibrary.entries
+        .collectAsStateWithLifecycle()
 
     // ── Local UI state ───────────────────────────────────────────────────
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -184,6 +189,34 @@ fun LibraryGridScreen(
     }
     DisposableEffect(Unit) {
         onDispose { vm.stopCatalogEventStream() }
+    }
+
+    // ── Server unreachable / go-offline prompt ───────────────────────────
+    val savedServerEntry = remember {
+        com.reelvault.android.data.DefaultServerPrefs(context).load()
+    }
+    if (serverUnreachable && offlineEntries.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = {
+                val e = savedServerEntry
+                if (e != null) vm.keepWaiting(e.host, e.grpcPort) else vm.stopConnectionMonitor()
+            },
+            title = { Text(stringResource(R.string.offline_server_unreachable_title)) },
+            text = { Text(stringResource(R.string.offline_server_unreachable_message)) },
+            confirmButton = {
+                TextButton(onClick = onGoOffline) {
+                    Text(stringResource(R.string.offline_go_offline))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    val e = savedServerEntry
+                    if (e != null) vm.keepWaiting(e.host, e.grpcPort) else vm.stopConnectionMonitor()
+                }) {
+                    Text(stringResource(R.string.offline_keep_waiting))
+                }
+            }
+        )
     }
 
     // ── Incoming pairing dialog ──────────────────────────────────────────
