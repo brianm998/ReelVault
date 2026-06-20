@@ -268,6 +268,21 @@ data class VideoMetadata(
     /** Dolby Vision profile number (0–9 for profiles 4, 5, 8.1, 8.4, etc.);
      *  -1 when absent. Influences the dynamic_range label when present. */
     val dolbyVisionProfile: Int = -1,
+    /** Sony Professional XML sidecar metadata: production scene and take numbers,
+     *  ND filter setting, iris F-number, and LUT name. All empty/0 when not present. */
+    val productionScene: String = "",
+    val productionTake: String = "",
+    val ndFilter: String = "",
+    val irisFNumber: Double = 0.0,
+    val lutName: String = "",
+    /** Extended 360° / spatial audio parameters: initial viewer orientation (yaw,
+     *  pitch, roll in degrees), stereo mode ("top-bottom", "left-right", "mono"),
+     *  and ambisonics channel ordering convention ("ACN", "Furse-Malham"). */
+    val spatialInitialHeading: Double = 0.0,
+    val spatialInitialPitch: Double = 0.0,
+    val spatialInitialRoll: Double = 0.0,
+    val stereoMode: String = "",
+    val ambisonicsChannelOrder: String = "",
 ) {
     val resolution: String get() = "$width x $height"
     /** True when the clip is 360°/spherical. */

@@ -311,6 +311,16 @@ class VideoRepository(private val channelFactory: ChannelFactory) {
             chaptersJson = proto.chaptersJson,
             subtitleTracks = proto.subtitleTracks,
             dolbyVisionProfile = proto.dolbyVisionProfile,
+            productionScene = proto.productionScene,
+            productionTake = proto.productionTake,
+            ndFilter = proto.ndFilter,
+            irisFNumber = proto.irisFNumber,
+            lutName = proto.lutName,
+            spatialInitialHeading = proto.spatialInitialHeading,
+            spatialInitialPitch = proto.spatialInitialPitch,
+            spatialInitialRoll = proto.spatialInitialRoll,
+            stereoMode = proto.stereoMode,
+            ambisonicsChannelOrder = proto.ambisonicsChannelOrder,
         )
     }
 
