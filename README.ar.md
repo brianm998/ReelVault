@@ -22,9 +22,9 @@
 ## البنية المعمارية
 
 ```
-Desktop / macOS clients          iOS client (iPhone / iPad)
+Desktop / macOS clients          iOS / Android clients
    ↓ gRPC over loopback             ↓ gRPC + HTTPS media over the LAN
-   │                                │ (mDNS discovery · pinned TLS · paired)
+   │                                │ (mDNS/NSD discovery · pinned TLS · paired)
    └───────────────┬────────────────┘
                    ↓
         Rust Backend Daemon (reelvault-core)
@@ -39,6 +39,13 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 - **عميل SwiftUI macOS** (`macos/`) — تطبيق macOS أصيل مكافئ للميزات، مع نفس التدفق التلقائي للإطلاق، وقائمة ملفات حقيقية لـ macOS (مجموعة Commands)، وعنوان نافذة متفاعل يتتبع الفهرس المفتوح.
 
 - **عميل SwiftUI iOS** (`ios/`) — تطبيق iPhone / iPad **عن بُعد حصراً**. لا يمتلك وصولاً للملفات المحلية ولا يحتوي على خادم مدمج: يكتشف الخادم عبر Wi‑Fi (mDNS)، ويتصل عبر قناة TLS مثبتة ببصمة الأصابع بعد إقران لمرة واحدة، ويتصفح عبر gRPC، و**يبث** الفيديو (HLS مخفض الدقة) من خادم الوسائط. يستبدل سحب المحرر بصفحة مشاركة iOS ويضيف رفعاً من الصور / الملفات. راجع [`ios/README.md`](ios/README.md).
+
+- **Kotlin Compose Android client** (`android/`) — A **remote-only**
+  Android phone / tablet app. Connects to a daemon over the LAN (NSD
+  discovery), streams video via ExoPlayer, and replaces editor drag-out with
+  the Android share intent. Also embeds the full Rust core for on-device local
+  library access — browse, catalog, and upload footage directly from the
+  device. See [`android/README.md`](android/README.md).
 
 - **ReelVaultKit** (`kit/`) — حزمة SwiftPM محلية من كود Swift المشترك المستخدم من قبل **كلا** عميلَي Apple: النماذج، نماذج العرض، عميل gRPC، الاكتشاف، TLS المثبت، وطبقة التخزين المؤقت/البث للوسائط.
 
@@ -55,7 +62,14 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 **النواة**
 - [x] خادم gRPC مع سطح RPC كامل (فيديوهات، بحث، مسح، وسوم، مجموعات، مجموعات مكدسة، فلاتر، حالة، إعداد، دورة حياة الفهرس).
 - [x] فهرس SQLite بوضع WAL + FTS5؛ تبديل الفهرس أثناء التشغيل عبر `OpenCatalog` / `CloseCatalog`.
-- [x] استخراج البيانات الوصفية عبر FFprobe (ترميز، دقة، FPS، معدل البت، HDR، EXIF، GPS، كاميرا/عدسة).
+- [x] Rich metadata extraction via FFprobe + platform-native helpers: codec,
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera.، دقة، FPS، معدل البت، HDR، EXIF، GPS، كاميرا/عدسة).
 - [x] إنشاء الصور المصغرة وإطارات الاستعراض بأسلوب Lightroom (10 إطارات لكل فيديو) مع أقفال لكل فيديو لتجنب تكرار العمل.
 - [x] تقليص FFmpeg المتزامن (يعتمد افتراضياً على عدد أنوية المعالج) لمنع الإجهاد الزائد على التخزين المدعوم بـ SAN أثناء مسح المكتبات الكبيرة.
 - [x] مسح المكتبة مع اختيار التكرار التلقائي وتجميع المتغيرات.
@@ -174,7 +188,8 @@ make build            # iOS Simulator; or open ReelVault.xcodeproj to run on a d
 
 ## المساهمة
 
-راجع [`CLAUDE.md`](CLAUDE.md) للاطلاع على إرشادات التطوير. طلبات السحب مرحّب بها — يرجى الحفاظ على تكافؤ الميزات بين العميلين، وإضافة رؤوس SPDX إلى أي ملفات مصدر جديدة (راجع قسم الترخيص أدناه).
+راجع [`CLAUDE.md`](CLAUDE.md) للاطلاع على إرشادات التطوير. طلبات السحب مرحّب بها — يرجى الحفاظ على تكافؤ الميزات بين جميع العملاء الأربعة حيثما كان ذلك مناسبًا
+(راجع CLAUDE.md للاطلاع على الانحرافات المشروعة لكل منصة)، وإضافة رؤوس SPDX إلى أي ملفات مصدر جديدة (راجع قسم الترخيص أدناه)..
 
 ## الترخيص
 

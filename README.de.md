@@ -22,9 +22,9 @@ ReelVault hilft dir dabei:
 ## Architektur
 
 ```
-Desktop / macOS clients          iOS client (iPhone / iPad)
+Desktop / macOS clients          iOS / Android clients
    ↓ gRPC over loopback             ↓ gRPC + HTTPS media over the LAN
-   │                                │ (mDNS discovery · pinned TLS · paired)
+   │                                │ (mDNS/NSD discovery · pinned TLS · paired)
    └───────────────┬────────────────┘
                    ↓
         Rust Backend Daemon (reelvault-core)
@@ -39,6 +39,13 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 - **SwiftUI macOS-Client** (`macos/`) — Native macOS-App mit identischem Funktionsumfang, demselben Auto-Start-Ablauf, einem echten macOS-Datei-Menü (Commands-Gruppe) und einem reaktiven Fenstertitel, der den geöffneten Katalog anzeigt.
 
 - **SwiftUI iOS-Client** (`ios/`) — Eine **ausschließlich remote** betriebene iPhone-/iPad-App. Sie hat keinen lokalen Dateizugriff und enthält keinen Daemon: Sie entdeckt einen Daemon über Wi‑Fi (mDNS), verbindet sich nach einmaliger Kopplung über einen per Fingerabdruck gepinnten TLS-Kanal, durchsucht über gRPC und **streamt** Video (herunterskaliertes HLS) vom Medienserver des Daemons. Ersetzt das Editor-Drag-out durch das iOS-Teilen-Menü und ergänzt den Upload aus Fotos/Dateien. Siehe [`ios/README.md`](ios/README.md).
+
+- **Kotlin Compose Android client** (`android/`) — A **remote-only**
+  Android phone / tablet app. Connects to a daemon over the LAN (NSD
+  discovery), streams video via ExoPlayer, and replaces editor drag-out with
+  the Android share intent. Also embeds the full Rust core for on-device local
+  library access — browse, catalog, and upload footage directly from the
+  device. See [`android/README.md`](android/README.md).
 
 - **ReelVaultKit** (`kit/`) — Ein lokales SwiftPM-Paket mit gemeinsamem Swift-Code für **beide** Apple-Clients: Modelle, View-Models, den gRPC-Client, Discovery, gepinntes TLS und die Medien-Cache-/Streaming-Schicht.
 
@@ -55,7 +62,14 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 **Kern**
 - [x] gRPC-Daemon mit vollständiger RPC-Oberfläche (Videos, Suche, Scan, Tags, Kollektionen, Stapel, Filter, Status, Konfiguration, Katalog-Lebenszyklus).
 - [x] SQLite-Katalog mit WAL-Modus + FTS5; Laufzeit-Katalog-Heiß-Tausch über `OpenCatalog` / `CloseCatalog`.
-- [x] FFprobe-Metadatenextraktion (Codec, Auflösung, FPS, Bitrate, HDR, EXIF, GPS, Kamera/Objektiv).
+- [x] Rich metadata extraction via FFprobe + platform-native helpers: codec,
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera.
 - [x] Miniaturbilder und Lightroom-artige Scrub-Frame-Generierung (10 Frames pro Video) mit Pro-Video-Sperren zur Deduplizierung von Arbeit.
 - [x] Gleichzeitige ffmpeg-Drosselung (standardmäßig auf die CPU-Anzahl des Hosts) um zu verhindern, dass Bibliotheksscans SAN-gesichertem Speicher überlasten.
 - [x] Bibliotheks-Scan mit optionaler Rekursion und automatischer Variantengruppierung.
@@ -174,7 +188,8 @@ Beim ersten Start entdeckt die App den Daemon über mDNS; du autorisierst das Ge
 
 ## Mitwirken
 
-Entwicklungsrichtlinien findest du in [`CLAUDE.md`](CLAUDE.md). Pull Requests sind willkommen — bitte halte die beiden Clients im Funktionsumfang gleich und füge SPDX-Header zu allen neuen Quelldateien hinzu (siehe Lizenz unten).
+Entwicklungsrichtlinien findest du in [`CLAUDE.md`](CLAUDE.md). Pull Requests sind willkommen — bitte die Funktionsparität aller vier Clients aufrechterhalten, wo es angemessen ist
+(zulässige plattformspezifische Abweichungen findest du in CLAUDE.md), und SPDX-Header zu neuen Quelldateien hinzufügen (siehe Lizenz unten).
 
 ## Lizenz
 

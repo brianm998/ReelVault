@@ -319,8 +319,9 @@
       padding: 20px;
     }
 
-    /* ── iOS-only screen ───────────────────────────────────────────────── */
-    #ios-screen { display: none; }
+    /* ── Mobile-only screens ────────────────────────────────────────────── */
+    #ios-screen     { display: none; }
+    #android-screen { display: none; }
     #ios-screen .ios-hero {
       text-align: center;
       padding: 20px 0 28px;
@@ -395,6 +396,8 @@
       <option value="th">ภาษาไทย</option>
       <option value="uk">Українська</option>
       <option value="cs">Čeština</option>
+      <option value="ur">اردو</option>
+      <option value="bn">বাংলা</option>
     </select>
   </div>
 
@@ -419,6 +422,26 @@
     </div>
   </div>
 
+  <!-- Android-only screen -->
+  <div class="card" id="android-screen">
+    <div class="ios-hero">
+      <div class="phone-icon">🤖</div>
+      <h2 data-i18n="androidHeroTitle">You're on Android</h2>
+      <p data-i18n="androidHeroDesc">
+        ReelVault for Android connects to your Mac, PC, or Linux library server over WiFi
+        so you can browse and play your full video collection from anywhere in your home.
+        It also supports an on-device local library.
+      </p>
+      <a class="appstore-btn" href="PLAYSTORE_URL_PLACEHOLDER" target="_blank" data-i18n="playStoreBtn">
+        Get ReelVault on Google Play
+      </a>
+    </div>
+    <div style="text-align:center; font-size:13px; color:var(--text-muted); margin-top:8px;">
+      <span data-i18n="needServer">Need to set up the server?</span>
+      <button class="platform-change" style="font-size:13px;" onclick="showDesktopFlow()" data-i18n="getDesktop">Get the desktop app →</button>
+    </div>
+  </div>
+
   <!-- Desktop download flow -->
   <div class="card" id="desktop-screen">
 
@@ -433,6 +456,7 @@
       <button class="os-btn" data-os="mac"     onclick="pickOS(this)">macOS</button>
       <button class="os-btn" data-os="windows" onclick="pickOS(this)">Windows</button>
       <button class="os-btn" data-os="linux"   onclick="pickOS(this)">Linux</button>
+      <button class="os-btn" data-os="android" onclick="pickOS(this)">Android</button>
     </div>
 
     <div class="divider"></div>
@@ -460,16 +484,16 @@
 
       <div class="choice" id="choice-wifi" onclick="pickMode('wifi')">
         <div class="choice-icon">📡</div>
-        <div class="choice-title" data-i18n="wifiTitle">+ iPhone &amp; iPad over WiFi</div>
+        <div class="choice-title" data-i18n="wifiTitle">+ iPhone, iPad &amp; Android over WiFi</div>
         <div class="choice-desc" data-i18n="wifiDesc">
           Install a lightweight background service that streams your library to
-          any iPhone or iPad on the same WiFi. No cloud, no subscriptions —
+          any iPhone, iPad, or Android device on the same WiFi. No cloud, no subscriptions —
           direct local network streaming.
         </div>
         <ul class="choice-bullets">
-          <li data-i18n="wifiB1">Browse &amp; play from iOS devices</li>
+          <li data-i18n="wifiB1">Browse &amp; play from iOS and Android devices</li>
           <li data-i18n="wifiB2">Auto-discovered on your WiFi</li>
-          <li data-i18n="wifiB3">Upload footage from iPhone</li>
+          <li data-i18n="wifiB3">Upload footage from iPhone or Android</li>
           <li data-i18n="wifiB4">Pairs once with a 6-digit code</li>
         </ul>
       </div>
@@ -499,10 +523,14 @@
     // TODO: replace with real App Store URL when published
     const APPSTORE_URL = 'https://apps.apple.com/app/reelvault/id0000000000';
 
+    // TODO: replace with real Play Store URL when published
+    const PLAYSTORE_URL = 'https://play.google.com/store/apps/details?id=com.reelvault.android';
+
     const OS_META = {
       mac:     { label: 'macOS',   icon: '🍎' },
       windows: { label: 'Windows', icon: '🪟' },
       linux:   { label: 'Linux',   icon: '🐧' },
+      android: { label: 'Android', icon: '🤖' },
     };
 
     // ── Translations ─────────────────────────────────────────────────────────
@@ -520,11 +548,11 @@
         localB2: "Single-computer setup",
         localB3: "No ports or firewall rules",
         localB4: "Zero network configuration",
-        wifiTitle: "+ iPhone & iPad over WiFi",
-        wifiDesc: "Install a lightweight background service that streams your library to any iPhone or iPad on the same WiFi. No cloud, no subscriptions — direct local network streaming.",
-        wifiB1: "Browse & play from iOS devices",
+        wifiTitle: "+ iPhone, iPad & Android over WiFi",
+        wifiDesc: "Install a lightweight background service that streams your library to any iPhone, iPad, or Android device on the same WiFi. No cloud, no subscriptions — direct local network streaming.",
+        wifiB1: "Browse & play from iOS and Android devices",
         wifiB2: "Auto-discovered on your WiFi",
-        wifiB3: "Upload footage from iPhone",
+        wifiB3: "Upload footage from iPhone or Android",
         wifiB4: "Pairs once with a 6-digit code",
         downloadBtn: "Download ReelVault {version}",
         viewAllBtn: "View all downloads on GitHub ↗",
@@ -532,16 +560,23 @@
         macReq: "Requires macOS 13 Ventura or later",
         linuxReq: "Requires Ubuntu 22.04+ or equivalent",
         winReq: "Requires Windows 10 (64-bit) or later",
+        androidReq: "Requires Android 8.0 (Oreo) or later",
         iosHeroTitle: "You're on iPhone or iPad",
         iosHeroDesc: "ReelVault for iOS connects to your Mac, PC, or Linux library server over WiFi so you can browse and play your full video collection from anywhere in your home.",
         appStoreBtn: "Get ReelVault on the App Store",
+        androidHeroTitle: "You're on Android",
+        androidHeroDesc: "ReelVault for Android connects to your Mac, PC, or Linux library server over WiFi so you can browse and play your full video collection from anywhere in your home. It also supports an on-device local library.",
+        playStoreBtn: "Get ReelVault on Google Play",
         needServer: "Need to set up the server?",
         getDesktop: "Get the desktop app →",
         iosCardTitle: "Also install the iOS app",
         iosCardDesc: "The server you're downloading above advertises itself on your local WiFi via mDNS. Open the ReelVault iOS app on the same network and it will find your library automatically — no IP addresses to type.",
         appStoreLink: "Get ReelVault on the App Store →",
+        androidCardTitle: "Also install the Android app",
+        androidCardDesc: "The server you're downloading above advertises itself on your local WiFi via mDNS. Open the ReelVault Android app on the same network and it will find your library automatically — no IP addresses to type.",
+        playStoreLink: "Get ReelVault on Google Play →",
         setupNoteTitle: "Setup takes about 2 minutes:",
-        setupNoteBody: "After installing this package, open a Terminal and run {cmd} — the daemon starts on boot and logs a 6-digit pairing code to {logPath}. Enter that code in the iOS app to pair.",
+        setupNoteBody: "After installing this package, open a Terminal and run {cmd} — the daemon starts on boot and logs a 6-digit pairing code to {logPath}. Enter that code in the iOS or Android app to pair.",
         footerGH: "GitHub",
         footerReleases: "All releases",
         footerDocs: "Documentation",
@@ -560,9 +595,9 @@
         localB2: "单机配置",
         localB3: "无需开放端口或防火墙规则",
         localB4: "零网络配置",
-        wifiTitle: "+ 通过 WiFi 连接 iPhone 和 iPad",
-        wifiDesc: "安装一个轻量级后台服务，将您的视频库串流到同一 WiFi 下的任意 iPhone 或 iPad。无需云端，无需订阅——直接本地网络串流。",
-        wifiB1: "从 iOS 设备浏览和播放",
+        wifiTitle: "+ iPhone、iPad 和 Android 通过 WiFi 连接",
+        wifiDesc: "安装一项轻量后台服务，将您的媒体库串流至同一 WiFi 网络上的任意 iPhone、iPad 或 Android 设备。无需云端，无需订阅——直接通过本地网络串流。",
+        wifiB1: "从 iOS 和 Android 设备浏览并播放",
         wifiB2: "在 WiFi 上自动发现",
         wifiB3: "从 iPhone 上传素材",
         wifiB4: "使用 6 位数字码完成一次性配对",
@@ -572,14 +607,21 @@
         macReq: "需要 macOS 13 Ventura 或更高版本",
         linuxReq: "需要 Ubuntu 22.04+ 或同等系统",
         winReq: "需要 Windows 10（64 位）或更高版本",
+        androidReq: "需要 Android 8.0（Oreo）或更高版本",
         iosHeroTitle: "您正在使用 iPhone 或 iPad",
         iosHeroDesc: "iOS 版 ReelVault 通过 WiFi 连接您的 Mac、PC 或 Linux 媒体库服务器，让您在家中任何地方都能浏览和播放完整的视频收藏。",
         appStoreBtn: "在 App Store 下载 ReelVault",
+        androidHeroTitle: "您正在使用 Android",
+        androidHeroDesc: "ReelVault for Android 通过 WiFi 连接您的 Mac、PC 或 Linux 媒体库服务器，让您在家中任何地方都能浏览和播放完整的视频收藏。同时支持设备本地媒体库。",
+        playStoreBtn: "在 Google Play 获取 ReelVault",
         needServer: "需要设置服务器？",
         getDesktop: "获取桌面版 →",
         iosCardTitle: "同时安装 iOS 应用",
         iosCardDesc: "您正在下载的服务器会通过 mDNS 在本地 WiFi 上广播自身。在同一网络上打开 ReelVault iOS 应用，它会自动找到您的视频库——无需输入任何 IP 地址。",
         appStoreLink: "在 App Store 下载 ReelVault →",
+        androidCardTitle: "同时安装 Android 应用",
+        androidCardDesc: "您正在下载的服务器会通过 mDNS 在本地 WiFi 上广播自身。在同一网络上打开 ReelVault Android 应用，它将自动发现您的媒体库——无需手动输入 IP 地址。",
+        playStoreLink: "在 Google Play 获取 ReelVault →",
         setupNoteTitle: "设置大约需要 2 分钟：",
         setupNoteBody: "安装此软件包后，打开终端并运行 {cmd}——守护进程将在启动时自动运行，并将 6 位配对码记录到 {logPath}。在 iOS 应用中输入该码即可完成配对。",
         footerGH: "GitHub",
@@ -600,9 +642,9 @@
         localB2: "Configuración para un solo equipo",
         localB3: "Sin puertos ni reglas de cortafuegos",
         localB4: "Cero configuración de red",
-        wifiTitle: "+ iPhone y iPad por WiFi",
-        wifiDesc: "Instala un servicio en segundo plano ligero que transmite tu biblioteca a cualquier iPhone o iPad en la misma WiFi. Sin nube, sin suscripciones — transmisión directa por red local.",
-        wifiB1: "Explorar y reproducir desde dispositivos iOS",
+        wifiTitle: "+ iPhone, iPad y Android por WiFi",
+        wifiDesc: "Instale un servicio en segundo plano liviano que transmite su biblioteca a cualquier iPhone, iPad o dispositivo Android en la misma red WiFi. Sin nube, sin suscripciones — transmisión directa por red local.",
+        wifiB1: "Explore y reproduzca desde dispositivos iOS y Android",
         wifiB2: "Descubierto automáticamente en tu WiFi",
         wifiB3: "Sube material desde iPhone",
         wifiB4: "Se empareja una vez con un código de 6 dígitos",
@@ -612,14 +654,21 @@
         macReq: "Requiere macOS 13 Ventura o posterior",
         linuxReq: "Requiere Ubuntu 22.04+ o equivalente",
         winReq: "Requiere Windows 10 (64 bits) o posterior",
+        androidReq: "Requiere Android 8.0 (Oreo) o posterior",
         iosHeroTitle: "Estás en iPhone o iPad",
         iosHeroDesc: "ReelVault para iOS se conecta a tu servidor de biblioteca en Mac, PC o Linux a través de WiFi para que puedas explorar y reproducir tu colección completa de vídeos desde cualquier lugar de tu hogar.",
         appStoreBtn: "Obtener ReelVault en el App Store",
+        androidHeroTitle: "Estás en Android",
+        androidHeroDesc: "ReelVault para Android se conecta a su servidor de biblioteca en Mac, PC o Linux a través de WiFi para que pueda explorar y reproducir toda su colección de videos desde cualquier lugar de su hogar. También admite una biblioteca local en el dispositivo.",
+        playStoreBtn: "Obtener ReelVault en Google Play",
         needServer: "¿Necesitas configurar el servidor?",
         getDesktop: "Obtener la app de escritorio →",
         iosCardTitle: "Instala también la app para iOS",
         iosCardDesc: "El servidor que estás descargando se anuncia en tu WiFi local mediante mDNS. Abre la app ReelVault para iOS en la misma red y encontrará tu biblioteca automáticamente — sin necesidad de escribir direcciones IP.",
         appStoreLink: "Obtener ReelVault en el App Store →",
+        androidCardTitle: "También instale la aplicación Android",
+        androidCardDesc: "El servidor que está descargando arriba se anuncia en su red WiFi local mediante mDNS. Abra la aplicación ReelVault para Android en la misma red y encontrará su biblioteca automáticamente — sin necesidad de escribir direcciones IP.",
+        playStoreLink: "Obtener ReelVault en Google Play →",
         setupNoteTitle: "La configuración tarda unos 2 minutos:",
         setupNoteBody: "Después de instalar este paquete, abre una Terminal y ejecuta {cmd} — el daemon se inicia al arrancar y registra un código de emparejamiento de 6 dígitos en {logPath}. Introduce ese código en la app de iOS para emparejar.",
         footerGH: "GitHub",
@@ -640,9 +689,9 @@
         localB2: "Einrichtung für einen einzelnen Computer",
         localB3: "Keine Ports oder Firewall-Regeln",
         localB4: "Null Netzwerkkonfiguration",
-        wifiTitle: "+ iPhone & iPad über WiFi",
-        wifiDesc: "Installiere einen schlanken Hintergrunddienst, der deine Bibliothek auf jedes iPhone oder iPad im selben WiFi überträgt. Keine Cloud, keine Abonnements — direktes lokales Netzwerk-Streaming.",
-        wifiB1: "Von iOS-Geräten durchsuchen & abspielen",
+        wifiTitle: "+ iPhone, iPad & Android über WLAN",
+        wifiDesc: "Installieren Sie einen schlanken Hintergrunddienst, der Ihre Bibliothek auf jedes iPhone, iPad oder Android-Gerät im selben WLAN streamt. Keine Cloud, keine Abonnements — direktes lokales Netzwerk-Streaming.",
+        wifiB1: "Von iOS- und Android-Geräten durchsuchen und abspielen",
         wifiB2: "Automatisch im WiFi erkannt",
         wifiB3: "Aufnahmen vom iPhone hochladen",
         wifiB4: "Einmalige Kopplung mit einem 6-stelligen Code",
@@ -652,14 +701,21 @@
         macReq: "Erfordert macOS 13 Ventura oder neuer",
         linuxReq: "Erfordert Ubuntu 22.04+ oder gleichwertig",
         winReq: "Erfordert Windows 10 (64-Bit) oder neuer",
+        androidReq: "Erfordert Android 8.0 (Oreo) oder höher",
         iosHeroTitle: "Du verwendest iPhone oder iPad",
         iosHeroDesc: "ReelVault für iOS verbindet sich über WiFi mit deinem Mac-, PC- oder Linux-Bibliotheksserver, damit du deine gesamte Videosammlung von überall in deinem Zuhause durchsuchen und abspielen kannst.",
         appStoreBtn: "ReelVault im App Store holen",
+        androidHeroTitle: "Sie verwenden Android",
+        androidHeroDesc: "ReelVault für Android verbindet sich über WLAN mit Ihrem Mac-, PC- oder Linux-Bibliotheksserver, damit Sie Ihre gesamte Videosammlung von überall in Ihrem Zuhause durchsuchen und abspielen können. Es unterstützt auch eine lokale Bibliothek auf dem Gerät.",
+        playStoreBtn: "ReelVault bei Google Play holen",
         needServer: "Server einrichten?",
         getDesktop: "Desktop-App holen →",
         iosCardTitle: "Installiere auch die iOS-App",
         iosCardDesc: "Der Server, den du gerade herunterlädst, kündigt sich über mDNS in deinem lokalen WiFi an. Öffne die ReelVault iOS-App im selben Netzwerk und sie findet deine Bibliothek automatisch — keine IP-Adressen eintippen.",
         appStoreLink: "ReelVault im App Store holen →",
+        androidCardTitle: "Auch die Android-App installieren",
+        androidCardDesc: "Der Server, den Sie oben herunterladen, kündigt sich über mDNS in Ihrem lokalen WLAN an. Öffnen Sie die ReelVault-Android-App im selben Netzwerk, und sie findet Ihre Bibliothek automatisch — keine IP-Adressen erforderlich.",
+        playStoreLink: "ReelVault bei Google Play holen →",
         setupNoteTitle: "Die Einrichtung dauert etwa 2 Minuten:",
         setupNoteBody: "Nach der Installation dieses Pakets öffne ein Terminal und führe {cmd} aus — der Daemon startet beim Hochfahren und protokolliert einen 6-stelligen Kopplungscode in {logPath}. Gib diesen Code in der iOS-App ein, um zu koppeln.",
         footerGH: "GitHub",
@@ -680,9 +736,9 @@
         localB2: "シングルコンピューター構成",
         localB3: "ポートやファイアウォールルール不要",
         localB4: "ネットワーク設定ゼロ",
-        wifiTitle: "+ WiFi 経由で iPhone と iPad に対応",
-        wifiDesc: "同じ WiFi に接続された任意の iPhone または iPad にライブラリをストリーミングする軽量バックグラウンドサービスをインストールします。クラウドや定期購読なし — ローカルネットワークで直接ストリーミング。",
-        wifiB1: "iOS デバイスから閲覧・再生",
+        wifiTitle: "+ iPhone、iPad、AndroidをWiFiで接続",
+        wifiDesc: "軽量なバックグラウンドサービスをインストールするだけで、同じWiFi上のiPhone、iPad、Androidデバイスにライブラリをストリーミングできます。クラウド不要、サブスクリプション不要 — ローカルネットワークで直接ストリーミング。",
+        wifiB1: "iOSおよびAndroidデバイスから閲覧・再生",
         wifiB2: "WiFi 上で自動検出",
         wifiB3: "iPhone から映像をアップロード",
         wifiB4: "6 桁のコードで一度だけペアリング",
@@ -692,14 +748,21 @@
         macReq: "macOS 13 Ventura 以降が必要です",
         linuxReq: "Ubuntu 22.04+ またはそれと同等のものが必要です",
         winReq: "Windows 10（64 ビット）以降が必要です",
+        androidReq: "Android 8.0（Oreo）以降が必要です",
         iosHeroTitle: "iPhone または iPad をお使いです",
         iosHeroDesc: "iOS 版 ReelVault は WiFi 経由で Mac、PC、または Linux のライブラリサーバーに接続し、自宅のどこからでも全ビデオコレクションを閲覧・再生できます。",
         appStoreBtn: "App Store で ReelVault を入手",
+        androidHeroTitle: "Androidをお使いの方へ",
+        androidHeroDesc: "ReelVault for Androidは、Mac、PC、またはLinuxのライブラリサーバーにWiFi経由で接続し、自宅のどこからでもビデオコレクション全体を閲覧・再生できます。デバイス上のローカルライブラリにも対応しています。",
+        playStoreBtn: "Google PlayでReelVaultを入手",
         needServer: "サーバーのセットアップが必要ですか？",
         getDesktop: "デスクトップアプリを入手 →",
         iosCardTitle: "iOS アプリもインストールする",
         iosCardDesc: "ダウンロードするサーバーは mDNS を使ってローカル WiFi 上に自身を通知します。同じネットワーク上で ReelVault iOS アプリを開くと、ライブラリが自動的に見つかります — IP アドレスの入力不要。",
         appStoreLink: "App Store で ReelVault を入手 →",
+        androidCardTitle: "Androidアプリもインストール",
+        androidCardDesc: "上でダウンロードするサーバーは、mDNS経由でローカルWiFiに自身を広告します。同じネットワーク上でReelVault Androidアプリを開くと、IPアドレスを入力しなくてもライブラリが自動的に見つかります。",
+        playStoreLink: "Google PlayでReelVaultを入手 →",
         setupNoteTitle: "セットアップは約 2 分で完了します：",
         setupNoteBody: "このパッケージをインストールしたら、ターミナルを開いて {cmd} を実行してください — デーモンが起動時に開始し、6 桁のペアリングコードを {logPath} に記録します。iOS アプリにそのコードを入力してペアリングします。",
         footerGH: "GitHub",
@@ -720,9 +783,9 @@
         localB2: "Configuration sur un seul ordinateur",
         localB3: "Aucun port ni règle de pare-feu",
         localB4: "Zéro configuration réseau",
-        wifiTitle: "+ iPhone et iPad via WiFi",
-        wifiDesc: "Installez un service d'arrière-plan léger qui diffuse votre bibliothèque vers n'importe quel iPhone ou iPad sur le même WiFi. Pas de cloud, pas d'abonnements — diffusion directe en réseau local.",
-        wifiB1: "Parcourir et lire depuis les appareils iOS",
+        wifiTitle: "+ iPhone, iPad et Android via WiFi",
+        wifiDesc: "Installez un service d'arrière-plan léger qui diffuse votre bibliothèque vers n'importe quel iPhone, iPad ou appareil Android sur le même WiFi. Pas de cloud, pas d'abonnement — diffusion directe sur le réseau local.",
+        wifiB1: "Parcourez et lisez depuis vos appareils iOS et Android",
         wifiB2: "Découvert automatiquement sur votre WiFi",
         wifiB3: "Importer des séquences depuis iPhone",
         wifiB4: "Associé une seule fois avec un code à 6 chiffres",
@@ -732,14 +795,21 @@
         macReq: "Nécessite macOS 13 Ventura ou ultérieur",
         linuxReq: "Nécessite Ubuntu 22.04+ ou équivalent",
         winReq: "Nécessite Windows 10 (64 bits) ou ultérieur",
+        androidReq: "Nécessite Android 8.0 (Oreo) ou version ultérieure",
         iosHeroTitle: "Vous êtes sur iPhone ou iPad",
         iosHeroDesc: "ReelVault pour iOS se connecte à votre serveur de bibliothèque Mac, PC ou Linux via WiFi afin que vous puissiez parcourir et lire votre collection vidéo complète depuis n'importe où chez vous.",
         appStoreBtn: "Obtenir ReelVault sur l'App Store",
+        androidHeroTitle: "Vous êtes sur Android",
+        androidHeroDesc: "ReelVault pour Android se connecte à votre serveur de bibliothèque Mac, PC ou Linux via WiFi afin que vous puissiez parcourir et lire l'intégralité de votre collection vidéo depuis n'importe où chez vous. Il prend également en charge une bibliothèque locale sur l'appareil.",
+        playStoreBtn: "Obtenir ReelVault sur Google Play",
         needServer: "Besoin de configurer le serveur ?",
         getDesktop: "Obtenir l'application de bureau →",
         iosCardTitle: "Installez aussi l'application iOS",
         iosCardDesc: "Le serveur que vous téléchargez s'annonce sur votre WiFi local via mDNS. Ouvrez l'application ReelVault iOS sur le même réseau et elle trouvera votre bibliothèque automatiquement — sans saisir d'adresses IP.",
         appStoreLink: "Obtenir ReelVault sur l'App Store →",
+        androidCardTitle: "Installez également l'application Android",
+        androidCardDesc: "Le serveur que vous téléchargez ci-dessus s'annonce sur votre WiFi local via mDNS. Ouvrez l'application ReelVault Android sur le même réseau et elle trouvera votre bibliothèque automatiquement — sans adresse IP à saisir.",
+        playStoreLink: "Obtenir ReelVault sur Google Play →",
         setupNoteTitle: "La configuration prend environ 2 minutes :",
         setupNoteBody: "Après avoir installé ce package, ouvrez un Terminal et exécutez {cmd} — le daemon démarre au démarrage et enregistre un code d'association à 6 chiffres dans {logPath}. Saisissez ce code dans l'application iOS pour associer.",
         footerGH: "GitHub",
@@ -760,9 +830,9 @@
         localB2: "Configuração para um único computador",
         localB3: "Sem portas ou regras de firewall",
         localB4: "Zero configuração de rede",
-        wifiTitle: "+ iPhone e iPad via WiFi",
-        wifiDesc: "Instale um serviço em segundo plano leve que transmite sua biblioteca para qualquer iPhone ou iPad na mesma WiFi. Sem nuvem, sem assinaturas — streaming direto pela rede local.",
-        wifiB1: "Navegar e reproduzir de dispositivos iOS",
+        wifiTitle: "+ iPhone, iPad e Android via WiFi",
+        wifiDesc: "Instale um serviço leve em segundo plano que transmite sua biblioteca para qualquer iPhone, iPad ou dispositivo Android na mesma rede WiFi. Sem nuvem, sem assinaturas — transmissão direta pela rede local.",
+        wifiB1: "Navegue e reproduza a partir de dispositivos iOS e Android",
         wifiB2: "Descoberto automaticamente no seu WiFi",
         wifiB3: "Enviar filmagens do iPhone",
         wifiB4: "Pareado uma vez com um código de 6 dígitos",
@@ -772,14 +842,21 @@
         macReq: "Requer macOS 13 Ventura ou posterior",
         linuxReq: "Requer Ubuntu 22.04+ ou equivalente",
         winReq: "Requer Windows 10 (64 bits) ou posterior",
+        androidReq: "Requer Android 8.0 (Oreo) ou superior",
         iosHeroTitle: "Você está no iPhone ou iPad",
         iosHeroDesc: "O ReelVault para iOS conecta-se ao seu servidor de biblioteca no Mac, PC ou Linux via WiFi para que você possa navegar e reproduzir toda a sua coleção de vídeos de qualquer lugar da sua casa.",
         appStoreBtn: "Obter ReelVault na App Store",
+        androidHeroTitle: "Você está no Android",
+        androidHeroDesc: "O ReelVault para Android conecta-se ao seu servidor de biblioteca no Mac, PC ou Linux via WiFi para que você possa navegar e reproduzir toda a sua coleção de vídeos de qualquer lugar da sua casa. Também oferece suporte a uma biblioteca local no próprio dispositivo.",
+        playStoreBtn: "Baixar ReelVault no Google Play",
         needServer: "Precisa configurar o servidor?",
         getDesktop: "Obter o aplicativo desktop →",
         iosCardTitle: "Instale também o aplicativo iOS",
         iosCardDesc: "O servidor que você está baixando se anuncia no seu WiFi local via mDNS. Abra o aplicativo ReelVault iOS na mesma rede e ele encontrará sua biblioteca automaticamente — sem precisar digitar endereços IP.",
         appStoreLink: "Obter ReelVault na App Store →",
+        androidCardTitle: "Instale também o aplicativo Android",
+        androidCardDesc: "O servidor que você está baixando acima se anuncia na sua rede WiFi local via mDNS. Abra o aplicativo ReelVault para Android na mesma rede e ele encontrará sua biblioteca automaticamente — sem precisar digitar endereços IP.",
+        playStoreLink: "Baixar ReelVault no Google Play →",
         setupNoteTitle: "A configuração leva cerca de 2 minutos:",
         setupNoteBody: "Após instalar este pacote, abra um Terminal e execute {cmd} — o daemon inicia na inicialização e registra um código de pareamento de 6 dígitos em {logPath}. Digite esse código no aplicativo iOS para parear.",
         footerGH: "GitHub",
@@ -800,9 +877,9 @@
         localB2: "단일 컴퓨터 설정",
         localB3: "포트나 방화벽 규칙 불필요",
         localB4: "네트워크 구성 제로",
-        wifiTitle: "+ WiFi로 iPhone 및 iPad 연결",
-        wifiDesc: "동일한 WiFi에 있는 모든 iPhone 또는 iPad로 라이브러리를 스트리밍하는 경량 백그라운드 서비스를 설치하세요. 클라우드 없음, 구독 없음 — 로컬 네트워크 직접 스트리밍.",
-        wifiB1: "iOS 기기에서 탐색 및 재생",
+        wifiTitle: "+ iPhone, iPad 및 Android WiFi 연결",
+        wifiDesc: "동일한 WiFi에서 iPhone, iPad, Android 기기로 라이브러리를 스트리밍하는 경량 백그라운드 서비스를 설치하세요. 클라우드도 구독도 필요 없습니다 — 직접 로컬 네트워크 스트리밍.",
+        wifiB1: "iOS 및 Android 기기에서 탐색 및 재생",
         wifiB2: "WiFi에서 자동 검색",
         wifiB3: "iPhone에서 영상 업로드",
         wifiB4: "6자리 코드로 한 번만 페어링",
@@ -812,14 +889,21 @@
         macReq: "macOS 13 Ventura 이상 필요",
         linuxReq: "Ubuntu 22.04+ 또는 동등한 환경 필요",
         winReq: "Windows 10(64비트) 이상 필요",
+        androidReq: "Android 8.0 (Oreo) 이상 필요",
         iosHeroTitle: "iPhone 또는 iPad를 사용 중이시군요",
         iosHeroDesc: "iOS용 ReelVault는 WiFi를 통해 Mac, PC 또는 Linux 라이브러리 서버에 연결하여 집 어디서나 전체 비디오 컬렉션을 탐색하고 재생할 수 있습니다.",
         appStoreBtn: "App Store에서 ReelVault 받기",
+        androidHeroTitle: "Android를 사용 중이시군요",
+        androidHeroDesc: "Android용 ReelVault는 WiFi를 통해 Mac, PC 또는 Linux 라이브러리 서버에 연결하여 집 어디서든 전체 동영상 컬렉션을 탐색하고 재생할 수 있습니다. 기기 내 로컬 라이브러리도 지원합니다.",
+        playStoreBtn: "Google Play에서 ReelVault 받기",
         needServer: "서버를 설정해야 하나요?",
         getDesktop: "데스크탑 앱 받기 →",
         iosCardTitle: "iOS 앱도 설치하세요",
         iosCardDesc: "다운로드하는 서버는 mDNS를 통해 로컬 WiFi에서 자신을 광고합니다. 같은 네트워크에서 ReelVault iOS 앱을 열면 라이브러리를 자동으로 찾습니다 — IP 주소를 입력할 필요가 없습니다.",
         appStoreLink: "App Store에서 ReelVault 받기 →",
+        androidCardTitle: "Android 앱도 설치하세요",
+        androidCardDesc: "위에서 다운로드하는 서버는 mDNS를 통해 로컬 WiFi에 자신을 알립니다. 동일한 네트워크에서 ReelVault Android 앱을 열면 IP 주소를 입력하지 않아도 라이브러리를 자동으로 찾습니다.",
+        playStoreLink: "Google Play에서 ReelVault 받기 →",
         setupNoteTitle: "설정은 약 2분 정도 걸립니다:",
         setupNoteBody: "이 패키지를 설치한 후 터미널을 열고 {cmd}를 실행하세요 — 데몬이 부팅 시 시작되고 6자리 페어링 코드를 {logPath}에 기록합니다. iOS 앱에 해당 코드를 입력하여 페어링하세요.",
         footerGH: "GitHub",
@@ -840,9 +924,9 @@
         localB2: "Configurazione per un singolo computer",
         localB3: "Nessuna porta o regola del firewall",
         localB4: "Zero configurazione di rete",
-        wifiTitle: "+ iPhone e iPad via WiFi",
-        wifiDesc: "Installa un servizio in background leggero che trasmette in streaming la tua libreria a qualsiasi iPhone o iPad sulla stessa WiFi. Niente cloud, niente abbonamenti — streaming diretto sulla rete locale.",
-        wifiB1: "Sfoglia e riproduci dai dispositivi iOS",
+        wifiTitle: "+ iPhone, iPad e Android tramite WiFi",
+        wifiDesc: "Installa un servizio in background leggero che trasmette in streaming la tua libreria a qualsiasi iPhone, iPad o dispositivo Android sulla stessa rete WiFi. Nessun cloud, nessun abbonamento — streaming diretto sulla rete locale.",
+        wifiB1: "Sfoglia e riproduci da dispositivi iOS e Android",
         wifiB2: "Rilevato automaticamente sulla tua WiFi",
         wifiB3: "Carica filmati da iPhone",
         wifiB4: "Si associa una volta con un codice a 6 cifre",
@@ -852,14 +936,21 @@
         macReq: "Richiede macOS 13 Ventura o successivo",
         linuxReq: "Richiede Ubuntu 22.04+ o equivalente",
         winReq: "Richiede Windows 10 (64 bit) o successivo",
+        androidReq: "Richiede Android 8.0 (Oreo) o versioni successive",
         iosHeroTitle: "Sei su iPhone o iPad",
         iosHeroDesc: "ReelVault per iOS si connette al tuo server di libreria Mac, PC o Linux tramite WiFi in modo che tu possa sfogliare e riprodurre l'intera collezione video da qualsiasi punto della tua casa.",
         appStoreBtn: "Ottieni ReelVault sull'App Store",
+        androidHeroTitle: "Sei su Android",
+        androidHeroDesc: "ReelVault per Android si connette al tuo server libreria su Mac, PC o Linux tramite WiFi così puoi sfogliare e riprodurre la tua intera collezione video da qualsiasi parte della tua casa. Supporta anche una libreria locale sul dispositivo.",
+        playStoreBtn: "Scarica ReelVault su Google Play",
         needServer: "Hai bisogno di configurare il server?",
         getDesktop: "Scarica l'app desktop →",
         iosCardTitle: "Installa anche l'app iOS",
         iosCardDesc: "Il server che stai scaricando si annuncia sulla tua WiFi locale tramite mDNS. Apri l'app ReelVault iOS sulla stessa rete e troverà automaticamente la tua libreria — senza digitare indirizzi IP.",
         appStoreLink: "Ottieni ReelVault sull'App Store →",
+        androidCardTitle: "Installa anche l'app Android",
+        androidCardDesc: "Il server che stai scaricando qui sopra si annuncia sulla tua rete WiFi locale tramite mDNS. Apri l'app ReelVault Android sulla stessa rete e troverà automaticamente la tua libreria — nessun indirizzo IP da digitare.",
+        playStoreLink: "Scarica ReelVault su Google Play →",
         setupNoteTitle: "La configurazione richiede circa 2 minuti:",
         setupNoteBody: "Dopo aver installato questo pacchetto, apri un Terminale ed esegui {cmd} — il daemon si avvia all'avvio e registra un codice di associazione a 6 cifre in {logPath}. Inserisci quel codice nell'app iOS per associare.",
         footerGH: "GitHub",
@@ -880,9 +971,9 @@
         localB2: "Установка на один компьютер",
         localB3: "Без открытых портов и правил брандмауэра",
         localB4: "Нулевая настройка сети",
-        wifiTitle: "+ iPhone и iPad по WiFi",
-        wifiDesc: "Установите лёгкий фоновый сервис, который транслирует вашу библиотеку на любой iPhone или iPad в той же WiFi-сети. Без облака, без подписок — прямая потоковая передача по локальной сети.",
-        wifiB1: "Просмотр и воспроизведение с iOS-устройств",
+        wifiTitle: "+ iPhone, iPad и Android через WiFi",
+        wifiDesc: "Установите лёгкий фоновый сервис, который транслирует вашу медиатеку на любой iPhone, iPad или Android-устройство в той же сети WiFi. Без облака, без подписок — прямая потоковая передача по локальной сети.",
+        wifiB1: "Просматривайте и воспроизводите видео с устройств iOS и Android",
         wifiB2: "Автоматически обнаруживается в WiFi",
         wifiB3: "Загрузка материалов с iPhone",
         wifiB4: "Одноразовое сопряжение с 6-значным кодом",
@@ -892,14 +983,21 @@
         macReq: "Требуется macOS 13 Ventura или новее",
         linuxReq: "Требуется Ubuntu 22.04+ или аналогичный дистрибутив",
         winReq: "Требуется Windows 10 (64-разрядная) или новее",
+        androidReq: "Требуется Android 8.0 (Oreo) или новее",
         iosHeroTitle: "Вы используете iPhone или iPad",
         iosHeroDesc: "ReelVault для iOS подключается к вашему серверу библиотеки на Mac, PC или Linux по WiFi, чтобы вы могли просматривать и воспроизводить полную коллекцию видео из любой точки дома.",
         appStoreBtn: "Получить ReelVault в App Store",
+        androidHeroTitle: "Вы используете Android",
+        androidHeroDesc: "ReelVault для Android подключается к серверу медиатеки на вашем Mac, ПК или Linux через WiFi, чтобы вы могли просматривать и воспроизводить всю свою видеоколлекцию из любого места дома. Также поддерживается локальная медиатека на устройстве.",
+        playStoreBtn: "Скачать ReelVault в Google Play",
         needServer: "Нужно настроить сервер?",
         getDesktop: "Получить приложение для рабочего стола →",
         iosCardTitle: "Также установите iOS-приложение",
         iosCardDesc: "Сервер, который вы загружаете, объявляет о себе в локальной WiFi-сети через mDNS. Откройте приложение ReelVault для iOS в той же сети, и оно автоматически найдёт вашу библиотеку — без ввода IP-адресов.",
         appStoreLink: "Получить ReelVault в App Store →",
+        androidCardTitle: "Также установите приложение для Android",
+        androidCardDesc: "Сервер, который вы скачиваете выше, объявляет себя в локальной сети WiFi через mDNS. Откройте приложение ReelVault для Android в той же сети — оно автоматически обнаружит вашу медиатеку, вводить IP-адреса не нужно.",
+        playStoreLink: "Скачать ReelVault в Google Play →",
         setupNoteTitle: "Настройка займёт около 2 минут:",
         setupNoteBody: "После установки этого пакета откройте терминал и выполните {cmd} — демон запустится при загрузке системы и запишет 6-значный код сопряжения в {logPath}. Введите этот код в iOS-приложении для сопряжения.",
         footerGH: "GitHub",
@@ -920,9 +1018,9 @@
         localB2: "Konfiguracja na jednym komputerze",
         localB3: "Żadnych portów ani reguł zapory",
         localB4: "Zerowa konfiguracja sieci",
-        wifiTitle: "+ iPhone i iPad przez WiFi",
-        wifiDesc: "Zainstaluj lekką usługę działającą w tle, która strumieniuje Twoją bibliotekę na dowolny iPhone lub iPad w tej samej sieci WiFi. Bez chmury, bez subskrypcji — bezpośrednie strumieniowanie przez sieć lokalną.",
-        wifiB1: "Przeglądaj i odtwarzaj z urządzeń iOS",
+        wifiTitle: "+ iPhone, iPad i Android przez WiFi",
+        wifiDesc: "Zainstaluj lekką usługę działającą w tle, która strumieniuje Twoją bibliotekę na dowolny iPhone, iPad lub urządzenie z Androidem w tej samej sieci WiFi. Bez chmury, bez subskrypcji — bezpośrednie strumieniowanie przez sieć lokalną.",
+        wifiB1: "Przeglądaj i odtwarzaj z urządzeń iOS i Android",
         wifiB2: "Automatycznie wykrywane w sieci WiFi",
         wifiB3: "Przesyłaj nagrania z iPhone",
         wifiB4: "Paruje raz za pomocą 6-cyfrowego kodu",
@@ -932,14 +1030,21 @@
         macReq: "Wymaga macOS 13 Ventura lub nowszego",
         linuxReq: "Wymaga Ubuntu 22.04+ lub odpowiednika",
         winReq: "Wymaga Windows 10 (64-bit) lub nowszego",
+        androidReq: "Wymaga Androida 8.0 (Oreo) lub nowszego",
         iosHeroTitle: "Korzystasz z iPhone lub iPad",
         iosHeroDesc: "ReelVault dla iOS łączy się z serwerem biblioteki na komputerze Mac, PC lub Linux przez WiFi, dzięki czemu możesz przeglądać i odtwarzać całą kolekcję wideo z dowolnego miejsca w domu.",
         appStoreBtn: "Pobierz ReelVault z App Store",
+        androidHeroTitle: "Używasz Androida",
+        androidHeroDesc: "ReelVault na Androida łączy się z serwerem biblioteki na Macu, PC lub Linuksie przez WiFi, dzięki czemu możesz przeglądać i odtwarzać całą kolekcję wideo z dowolnego miejsca w domu. Obsługuje również lokalną bibliotekę na urządzeniu.",
+        playStoreBtn: "Pobierz ReelVault na Google Play",
         needServer: "Chcesz skonfigurować serwer?",
         getDesktop: "Pobierz aplikację desktopową →",
         iosCardTitle: "Zainstaluj też aplikację iOS",
         iosCardDesc: "Pobierany serwer ogłasza się w lokalnej sieci WiFi przez mDNS. Otwórz aplikację ReelVault dla iOS w tej samej sieci, a automatycznie znajdzie Twoją bibliotekę — bez wpisywania adresów IP.",
         appStoreLink: "Pobierz ReelVault z App Store →",
+        androidCardTitle: "Zainstaluj też aplikację Android",
+        androidCardDesc: "Serwer, który pobierasz powyżej, rozgłasza się w lokalnej sieci WiFi przez mDNS. Otwórz aplikację ReelVault na Androida w tej samej sieci, a automatycznie znajdzie Twoją bibliotekę — bez wpisywania adresów IP.",
+        playStoreLink: "Pobierz ReelVault na Google Play →",
         setupNoteTitle: "Konfiguracja zajmuje około 2 minut:",
         setupNoteBody: "Po zainstalowaniu tego pakietu otwórz terminal i uruchom {cmd} — demon uruchamia się podczas startu systemu i zapisuje 6-cyfrowy kod parowania do {logPath}. Wpisz ten kod w aplikacji iOS, aby sparować.",
         footerGH: "GitHub",
@@ -960,9 +1065,9 @@
         localB2: "Installatie voor één computer",
         localB3: "Geen poorten of firewallregels",
         localB4: "Nul netwerkconfiguratie",
-        wifiTitle: "+ iPhone en iPad via WiFi",
-        wifiDesc: "Installeer een lichte achtergrondservice die je bibliotheek streamt naar elke iPhone of iPad op hetzelfde WiFi-netwerk. Geen cloud, geen abonnementen — directe streaming via het lokale netwerk.",
-        wifiB1: "Bladeren en afspelen vanaf iOS-apparaten",
+        wifiTitle: "+ iPhone, iPad & Android via WiFi",
+        wifiDesc: "Installeer een lichte achtergrondservice die uw bibliotheek streamt naar elke iPhone, iPad of Android-apparaat op hetzelfde WiFi-netwerk. Geen cloud, geen abonnementen — directe lokale netwerkstreaming.",
+        wifiB1: "Bladeren en afspelen vanaf iOS- en Android-apparaten",
         wifiB2: "Automatisch gevonden op je WiFi",
         wifiB3: "Opnamen uploaden van iPhone",
         wifiB4: "Eénmalig koppelen met een 6-cijferige code",
@@ -972,14 +1077,21 @@
         macReq: "Vereist macOS 13 Ventura of later",
         linuxReq: "Vereist Ubuntu 22.04+ of gelijkwaardig",
         winReq: "Vereist Windows 10 (64-bit) of later",
+        androidReq: "Vereist Android 8.0 (Oreo) of hoger",
         iosHeroTitle: "Je gebruikt iPhone of iPad",
         iosHeroDesc: "ReelVault voor iOS maakt verbinding met je bibliotheekserver op Mac, PC of Linux via WiFi, zodat je je volledige videoverzameling overal in huis kunt bekijken en afspelen.",
         appStoreBtn: "ReelVault halen in de App Store",
+        androidHeroTitle: "U gebruikt Android",
+        androidHeroDesc: "ReelVault voor Android maakt verbinding met uw Mac-, pc- of Linux-bibliotheekserver via WiFi, zodat u overal in uw huis door uw volledige videocollectie kunt bladeren en deze kunt afspelen. De app ondersteunt ook een lokale bibliotheek op het apparaat.",
+        playStoreBtn: "Haal ReelVault in de Google Play Store",
         needServer: "Wil je de server instellen?",
         getDesktop: "De desktopapp ophalen →",
         iosCardTitle: "Installeer ook de iOS-app",
         iosCardDesc: "De server die je downloadt kondigt zichzelf aan op je lokale WiFi via mDNS. Open de ReelVault iOS-app op hetzelfde netwerk en hij vindt je bibliotheek automatisch — geen IP-adressen nodig.",
         appStoreLink: "ReelVault halen in de App Store →",
+        androidCardTitle: "Installeer ook de Android-app",
+        androidCardDesc: "De server die u hierboven downloadt, kondigt zichzelf aan op uw lokale WiFi-netwerk via mDNS. Open de ReelVault Android-app op hetzelfde netwerk en deze vindt uw bibliotheek automatisch — u hoeft geen IP-adressen in te voeren.",
+        playStoreLink: "Haal ReelVault in de Google Play Store →",
         setupNoteTitle: "Installatie duurt ongeveer 2 minuten:",
         setupNoteBody: "Na het installeren van dit pakket, open een Terminal en voer {cmd} uit — de daemon start bij het opstarten en registreert een 6-cijferige koppelcode naar {logPath}. Voer die code in de iOS-app in om te koppelen.",
         footerGH: "GitHub",
@@ -1000,9 +1112,9 @@
         localB2: "Tek bilgisayar kurulumu",
         localB3: "Port veya güvenlik duvarı kuralı yok",
         localB4: "Sıfır ağ yapılandırması",
-        wifiTitle: "+ WiFi üzerinden iPhone ve iPad",
-        wifiDesc: "Aynı WiFi'daki herhangi bir iPhone veya iPad'e kütüphanenizi akışla aktaran hafif bir arka plan servisi kurun. Bulut yok, abonelik yok — doğrudan yerel ağ akışı.",
-        wifiB1: "iOS cihazlardan göz at ve oynat",
+        wifiTitle: "+ iPhone, iPad ve Android WiFi Üzerinden",
+        wifiDesc: "Kütüphanenizi aynı WiFi ağındaki herhangi bir iPhone, iPad veya Android cihaza akış yapan hafif bir arka plan servisi kurun. Bulut yok, abonelik yok — doğrudan yerel ağ akışı.",
+        wifiB1: "iOS ve Android cihazlardan göz atın ve oynatın",
         wifiB2: "WiFi'nızda otomatik keşfedilir",
         wifiB3: "iPhone'dan görüntü yükle",
         wifiB4: "6 haneli kodla bir kez eşleşir",
@@ -1012,14 +1124,21 @@
         macReq: "macOS 13 Ventura veya üzeri gerektirir",
         linuxReq: "Ubuntu 22.04+ veya eşdeğeri gerektirir",
         winReq: "Windows 10 (64-bit) veya üzeri gerektirir",
+        androidReq: "Android 8.0 (Oreo) veya üzeri gerektirir",
         iosHeroTitle: "iPhone veya iPad kullanıyorsunuz",
         iosHeroDesc: "iOS için ReelVault, WiFi üzerinden Mac, PC veya Linux kütüphane sunucunuza bağlanır; böylece evinizin herhangi bir yerinden tüm video koleksiyonunuza göz atabilir ve oynatabilirsiniz.",
         appStoreBtn: "ReelVault'u App Store'dan Edinin",
+        androidHeroTitle: "Android'desiniz",
+        androidHeroDesc: "Android için ReelVault, Mac, PC veya Linux kütüphane sunucunuza WiFi üzerinden bağlanarak tam video koleksiyonunuza evinizin her yerinden göz atıp oynatmanızı sağlar. Cihaz üzerinde yerel kütüphaneyi de destekler.",
+        playStoreBtn: "ReelVault'u Google Play'den edinin",
         needServer: "Sunucu kurmanız mı gerekiyor?",
         getDesktop: "Masaüstü uygulamasını edinin →",
         iosCardTitle: "iOS uygulamasını da yükleyin",
         iosCardDesc: "İndirdiğiniz sunucu, mDNS aracılığıyla yerel WiFi'nızda kendini duyurur. Aynı ağda ReelVault iOS uygulamasını açın ve kütüphanenizi otomatik olarak bulsun — IP adresi girmenize gerek yok.",
         appStoreLink: "ReelVault'u App Store'dan Edinin →",
+        androidCardTitle: "Android uygulamasını da yükleyin",
+        androidCardDesc: "Yukarıda indirdiğiniz sunucu, kendisini yerel WiFi ağınızda mDNS aracılığıyla duyurur. Aynı ağdaki ReelVault Android uygulamasını açın; kütüphanenizi otomatik olarak bulacaktır — IP adresi girmenize gerek yok.",
+        playStoreLink: "ReelVault'u Google Play'den edinin →",
         setupNoteTitle: "Kurulum yaklaşık 2 dakika sürer:",
         setupNoteBody: "Bu paketi yükledikten sonra Terminal'i açın ve {cmd} komutunu çalıştırın — daemon başlangıçta başlar ve {logPath} konumuna 6 haneli bir eşleşme kodu kaydeder. Eşleştirmek için iOS uygulamasına o kodu girin.",
         footerGH: "GitHub",
@@ -1040,9 +1159,9 @@
         localB2: "إعداد لجهاز كمبيوتر واحد",
         localB3: "لا منافذ ولا قواعد جدار حماية",
         localB4: "لا تهيئة للشبكة على الإطلاق",
-        wifiTitle: "+ iPhone وiPad عبر WiFi",
-        wifiDesc: "ثبِّت خدمة خلفية خفيفة تبثّ مكتبتك إلى أي iPhone أو iPad على نفس شبكة WiFi. بلا سحابة، بلا اشتراكات — بثّ مباشر عبر الشبكة المحلية.",
-        wifiB1: "التصفح والتشغيل من أجهزة iOS",
+        wifiTitle: "+ iPhone وiPad وAndroid عبر WiFi",
+        wifiDesc: "ثبِّت خدمة خلفية خفيفة الوزن تبث مكتبتك إلى أي جهاز iPhone أو iPad أو Android على نفس شبكة WiFi. لا سحابة، لا اشتراكات — بث مباشر عبر الشبكة المحلية.",
+        wifiB1: "تصفَّح وشغِّل من أجهزة iOS وAndroid",
         wifiB2: "يُكتشف تلقائيًا على شبكة WiFi",
         wifiB3: "رفع اللقطات من iPhone",
         wifiB4: "يُقرن مرة واحدة برمز مكوّن من 6 أرقام",
@@ -1052,14 +1171,21 @@
         macReq: "يتطلب macOS 13 Ventura أو أحدث",
         linuxReq: "يتطلب Ubuntu 22.04+ أو ما يعادله",
         winReq: "يتطلب Windows 10 (64 بت) أو أحدث",
+        androidReq: "يتطلب Android 8.0 (Oreo) أو أحدث",
         iosHeroTitle: "أنت على iPhone أو iPad",
         iosHeroDesc: "يتصل ReelVault لنظام iOS بخادم مكتبتك على Mac أو PC أو Linux عبر WiFi حتى تتمكن من تصفح مجموعة الفيديو الكاملة وتشغيلها من أي مكان في منزلك.",
         appStoreBtn: "احصل على ReelVault من App Store",
+        androidHeroTitle: "أنت تستخدم Android",
+        androidHeroDesc: "يتصل ReelVault لـ Android بخادم مكتبتك على Mac أو PC أو Linux عبر WiFi حتى تتمكن من تصفح مجموعة الفيديو الكاملة وتشغيلها من أي مكان في منزلك. كما يدعم مكتبة محلية على الجهاز.",
+        playStoreBtn: "احصل على ReelVault من Google Play",
         needServer: "هل تحتاج إلى إعداد الخادم؟",
         getDesktop: "احصل على تطبيق سطح المكتب ←",
         iosCardTitle: "ثبِّت تطبيق iOS أيضًا",
         iosCardDesc: "الخادم الذي تقوم بتنزيله يُعلن عن نفسه على شبكة WiFi المحلية عبر mDNS. افتح تطبيق ReelVault لنظام iOS على نفس الشبكة وسيجد مكتبتك تلقائيًا — دون الحاجة إلى كتابة عناوين IP.",
         appStoreLink: "احصل على ReelVault من App Store ←",
+        androidCardTitle: "ثبِّت تطبيق Android أيضاً",
+        androidCardDesc: "يُعلن الخادم الذي تنزِّله أعلاه عن نفسه على شبكة WiFi المحلية عبر mDNS. افتح تطبيق ReelVault Android على نفس الشبكة وسيعثر على مكتبتك تلقائياً — دون الحاجة إلى كتابة أي عناوين IP.",
+        playStoreLink: "احصل على ReelVault من Google Play ←",
         setupNoteTitle: "يستغرق الإعداد حوالي دقيقتين:",
         setupNoteBody: "بعد تثبيت هذه الحزمة، افتح الطرفية ونفِّذ {cmd} — يبدأ الخادم الخلفي عند التشغيل ويسجّل رمز اقتران مكوّنًا من 6 أرقام في {logPath}. أدخل هذا الرمز في تطبيق iOS للإقران.",
         footerGH: "GitHub",
@@ -1080,9 +1206,9 @@
         localB2: "सिंगल-कंप्यूटर सेटअप",
         localB3: "कोई पोर्ट या फ़ायरवॉल नियम नहीं",
         localB4: "शून्य नेटवर्क कॉन्फ़िगरेशन",
-        wifiTitle: "+ WiFi पर iPhone और iPad",
-        wifiDesc: "एक हल्की बैकग्राउंड सर्विस इंस्टॉल करें जो उसी WiFi पर किसी भी iPhone या iPad पर आपकी लाइब्रेरी स्ट्रीम करती है। कोई क्लाउड नहीं, कोई सब्सक्रिप्शन नहीं — सीधा लोकल नेटवर्क स्ट्रीमिंग।",
-        wifiB1: "iOS डिवाइस से ब्राउज़ करें और चलाएं",
+        wifiTitle: "+ iPhone, iPad और Android WiFi पर",
+        wifiDesc: "एक हल्की बैकग्राउंड सेवा इंस्टॉल करें जो आपकी लाइब्रेरी को उसी WiFi पर किसी भी iPhone, iPad, या Android डिवाइस पर स्ट्रीम करती है। कोई क्लाउड नहीं, कोई सब्सक्रिप्शन नहीं — सीधी लोकल नेटवर्क स्ट्रीमिंग।",
+        wifiB1: "iOS और Android डिवाइस से ब्राउज़ और प्ले करें",
         wifiB2: "आपके WiFi पर स्वचालित रूप से खोजा जाता है",
         wifiB3: "iPhone से फुटेज अपलोड करें",
         wifiB4: "6 अंकों के कोड से एक बार पेयर होता है",
@@ -1092,14 +1218,21 @@
         macReq: "macOS 13 Ventura या बाद का संस्करण आवश्यक है",
         linuxReq: "Ubuntu 22.04+ या समकक्ष आवश्यक है",
         winReq: "Windows 10 (64-बिट) या बाद का संस्करण आवश्यक है",
+        androidReq: "Android 8.0 (Oreo) या उसके बाद की आवश्यकता है",
         iosHeroTitle: "आप iPhone या iPad पर हैं",
         iosHeroDesc: "iOS के लिए ReelVault WiFi पर आपके Mac, PC, या Linux लाइब्रेरी सर्वर से जुड़ता है ताकि आप घर में कहीं से भी अपना पूरा वीडियो संग्रह ब्राउज़ और चला सकें।",
         appStoreBtn: "App Store पर ReelVault प्राप्त करें",
+        androidHeroTitle: "आप Android पर हैं",
+        androidHeroDesc: "Android के लिए ReelVault आपके Mac, PC, या Linux लाइब्रेरी सर्वर से WiFi के माध्यम से जुड़ता है ताकि आप घर में कहीं से भी अपना पूरा वीडियो कलेक्शन ब्राउज़ और प्ले कर सकें। यह ऑन-डिवाइस स्थानीय लाइब्रेरी को भी सपोर्ट करता है।",
+        playStoreBtn: "Google Play पर ReelVault पाएं",
         needServer: "सर्वर सेट अप करना है?",
         getDesktop: "डेस्कटॉप ऐप प्राप्त करें →",
         iosCardTitle: "iOS ऐप भी इंस्टॉल करें",
         iosCardDesc: "आप जो सर्वर डाउनलोड कर रहे हैं वह mDNS के ज़रिए आपके लोकल WiFi पर खुद को प्रचारित करता है। उसी नेटवर्क पर ReelVault iOS ऐप खोलें और यह आपकी लाइब्रेरी स्वचालित रूप से ढूंढ लेगा — कोई IP पता टाइप करने की ज़रूरत नहीं।",
         appStoreLink: "App Store पर ReelVault प्राप्त करें →",
+        androidCardTitle: "Android ऐप भी इंस्टॉल करें",
+        androidCardDesc: "ऊपर जो सर्वर आप डाउनलोड कर रहे हैं वह mDNS के माध्यम से आपके लोकल WiFi पर खुद को advertise करता है। उसी नेटवर्क पर ReelVault Android ऐप खोलें और यह आपकी लाइब्रेरी को स्वचालित रूप से ढूंढ लेगा — कोई IP पता टाइप करने की ज़रूरत नहीं।",
+        playStoreLink: "Google Play पर ReelVault पाएं →",
         setupNoteTitle: "सेटअप में लगभग 2 मिनट लगते हैं:",
         setupNoteBody: "यह पैकेज इंस्टॉल करने के बाद, Terminal खोलें और {cmd} चलाएं — डेमन बूट पर शुरू होता है और {logPath} पर 6 अंकों का पेयरिंग कोड लॉग करता है। पेयर करने के लिए iOS ऐप में वह कोड दर्ज करें।",
         footerGH: "GitHub",
@@ -1120,9 +1253,9 @@
         localB2: "Pengaturan satu komputer",
         localB3: "Tanpa port atau aturan firewall",
         localB4: "Konfigurasi jaringan nol",
-        wifiTitle: "+ iPhone & iPad melalui WiFi",
-        wifiDesc: "Pasang layanan latar belakang ringan yang melakukan streaming perpustakaan Anda ke iPhone atau iPad mana pun di WiFi yang sama. Tanpa cloud, tanpa langganan — streaming langsung melalui jaringan lokal.",
-        wifiB1: "Jelajahi & putar dari perangkat iOS",
+        wifiTitle: "+ iPhone, iPad & Android melalui WiFi",
+        wifiDesc: "Pasang layanan latar belakang ringan yang melakukan streaming pustaka Anda ke iPhone, iPad, atau perangkat Android mana pun di WiFi yang sama. Tanpa cloud, tanpa langganan — streaming jaringan lokal langsung.",
+        wifiB1: "Jelajahi & putar dari perangkat iOS dan Android",
         wifiB2: "Ditemukan otomatis di WiFi Anda",
         wifiB3: "Unggah rekaman dari iPhone",
         wifiB4: "Dipasangkan sekali dengan kode 6 digit",
@@ -1132,14 +1265,21 @@
         macReq: "Membutuhkan macOS 13 Ventura atau lebih baru",
         linuxReq: "Membutuhkan Ubuntu 22.04+ atau setara",
         winReq: "Membutuhkan Windows 10 (64-bit) atau lebih baru",
+        androidReq: "Membutuhkan Android 8.0 (Oreo) atau lebih baru",
         iosHeroTitle: "Anda menggunakan iPhone atau iPad",
         iosHeroDesc: "ReelVault untuk iOS terhubung ke server perpustakaan Mac, PC, atau Linux Anda melalui WiFi sehingga Anda dapat menjelajahi dan memutar seluruh koleksi video dari mana saja di rumah.",
         appStoreBtn: "Dapatkan ReelVault di App Store",
+        androidHeroTitle: "Anda menggunakan Android",
+        androidHeroDesc: "ReelVault untuk Android terhubung ke server pustaka Mac, PC, atau Linux Anda melalui WiFi sehingga Anda dapat menjelajahi dan memutar seluruh koleksi video dari mana saja di rumah. Aplikasi ini juga mendukung pustaka lokal di perangkat.",
+        playStoreBtn: "Dapatkan ReelVault di Google Play",
         needServer: "Perlu menyiapkan server?",
         getDesktop: "Dapatkan aplikasi desktop →",
         iosCardTitle: "Pasang juga aplikasi iOS",
         iosCardDesc: "Server yang Anda unduh mengiklankan dirinya di WiFi lokal melalui mDNS. Buka aplikasi ReelVault iOS di jaringan yang sama dan aplikasi akan menemukan perpustakaan Anda secara otomatis — tidak perlu mengetik alamat IP.",
         appStoreLink: "Dapatkan ReelVault di App Store →",
+        androidCardTitle: "Pasang juga aplikasi Android",
+        androidCardDesc: "Server yang Anda unduh di atas mengumumkan dirinya di WiFi lokal Anda melalui mDNS. Buka aplikasi ReelVault Android di jaringan yang sama dan aplikasi akan menemukan pustaka Anda secara otomatis — tidak perlu mengetikkan alamat IP.",
+        playStoreLink: "Dapatkan ReelVault di Google Play →",
         setupNoteTitle: "Pengaturan membutuhkan sekitar 2 menit:",
         setupNoteBody: "Setelah menginstal paket ini, buka Terminal dan jalankan {cmd} — daemon akan mulai saat boot dan mencatat kode pasangan 6 digit ke {logPath}. Masukkan kode tersebut di aplikasi iOS untuk memasangkan.",
         footerGH: "GitHub",
@@ -1160,9 +1300,9 @@
         localB2: "Cài đặt một máy tính",
         localB3: "Không cần cổng hay quy tắc tường lửa",
         localB4: "Không cần cấu hình mạng",
-        wifiTitle: "+ iPhone và iPad qua WiFi",
-        wifiDesc: "Cài đặt dịch vụ nền nhẹ phát trực tiếp thư viện của bạn đến bất kỳ iPhone hoặc iPad nào trên cùng WiFi. Không có đám mây, không có gói đăng ký — phát trực tiếp qua mạng cục bộ.",
-        wifiB1: "Duyệt và phát từ thiết bị iOS",
+        wifiTitle: "+ iPhone, iPad & Android qua WiFi",
+        wifiDesc: "Cài đặt dịch vụ nền nhẹ giúp phát trực tuyến thư viện của bạn tới bất kỳ thiết bị iPhone, iPad hoặc Android nào trên cùng mạng WiFi. Không có đám mây, không cần đăng ký — phát trực tuyến mạng nội bộ trực tiếp.",
+        wifiB1: "Duyệt & phát từ thiết bị iOS và Android",
         wifiB2: "Tự động phát hiện trên WiFi của bạn",
         wifiB3: "Tải video quay từ iPhone lên",
         wifiB4: "Ghép đôi một lần bằng mã 6 chữ số",
@@ -1172,14 +1312,21 @@
         macReq: "Yêu cầu macOS 13 Ventura trở lên",
         linuxReq: "Yêu cầu Ubuntu 22.04+ hoặc tương đương",
         winReq: "Yêu cầu Windows 10 (64-bit) trở lên",
+        androidReq: "Yêu cầu Android 8.0 (Oreo) trở lên",
         iosHeroTitle: "Bạn đang dùng iPhone hoặc iPad",
         iosHeroDesc: "ReelVault cho iOS kết nối với máy chủ thư viện Mac, PC hoặc Linux của bạn qua WiFi để bạn có thể duyệt và phát toàn bộ bộ sưu tập video từ bất cứ đâu trong nhà.",
         appStoreBtn: "Tải ReelVault trên App Store",
+        androidHeroTitle: "Bạn đang dùng Android",
+        androidHeroDesc: "ReelVault dành cho Android kết nối với máy chủ thư viện Mac, PC hoặc Linux của bạn qua WiFi để bạn có thể duyệt và phát toàn bộ bộ sưu tập video từ bất kỳ đâu trong nhà. Ứng dụng cũng hỗ trợ thư viện nội bộ trực tiếp trên thiết bị.",
+        playStoreBtn: "Tải ReelVault trên Google Play",
         needServer: "Cần thiết lập máy chủ?",
         getDesktop: "Tải ứng dụng máy tính để bàn →",
         iosCardTitle: "Cũng cài ứng dụng iOS",
         iosCardDesc: "Máy chủ bạn đang tải xuống tự quảng bá trên WiFi cục bộ của bạn qua mDNS. Mở ứng dụng ReelVault iOS trên cùng mạng và nó sẽ tự động tìm thư viện của bạn — không cần nhập địa chỉ IP.",
         appStoreLink: "Tải ReelVault trên App Store →",
+        androidCardTitle: "Cũng cài đặt ứng dụng Android",
+        androidCardDesc: "Máy chủ bạn đang tải xuống ở trên tự quảng bá trên mạng WiFi nội bộ qua mDNS. Mở ứng dụng ReelVault Android trên cùng mạng và ứng dụng sẽ tự động tìm thấy thư viện của bạn — không cần nhập địa chỉ IP.",
+        playStoreLink: "Tải ReelVault trên Google Play →",
         setupNoteTitle: "Cài đặt mất khoảng 2 phút:",
         setupNoteBody: "Sau khi cài đặt gói này, mở Terminal và chạy {cmd} — daemon khởi động khi boot và ghi mã ghép đôi 6 chữ số vào {logPath}. Nhập mã đó vào ứng dụng iOS để ghép đôi.",
         footerGH: "GitHub",
@@ -1200,9 +1347,9 @@
         localB2: "ตั้งค่าสำหรับคอมพิวเตอร์เครื่องเดียว",
         localB3: "ไม่มีพอร์ตหรือกฎไฟร์วอลล์",
         localB4: "ไม่ต้องกำหนดค่าเครือข่ายเลย",
-        wifiTitle: "+ iPhone และ iPad ผ่าน WiFi",
-        wifiDesc: "ติดตั้งบริการพื้นหลังขนาดเบาที่สตรีมคลังของคุณไปยัง iPhone หรือ iPad ทุกเครื่องบน WiFi เดียวกัน ไม่มีคลาวด์ ไม่มีการสมัครสมาชิก — สตรีมโดยตรงผ่านเครือข่ายท้องถิ่น",
-        wifiB1: "เรียกดูและเล่นจากอุปกรณ์ iOS",
+        wifiTitle: "+ iPhone, iPad และ Android ผ่าน WiFi",
+        wifiDesc: "ติดตั้งบริการพื้นหลังขนาดเล็กที่สตรีมคลังสื่อของคุณไปยัง iPhone, iPad หรืออุปกรณ์ Android ที่อยู่ใน WiFi เดียวกัน ไม่ต้องใช้คลาวด์ ไม่มีค่าสมาชิก — สตรีมตรงผ่านเครือข่ายท้องถิ่น",
+        wifiB1: "เรียกดูและเล่นจากอุปกรณ์ iOS และ Android",
         wifiB2: "ค้นพบอัตโนมัติบน WiFi ของคุณ",
         wifiB3: "อัปโหลดฟุตเทจจาก iPhone",
         wifiB4: "จับคู่ครั้งเดียวด้วยรหัส 6 หลัก",
@@ -1212,14 +1359,21 @@
         macReq: "ต้องใช้ macOS 13 Ventura หรือใหม่กว่า",
         linuxReq: "ต้องใช้ Ubuntu 22.04+ หรือเทียบเท่า",
         winReq: "ต้องใช้ Windows 10 (64 บิต) หรือใหม่กว่า",
+        androidReq: "ต้องใช้ Android 8.0 (Oreo) ขึ้นไป",
         iosHeroTitle: "คุณกำลังใช้ iPhone หรือ iPad",
         iosHeroDesc: "ReelVault สำหรับ iOS เชื่อมต่อกับเซิร์ฟเวอร์คลัง Mac, PC หรือ Linux ของคุณผ่าน WiFi เพื่อให้คุณเรียกดูและเล่นคอลเลกชันวิดีโอทั้งหมดได้จากทุกที่ในบ้าน",
         appStoreBtn: "รับ ReelVault บน App Store",
+        androidHeroTitle: "คุณใช้ Android",
+        androidHeroDesc: "ReelVault สำหรับ Android เชื่อมต่อกับเซิร์ฟเวอร์คลังสื่อบน Mac, PC หรือ Linux ของคุณผ่าน WiFi เพื่อให้คุณเรียกดูและเล่นคอลเลกชันวิดีโอทั้งหมดได้จากทุกที่ในบ้าน นอกจากนี้ยังรองรับคลังสื่อบนอุปกรณ์โดยตรง",
+        playStoreBtn: "รับ ReelVault บน Google Play",
         needServer: "ต้องการตั้งค่าเซิร์ฟเวอร์?",
         getDesktop: "รับแอปเดสก์ท็อป →",
         iosCardTitle: "ติดตั้งแอป iOS ด้วย",
         iosCardDesc: "เซิร์ฟเวอร์ที่คุณกำลังดาวน์โหลดประกาศตัวเองบน WiFi ท้องถิ่นของคุณผ่าน mDNS เปิดแอป ReelVault iOS บนเครือข่ายเดียวกันและแอปจะค้นหาคลังของคุณโดยอัตโนมัติ — ไม่ต้องพิมพ์ที่อยู่ IP",
         appStoreLink: "รับ ReelVault บน App Store →",
+        androidCardTitle: "ติดตั้งแอป Android ด้วย",
+        androidCardDesc: "เซิร์ฟเวอร์ที่คุณกำลังดาวน์โหลดด้านบนจะประกาศตัวเองบน WiFi ท้องถิ่นของคุณผ่าน mDNS เปิดแอป ReelVault บน Android ในเครือข่ายเดียวกัน แล้วแอปจะค้นหาคลังสื่อของคุณโดยอัตโนมัติ — ไม่ต้องพิมพ์ที่อยู่ IP",
+        playStoreLink: "รับ ReelVault บน Google Play →",
         setupNoteTitle: "การตั้งค่าใช้เวลาประมาณ 2 นาที:",
         setupNoteBody: "หลังจากติดตั้งแพ็กเกจนี้ เปิด Terminal แล้วรัน {cmd} — daemon จะเริ่มต้นเมื่อบูตและบันทึกรหัสจับคู่ 6 หลักไปยัง {logPath} ป้อนรหัสนั้นในแอป iOS เพื่อจับคู่",
         footerGH: "GitHub",
@@ -1240,9 +1394,9 @@
         localB2: "Встановлення на один комп'ютер",
         localB3: "Без відкритих портів і правил брандмауера",
         localB4: "Нульове налаштування мережі",
-        wifiTitle: "+ iPhone і iPad через WiFi",
-        wifiDesc: "Встановіть легку фонову службу, яка транслює вашу бібліотеку на будь-який iPhone або iPad у тій самій мережі WiFi. Без хмари, без підписок — пряме потокове передавання через локальну мережу.",
-        wifiB1: "Переглядайте та відтворюйте з iOS-пристроїв",
+        wifiTitle: "+ iPhone, iPad і Android через WiFi",
+        wifiDesc: "Встановіть легкий фоновий сервіс, який транслює вашу бібліотеку на будь-який iPhone, iPad або Android-пристрій у тій самій WiFi-мережі. Без хмари, без підписок — пряме стримінгове передавання через локальну мережу.",
+        wifiB1: "Перегляд і відтворення з iOS та Android-пристроїв",
         wifiB2: "Автоматично виявляється у WiFi",
         wifiB3: "Завантажуйте матеріали з iPhone",
         wifiB4: "Одноразове сполучення за 6-значним кодом",
@@ -1252,14 +1406,21 @@
         macReq: "Потрібна macOS 13 Ventura або новіша",
         linuxReq: "Потрібна Ubuntu 22.04+ або еквівалентна",
         winReq: "Потрібна Windows 10 (64-розрядна) або новіша",
+        androidReq: "Потрібна версія Android 8.0 (Oreo) або пізніша",
         iosHeroTitle: "Ви користуєтесь iPhone або iPad",
         iosHeroDesc: "ReelVault для iOS підключається до вашого сервера бібліотеки на Mac, PC або Linux через WiFi, щоб ви могли переглядати та відтворювати повну колекцію відео з будь-якого місця вдома.",
         appStoreBtn: "Отримати ReelVault в App Store",
+        androidHeroTitle: "Ви користуєтеся Android",
+        androidHeroDesc: "ReelVault для Android підключається до вашого сервера бібліотеки на Mac, ПК або Linux через WiFi, щоб ви могли переглядати та відтворювати всю свою відеоколекцію з будь-якого місця вдома. Також підтримується локальна бібліотека на пристрої.",
+        playStoreBtn: "Отримати ReelVault у Google Play",
         needServer: "Потрібно налаштувати сервер?",
         getDesktop: "Отримати настільний застосунок →",
         iosCardTitle: "Також встановіть iOS-застосунок",
         iosCardDesc: "Сервер, який ви завантажуєте, оголошує себе у локальній мережі WiFi через mDNS. Відкрийте застосунок ReelVault для iOS у тій самій мережі, і він автоматично знайде вашу бібліотеку — без введення IP-адрес.",
         appStoreLink: "Отримати ReelVault в App Store →",
+        androidCardTitle: "Також встановіть Android-застосунок",
+        androidCardDesc: "Сервер, який ви завантажуєте вище, оголошує себе у вашій локальній WiFi-мережі через mDNS. Відкрийте застосунок ReelVault для Android у тій самій мережі, і він автоматично знайде вашу бібліотеку — без введення IP-адрес.",
+        playStoreLink: "Отримати ReelVault у Google Play →",
         setupNoteTitle: "Налаштування займає близько 2 хвилин:",
         setupNoteBody: "Після встановлення цього пакета відкрийте термінал і виконайте {cmd} — демон запускається під час завантаження системи та записує 6-значний код сполучення у {logPath}. Введіть цей код у iOS-застосунку для сполучення.",
         footerGH: "GitHub",
@@ -1280,9 +1441,9 @@
         localB2: "Nastavení pro jeden počítač",
         localB3: "Žádné porty ani pravidla brány firewall",
         localB4: "Nulová síťová konfigurace",
-        wifiTitle: "+ iPhone a iPad přes WiFi",
-        wifiDesc: "Nainstalujte lehkou službu na pozadí, která streamuje vaši knihovnu na jakýkoli iPhone nebo iPad ve stejné síti WiFi. Žádný cloud, žádná předplatná — přímé streamování přes místní síť.",
-        wifiB1: "Procházejte a přehrávejte ze zařízení iOS",
+        wifiTitle: "+ iPhone, iPad a Android přes WiFi",
+        wifiDesc: "Nainstalujte lehkou službu na pozadí, která streamuje vaši knihovnu na jakýkoli iPhone, iPad nebo Android ve stejné WiFi síti. Žádný cloud, žádná předplatná — přímé streamování v místní síti.",
+        wifiB1: "Procházení a přehrávání ze zařízení iOS a Android",
         wifiB2: "Automaticky objeveno ve vaší WiFi",
         wifiB3: "Nahrávejte záběry z iPhone",
         wifiB4: "Spáruje se jednou pomocí 6místného kódu",
@@ -1292,20 +1453,120 @@
         macReq: "Vyžaduje macOS 13 Ventura nebo novější",
         linuxReq: "Vyžaduje Ubuntu 22.04+ nebo ekvivalent",
         winReq: "Vyžaduje Windows 10 (64bitový) nebo novější",
+        androidReq: "Vyžaduje Android 8.0 (Oreo) nebo novější",
         iosHeroTitle: "Jste na iPhone nebo iPad",
         iosHeroDesc: "ReelVault pro iOS se připojuje k vašemu serveru knihovny na Macu, PC nebo Linuxu přes WiFi, abyste mohli procházet a přehrávat celou sbírku videí odkudkoli v domě.",
         appStoreBtn: "Získat ReelVault v App Store",
+        androidHeroTitle: "Jste na Androidu",
+        androidHeroDesc: "ReelVault pro Android se připojí k vašemu serveru knihovny na Macu, PC nebo Linuxu přes WiFi, abyste mohli procházet a přehrávat celou svou video kolekci odkudkoli doma. Podporuje také lokální knihovnu přímo na zařízení.",
+        playStoreBtn: "Získejte ReelVault na Google Play",
         needServer: "Potřebujete nastavit server?",
         getDesktop: "Získat desktopovou aplikaci →",
         iosCardTitle: "Nainstalujte také aplikaci iOS",
         iosCardDesc: "Server, který stahujete, se oznamuje v místní síti WiFi prostřednictvím mDNS. Otevřete aplikaci ReelVault pro iOS ve stejné síti a automaticky najde vaši knihovnu — bez zadávání IP adres.",
         appStoreLink: "Získat ReelVault v App Store →",
+        androidCardTitle: "Nainstalujte také aplikaci pro Android",
+        androidCardDesc: "Server, který stahujete výše, se ohlašuje ve vaší místní WiFi síti přes mDNS. Otevřete aplikaci ReelVault pro Android ve stejné síti a automaticky najde vaši knihovnu — žádné zadávání IP adres.",
+        playStoreLink: "Získejte ReelVault na Google Play →",
         setupNoteTitle: "Nastavení trvá přibližně 2 minuty:",
         setupNoteBody: "Po instalaci tohoto balíčku otevřete Terminál a spusťte {cmd} — démon se spustí při startu a zapíše 6místný párovací kód do {logPath}. Zadejte tento kód v aplikaci iOS pro spárování.",
         footerGH: "GitHub",
         footerReleases: "Všechna vydání",
         footerDocs: "Dokumentace",
         loading: "Načítání nejnovější verze…",
+      ur: {
+        pageTitle: "ReelVault ڈاؤن لوڈ کریں",
+        tagline: "بڑی ویڈیو لائبریریاں تیزی سے براؤز کریں۔",
+        platformLabel: "آپ کا پلیٹ فارم",
+        changeBtn: "تبدیل کریں",
+        question: "آپ ReelVault کو کس طرح استعمال کریں گے؟",
+        questionSub: "وہ سیٹ اپ منتخب کریں جو آپ کے ورک فلو سے میل کھاتا ہو۔",
+        localTitle: "صرف اس کمپیوٹر پر",
+        localDesc: "ReelVault ایک خود مکتفی ایپ کے طور پر چلتا ہے۔ آپ کی ویڈیو لائبریری آپ کے کمپیوٹر پر رہتی ہے — کوئی نیٹ ورک کنفیگریشن نہیں، کوئی سرور برقرار رکھنے کی ضرورت نہیں۔",
+        localB1: "ہمیشہ آف لائن کام کرتا ہے",
+        localB2: "واحد کمپیوٹر سیٹ اپ",
+        localB3: "کوئی پورٹ یا فائروال اصول نہیں",
+        localB4: "کوئی نیٹ ورک ترتیب درکار نہیں",
+        wifiTitle: "+ iPhone، iPad اور Android بذریعہ WiFi",
+        wifiDesc: "ایک ہلکی پس منظر سروس انسٹال کریں جو آپ کی لائبریری کو ایک ہی WiFi پر موجود کسی بھی iPhone، iPad، یا Android ڈیوائس پر اسٹریم کرے۔ کوئی کلاؤڈ نہیں، کوئی سبسکرپشن نہیں — براہ راست مقامی نیٹ ورک اسٹریمنگ۔",
+        wifiB1: "iOS اور Android آلات سے براؤز اور چلائیں",
+        wifiB2: "آپ کے WiFi پر خود بخود دریافت ہو گیا",
+        wifiB3: "iPhone یا Android سے فوٹیج اپ لوڈ کریں",
+        wifiB4: "6 ہندسوں کے کوڈ سے ایک بار جوڑتا ہے",
+        downloadBtn: "ReelVault {version} ڈاؤن لوڈ کریں",
+        viewAllBtn: "GitHub پر تمام ڈاؤن لوڈز دیکھیں ↗",
+        noPackage: "v{version} میں {os} کے لیے کوئی پہلے سے تیار پیکج نہیں ملا۔",
+        macReq: "macOS 13 Ventura یا اس سے جدید درکار ہے",
+        linuxReq: "Ubuntu 22.04+ یا اس کے مساوی درکار ہے",
+        winReq: "Windows 10 (64-بٹ) یا اس سے جدید درکار ہے",
+        androidReq: "Android 8.0 (Oreo) یا اس سے جدید درکار ہے",
+        iosHeroTitle: "آپ iPhone یا iPad پر ہیں",
+        iosHeroDesc: "ReelVault for iOS connects to your Mac, PC, or Linux library server over WiFi so you can browse and play your full video collection from anywhere in your home.",
+        appStoreBtn: "App Store پر ReelVault حاصل کریں",
+        androidHeroTitle: "آپ Android پر ہیں",
+        androidHeroDesc: "Android کے لیے ReelVault آپ کے Mac، PC، یا Linux لائبریری سرور سے WiFi کے ذریعے منسلک ہوتا ہے تاکہ آپ اپنے گھر میں کہیں سے بھی اپنا مکمل ویڈیو مجموعہ براؤز اور چلا سکیں۔ یہ آلے پر مقامی لائبریری کو بھی سپورٹ کرتا ہے۔",
+        playStoreBtn: "Google Play پر ReelVault حاصل کریں",
+        needServer: "سرور ترتیب دینے کی ضرورت ہے؟",
+        getDesktop: "ڈیسک ٹاپ ایپ حاصل کریں ←",
+        iosCardTitle: "iOS ایپ بھی نصب کریں",
+        iosCardDesc: "The server you're downloading above advertises itself on your local WiFi via mDNS. Open the ReelVault iOS app on the same network and it will find your library automatically — no IP addresses to type.",
+        appStoreLink: "App Store پر ReelVault حاصل کریں ←",
+        androidCardTitle: "Android ایپ بھی نصب کریں",
+        androidCardDesc: "The server you're downloading above advertises itself on your local WiFi via mDNS. Open the ReelVault Android app on the same network and it will find your library automatically — no IP addresses to type.",
+        playStoreLink: "Google Play پر ReelVault حاصل کریں ←",
+        setupNoteTitle: "ترتیب میں تقریباً 2 منٹ لگتے ہیں:",
+        setupNoteBody: "After installing this package, open a Terminal and run {cmd} — the daemon starts on boot and logs a 6-digit pairing code to {logPath}. Enter that code in the iOS or Android app to pair.",
+        footerGH: "GitHub",
+        footerReleases: "تمام ریلیزز",
+        footerDocs: "دستاویزات",
+        loading: "تازہ ترین ریلیز لوڈ ہو رہی ہے…",
+      },
+      bn: {
+        pageTitle: "ReelVault ডাউনলোড করুন",
+        tagline: "বিশাল ভিডিও লাইব্রেরি ব্রাউজ করুন — দ্রুত।",
+        platformLabel: "আপনার প্ল্যাটফর্ম",
+        changeBtn: "পরিবর্তন করুন",
+        question: "আপনি ReelVault কীভাবে ব্যবহার করবেন?",
+        questionSub: "আপনার কার্যপ্রবাহের সাথে মিলে এমন সেটআপ বেছে নিন।",
+        localTitle: "শুধুমাত্র এই কম্পিউটারে",
+        localDesc: "ReelVault একটি স্বনির্ভর অ্যাপ হিসেবে চলে। আপনার ভিডিও লাইব্রেরি আপনার কম্পিউটারেই থাকে — কোনো নেটওয়ার্ক কনফিগারেশন বা সার্ভার রক্ষণাবেক্ষণের প্রয়োজন নেই।",
+        localB1: "সর্বদা অফলাইনে কাজ করে",
+        localB2: "একক-কম্পিউটার সেটআপ",
+        localB3: "কোনো পোর্ট বা ফায়ারওয়াল নিয়ম নেই",
+        localB4: "শূন্য নেটওয়ার্ক কনফিগারেশন",
+        wifiTitle: "+ WiFi এর মাধ্যমে iPhone, iPad ও Android",
+        wifiDesc: "একটি হালকা ব্যাকগ্রাউন্ড সার্ভিস ইনস্টল করুন যা একই WiFi-এ যেকোনো iPhone, iPad বা Android ডিভাইসে আপনার লাইব্রেরি স্ট্রিম করে। কোনো ক্লাউড নেই, কোনো সাবস্ক্রিপশন নেই — সরাসরি স্থানীয় নেটওয়ার্ক স্ট্রিমিং।",
+        wifiB1: "iOS এবং Android ডিভাইস থেকে ব্রাউজ ও চালান",
+        wifiB2: "আপনার WiFi-এ স্বয়ংক্রিয়ভাবে আবিষ্কৃত",
+        wifiB3: "iPhone বা Android থেকে ফুটেজ আপলোড করুন",
+        wifiB4: "৬-সংখ্যার কোড দিয়ে একবার পেয়ার করা হয়",
+        downloadBtn: "Download ReelVault {version}",
+        viewAllBtn: "View all downloads on GitHub ↗",
+        noPackage: "No pre-built package found for {os} in v{version}.",
+        macReq: "Requires macOS 13 Ventura or later",
+        linuxReq: "Requires Ubuntu 22.04+ or equivalent",
+        winReq: "Requires Windows 10 (64-bit) or later",
+        androidReq: "Requires Android 8.0 (Oreo) or later",
+        iosHeroTitle: "You're on iPhone or iPad",
+        iosHeroDesc: "ReelVault for iOS connects to your Mac, PC, or Linux library server over WiFi so you can browse and play your full video collection from anywhere in your home.",
+        appStoreBtn: "Get ReelVault on the App Store",
+        androidHeroTitle: "You're on Android",
+        androidHeroDesc: "ReelVault for Android connects to your Mac, PC, or Linux library server over WiFi so you can browse and play your full video collection from anywhere in your home. It also supports an on-device local library.",
+        playStoreBtn: "Get ReelVault on Google Play",
+        needServer: "Need to set up the server?",
+        getDesktop: "Get the desktop app →",
+        iosCardTitle: "Also install the iOS app",
+        iosCardDesc: "The server you're downloading above advertises itself on your local WiFi via mDNS. Open the ReelVault iOS app on the same network and it will find your library automatically — no IP addresses to type.",
+        appStoreLink: "Get ReelVault on the App Store →",
+        androidCardTitle: "Also install the Android app",
+        androidCardDesc: "The server you're downloading above advertises itself on your local WiFi via mDNS. Open the ReelVault Android app on the same network and it will find your library automatically — no IP addresses to type.",
+        playStoreLink: "Get ReelVault on Google Play →",
+        setupNoteTitle: "Setup takes about 2 minutes:",
+        setupNoteBody: "After installing this package, open a Terminal and run {cmd} — the daemon starts on boot and logs a 6-digit pairing code to {logPath}. Enter that code in the iOS or Android app to pair.",
+        footerGH: "GitHub",
+        footerReleases: "All releases",
+        footerDocs: "Documentation",
+        loading: "Loading latest release…",
       },
     };
 
@@ -1323,7 +1584,7 @@
       if (nav.startsWith('zh')) return 'zh';
       if (nav.startsWith('pt')) return 'pt-br';
       const code = nav.split('-')[0];
-      const supported = ['en','es','de','ja','fr','ko','it','ru','pl','nl','tr','ar','hi','id','vi','th','uk','cs'];
+      const supported = ['en','es','de','ja','fr','ko','it','ru','pl','nl','tr','ar','hi','id','vi','th','uk','cs','ur','bn'];
       return supported.includes(code) ? code : 'en';
     }
 
@@ -1337,7 +1598,7 @@
 
       // Text direction (RTL for Arabic)
       document.documentElement.lang = lang === 'pt-br' ? 'pt' : lang;
-      document.documentElement.dir  = (lang === 'ar') ? 'rtl' : 'ltr';
+      document.documentElement.dir  = (lang === 'ar' || lang === 'ur') ? 'rtl' : 'ltr';
 
       // Update language selector
       const sel = document.getElementById('lang-sel');
@@ -1369,6 +1630,9 @@
       // iPadOS 13+ reports as MacIntel; distinguish by touch points
       if (/Mac/.test(pf) && navigator.maxTouchPoints > 1) return 'ios';
 
+      // Android check
+      if (/Android/.test(ua)) return 'android';
+
       if (/Win/.test(pf) || /Windows/.test(ua)) return 'windows';
       if (/Linux/.test(pf) || /Linux/.test(ua)) return 'linux';
       if (/Mac/.test(pf) || /Macintosh/.test(ua)) return 'mac';
@@ -1383,11 +1647,13 @@
           mac:     a => /macOS\.pkg$/.test(a.name) && !a.name.includes('Server'),
           linux:   a => /Linux\.deb$/.test(a.name)  && !a.name.includes('Server'),
           windows: a => /Windows\.exe$/.test(a.name) && !a.name.includes('Server'),
+          android: a => /Android\.apk$/.test(a.name),
         },
         wifi: {
           mac:     a => /macOS-Server\.pkg$/.test(a.name),
           linux:   a => /Linux-x64-Server\.deb$/.test(a.name) || /Linux-arm64-Server\.deb$/.test(a.name),
           windows: a => /Windows-Server\.exe$/.test(a.name),
+          android: a => /Android\.apk$/.test(a.name),
         },
       };
       const test = patterns[forMode]?.[forOS];
@@ -1454,7 +1720,7 @@
       const version = release.tag_name.replace(/^v/, '');
       const asset   = findAsset(release.assets, os, mode);
       const meta    = OS_META[os] || OS_META.mac;
-      const sysreq  = { mac: t.macReq, windows: t.winReq, linux: t.linuxReq }[os] || t.macReq;
+      const sysreq  = { mac: t.macReq, windows: t.winReq, linux: t.linuxReq, android: t.androidReq }[os] || t.macReq;
       const logPath = {
         mac:     '/Library/Logs/ReelVault/reelvault-core.log',
         linux:   '/var/log/reelvault/reelvault-core.log',
@@ -1462,6 +1728,30 @@
       }[os] || '/Library/Logs/ReelVault/reelvault-core.log';
 
       let html = '';
+
+      // Android: link to Play Store rather than a direct download button
+      if (os === 'android') {
+        if (asset) {
+          const mb = asset.size ? ` · ${(asset.size / 1024 / 1024).toFixed(1)} MB` : '';
+          html += `
+            <a class="download-btn" href="${asset.browser_download_url}">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+                <path d="M9 12.5l-5-5h3V2h4v5.5h3L9 12.5z"/>
+                <rect x="2" y="14" width="14" height="2" rx="1"/>
+              </svg>
+              ${t.downloadBtn.replace('{version}', version)}
+            </a>
+            <div class="download-meta">${asset.name}${mb}</div>`;
+        } else {
+          html += `
+            <a class="download-btn" href="${PLAYSTORE_URL}" target="_blank">
+              🤖 ${t.playStoreBtn}
+            </a>
+            <div class="download-meta">${t.androidReq}</div>`;
+        }
+        area.innerHTML = html;
+        return;
+      }
 
       if (asset) {
         const mb = asset.size ? ` · ${(asset.size / 1024 / 1024).toFixed(1)} MB` : '';
@@ -1501,6 +1791,17 @@
               </a>
             </div>
           </div>
+          <div class="ios-card" style="margin-top:10px">
+            <div class="ios-card-icon">🤖</div>
+            <div class="ios-card-body">
+              <strong>${t.androidCardTitle}</strong><br>
+              ${t.androidCardDesc}
+              <br>
+              <a class="ios-store-link" href="${PLAYSTORE_URL}" target="_blank">
+                ${t.playStoreLink}
+              </a>
+            </div>
+          </div>
           <div class="setup-note">
             <strong>${t.setupNoteTitle}</strong> ${setupBody}
           </div>`;
@@ -1511,9 +1812,10 @@
       area.innerHTML = html;
     }
 
-    // ── Show/hide iOS vs desktop screen ───────────────────────────────────────
+    // ── Show/hide mobile vs desktop screen ───────────────────────────────────
     function showDesktopFlow() {
       document.getElementById('ios-screen').style.display     = 'none';
+      document.getElementById('android-screen').style.display = 'none';
       document.getElementById('desktop-screen').style.display = '';
     }
 
@@ -1528,18 +1830,27 @@
     // Apply language (also updates data-i18n elements and calls render())
     setLang(detectLang());
 
-    // Replace App Store URL placeholder
+    // Replace mobile store URL placeholders
     document.querySelectorAll('a[href="APPSTORE_URL_PLACEHOLDER"]').forEach(a => {
       a.href = APPSTORE_URL;
+    });
+    document.querySelectorAll('a[href="PLAYSTORE_URL_PLACEHOLDER"]').forEach(a => {
+      a.href = PLAYSTORE_URL;
     });
 
     const detected = detect();
 
     if (detected === 'ios') {
       document.getElementById('ios-screen').style.display     = 'block';
+      document.getElementById('android-screen').style.display = 'none';
+      document.getElementById('desktop-screen').style.display = 'none';
+    } else if (detected === 'android') {
+      document.getElementById('ios-screen').style.display     = 'none';
+      document.getElementById('android-screen').style.display = 'block';
       document.getElementById('desktop-screen').style.display = 'none';
     } else {
       document.getElementById('ios-screen').style.display     = 'none';
+      document.getElementById('android-screen').style.display = 'none';
       document.getElementById('desktop-screen').style.display = '';
       setOSUI(detected);
     }

@@ -22,9 +22,9 @@ O ReelVault permite:
 ## Arquitetura
 
 ```
-Desktop / macOS clients          iOS client (iPhone / iPad)
+Desktop / macOS clients          iOS / Android clients
    ↓ gRPC over loopback             ↓ gRPC + HTTPS media over the LAN
-   │                                │ (mDNS discovery · pinned TLS · paired)
+   │                                │ (mDNS/NSD discovery · pinned TLS · paired)
    └───────────────┬────────────────┘
                    ↓
         Rust Backend Daemon (reelvault-core)
@@ -39,6 +39,13 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 - **Cliente macOS SwiftUI** (`macos/`) — Aplicativo macOS nativo com paridade de recursos, o mesmo fluxo de início automático, um menu Arquivo macOS real (grupo Commands) e um título de janela reativo que acompanha o catálogo aberto.
 
 - **Cliente iOS SwiftUI** (`ios/`) — Um aplicativo iPhone / iPad **exclusivamente remoto**. Não tem acesso a arquivos locais e não embutiu daemon: descobre um daemon via Wi-Fi (mDNS), conecta-se por um canal TLS com impressão digital fixada após um pareamento único, navega via gRPC e **transmite** vídeo (HLS redimensionado) pelo servidor de mídia do daemon. Substitui o arrastar para editores pela folha de compartilhamento do iOS e adiciona upload pelo Fotos / Arquivos. Veja [`ios/README.md`](ios/README.md).
+
+- **Kotlin Compose Android client** (`android/`) — A **remote-only**
+  Android phone / tablet app. Connects to a daemon over the LAN (NSD
+  discovery), streams video via ExoPlayer, and replaces editor drag-out with
+  the Android share intent. Also embeds the full Rust core for on-device local
+  library access — browse, catalog, and upload footage directly from the
+  device. See [`android/README.md`](android/README.md).
 
 - **ReelVaultKit** (`kit/`) — Um pacote SwiftPM local de código Swift compartilhado usado por **ambos** os clientes Apple: modelos, view-models, cliente gRPC, descoberta, TLS fixado e a camada de cache/streaming de mídia.
 
@@ -55,7 +62,14 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 **Núcleo**
 - [x] Daemon gRPC com superfície RPC completa (vídeos, busca, varredura, tags, coleções, pilhas, filtros, status, config, ciclo de vida do catálogo).
 - [x] Catálogo SQLite com modo WAL + FTS5; troca a quente do catálogo em tempo de execução via `OpenCatalog` / `CloseCatalog`.
-- [x] Extração de metadados FFprobe (codec, resolução, FPS, bitrate, HDR, EXIF, GPS, câmera/lente).
+- [x] Rich metadata extraction via FFprobe + platform-native helpers: codec,
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera., resolução, FPS, bitrate, HDR, EXIF, GPS, câmera/lente).
 - [x] Geração de miniaturas e quadros de scrub no estilo Lightroom (10 quadros por vídeo) com bloqueios por vídeo para evitar trabalho duplicado.
 - [x] Limitação de ffmpeg concorrente (padrão: número de CPUs do host) para evitar saturar armazenamento SAN em varreduras de grandes bibliotecas.
 - [x] Varredura de biblioteca com recursão opcional e agrupamento automático de variantes.
@@ -104,8 +118,6 @@ Veja [`SETUP.md`](SETUP.md) para instruções de instalação específicas por p
 cd core
 cargo build --release
 ```
-
-O binário fica em `core/target/release/reelvault-core`. Execute-o diretamente se quiser controlá-lo você mesmo, ou deixe um dos clientes iniciá-lo no primeiro lançamento:
 
 ```bash
 # Padrão — usa o catálogo padrão da plataforma na porta padrão.
@@ -174,7 +186,8 @@ No primeiro lançamento, o aplicativo descobre o daemon via mDNS, você autoriza
 
 ## Contribuindo
 
-Veja [`CLAUDE.md`](CLAUDE.md) para as diretrizes de desenvolvimento. Pull requests são bem-vindos — mantenha a paridade de recursos entre os dois clientes e adicione cabeçalhos SPDX em qualquer novo arquivo-fonte (veja Licença abaixo).
+Veja [`CLAUDE.md`](CLAUDE.md) para as diretrizes de desenvolvimento. Pull requests são bem-vindos — mantenha a paridade de recursos em todos os quatro clientes onde aplicável
+(veja CLAUDE.md para desvios legítimos por plataforma) e adicione cabeçalhos SPDX em qualquer novo arquivo-fonte (veja Licença abaixo).
 
 ## Licença
 

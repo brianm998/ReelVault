@@ -22,9 +22,9 @@ ReelVault 帮助您：
 ## 架构
 
 ```
-Desktop / macOS clients          iOS client (iPhone / iPad)
+Desktop / macOS clients          iOS / Android clients
    ↓ gRPC over loopback             ↓ gRPC + HTTPS media over the LAN
-   │                                │ (mDNS discovery · pinned TLS · paired)
+   │                                │ (mDNS/NSD discovery · pinned TLS · paired)
    └───────────────┬────────────────┘
                    ↓
         Rust Backend Daemon (reelvault-core)
@@ -40,6 +40,13 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 
 - **SwiftUI iOS 客户端** (`ios/`) — 一款**仅限远程连接**的 iPhone / iPad 应用。它没有本地文件访问权限，也不内嵌守护进程：通过 Wi‑Fi（mDNS）发现守护进程，经过一次性配对后通过指纹固定的 TLS 通道连接，通过 gRPC 浏览，并从守护进程的媒体服务器**流式播放**视频（降采样 HLS）。以 iOS 分享表单替代编辑器拖出操作，并支持从照片/文件上传。详见 [`ios/README.md`](ios/README.md)。
 
+- **Kotlin Compose Android client** (`android/`) — A **remote-only**
+  Android phone / tablet app. Connects to a daemon over the LAN (NSD
+  discovery), streams video via ExoPlayer, and replaces editor drag-out with
+  the Android share intent. Also embeds the full Rust core for on-device local
+  library access — browse, catalog, and upload footage directly from the
+  device. See [`android/README.md`](android/README.md).
+
 - **ReelVaultKit** (`kit/`) — 一个本地 SwiftPM 包，包含**两个** Apple 客户端共用的 Swift 代码：模型、视图模型、gRPC 客户端、发现机制、固定 TLS 以及媒体缓存/流媒体层。
 
 - **SQLite 目录** — WAL 模式数据库，使用 FTS5 实现全文搜索。数据库模式位于 [`core/schema.sql`](core/schema.sql)。
@@ -48,14 +55,30 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 
 ## 项目状态
 
-**MVP 在 macOS 和 Compose Desktop 上已可正常使用。** 两个客户端提供相同的功能集；macOS 客户端额外支持原生菜单栏命令和通过 NSWorkspace 启动编辑器。**仅限远程连接的 iOS 客户端**（iPhone / iPad）通过局域网连接守护进程并流式播放视频——支持浏览、检查、堆叠、分享和上传；详见 [`ios/README.md`](ios/README.md)。
+welcome — please keep all four clients in feature-parity where applicable
+(see CLAUDE.md for legitimate per-platform deviations), and add SPDX
+headers to any new source files (see License below).
 
 ### ✅ 已完成
 
 **核心**
 - [x] 具备完整 RPC 接口的 gRPC 守护进程（视频、搜索、扫描、标签、集合、堆叠、过滤器、状态、配置、目录生命周期）。
 - [x] WAL 模式 + FTS5 的 SQLite 目录；通过 `OpenCatalog` / `CloseCatalog` 支持运行时目录热切换。
-- [x] FFprobe 元数据提取（编解码器、分辨率、帧率、比特率、HDR、EXIF、GPS、相机/镜头）。
+- [x] Rich metadata extraction via FFprobe + platform-native helpers: codec,
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera.
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera.
 - [x] 缩略图和 Lightroom 风格擦洗帧生成（每个视频 10 帧），使用逐视频锁去重工作。
 - [x] 并发 ffmpeg 限流（默认为主机 CPU 核心数），防止大型库扫描导致 SAN 存储过载。
 - [x] 支持可选递归的库扫描及变体自动分组。
@@ -174,7 +197,8 @@ make build            # iOS Simulator; or open ReelVault.xcodeproj to run on a d
 
 ## 贡献
 
-开发指南请参阅 [`CLAUDE.md`](CLAUDE.md)。欢迎提交 Pull Request——请保持两个客户端的功能对等，并为所有新的源文件添加 SPDX 头（参见下方许可证说明）。
+开发指南请参阅 [`CLAUDE.md`](CLAUDE.md)。欢迎提交 Pull Request——请在适用的情况下保持所有四个客户端的功能对等
+（有关合法的平台特定偏差，请参见 CLAUDE.md），并为所有新的源文件添加 SPDX 头（参见下方许可证说明）。
 
 ## 许可证
 

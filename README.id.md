@@ -22,9 +22,9 @@ ReelVault membantu Anda:
 ## Arsitektur
 
 ```
-Desktop / macOS clients          iOS client (iPhone / iPad)
+Desktop / macOS clients          iOS / Android clients
    ↓ gRPC over loopback             ↓ gRPC + HTTPS media over the LAN
-   │                                │ (mDNS discovery · pinned TLS · paired)
+   │                                │ (mDNS/NSD discovery · pinned TLS · paired)
    └───────────────┬────────────────┘
                    ↓
         Rust Backend Daemon (reelvault-core)
@@ -39,6 +39,13 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 - **Klien SwiftUI macOS** (`macos/`) — Aplikasi macOS native dengan paritas fitur, alur auto-spawn yang sama, menu File macOS asli (grup Commands), dan judul jendela reaktif yang melacak katalog yang terbuka.
 
 - **Klien SwiftUI iOS** (`ios/`) — Aplikasi iPhone / iPad **hanya-remote**. Tidak memiliki akses file lokal dan tidak menyematkan daemon: menemukan daemon melalui Wi‑Fi (mDNS), terhubung melalui saluran TLS yang disematkan sidik jari setelah pemasangan sekali, menelusuri melalui gRPC, dan **streaming** video (HLS yang diturunkan skalanya) dari server media daemon. Menggantikan drag-out editor dengan lembar berbagi iOS dan menambahkan unggahan dari Foto / File. Lihat [`ios/README.md`](ios/README.md).
+
+- **Kotlin Compose Android client** (`android/`) — A **remote-only**
+  Android phone / tablet app. Connects to a daemon over the LAN (NSD
+  discovery), streams video via ExoPlayer, and replaces editor drag-out with
+  the Android share intent. Also embeds the full Rust core for on-device local
+  library access — browse, catalog, and upload footage directly from the
+  device. See [`android/README.md`](android/README.md).
 
 - **ReelVaultKit** (`kit/`) — Paket SwiftPM lokal dari Swift bersama yang digunakan oleh **kedua** klien Apple: model, view-model, klien gRPC, discovery, TLS yang disematkan, dan lapisan cache/streaming media.
 
@@ -55,7 +62,14 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 **Core**
 - [x] Daemon gRPC dengan permukaan RPC lengkap (video, pencarian, pemindaian, tag, koleksi, tumpukan, filter, status, konfigurasi, siklus hidup katalog).
 - [x] Katalog SQLite dengan mode WAL + FTS5; hot-swap katalog runtime melalui `OpenCatalog` / `CloseCatalog`.
-- [x] Ekstraksi metadata FFprobe (codec, resolusi, FPS, bitrate, HDR, EXIF, GPS, kamera/lensa).
+- [x] Rich metadata extraction via FFprobe + platform-native helpers: codec,
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera., resolusi, FPS, bitrate, HDR, EXIF, GPS, kamera/lensa).
 - [x] Pembuatan thumbnail dan scrub-frame gaya Lightroom (10 frame per video) dengan kunci per-video untuk mendeduplikasi pekerjaan.
 - [x] Pembatasan ffmpeg bersamaan (default ke jumlah CPU host) agar pemindaian perpustakaan besar tidak mengacaukan penyimpanan berbasis SAN.
 - [x] Pemindaian perpustakaan dengan rekursi opsional dan pengelompokan varian otomatis.
@@ -174,7 +188,8 @@ Pada peluncuran pertama aplikasi menemukan daemon melalui mDNS, Anda mengotorisa
 
 ## Berkontribusi
 
-Lihat [`CLAUDE.md`](CLAUDE.md) untuk panduan pengembangan. Pull request disambut — harap jaga paritas fitur kedua klien, dan tambahkan header SPDX ke file sumber baru apa pun (lihat Lisensi di bawah).
+Lihat [`CLAUDE.md`](CLAUDE.md) untuk panduan pengembangan. Pull request disambut — harap jaga paritas fitur di semua empat klien, di mana berlaku
+(lihat CLAUDE.md untuk penyimpangan per-platform yang sah), dan tambahkan header SPDX ke file sumber baru apa pun (lihat Lisensi di bawah).
 
 ## Lisensi
 

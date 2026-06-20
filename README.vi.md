@@ -22,9 +22,9 @@ ReelVault giúp bạn:
 ## Kiến trúc
 
 ```
-Desktop / macOS clients          iOS client (iPhone / iPad)
+Desktop / macOS clients          iOS / Android clients
    ↓ gRPC over loopback             ↓ gRPC + HTTPS media over the LAN
-   │                                │ (mDNS discovery · pinned TLS · paired)
+   │                                │ (mDNS/NSD discovery · pinned TLS · paired)
    └───────────────┬────────────────┘
                    ↓
         Rust Backend Daemon (reelvault-core)
@@ -39,6 +39,13 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 - **Client SwiftUI macOS** (`macos/`) — Ứng dụng macOS native tương đương tính năng với cùng luồng tự động khởi chạy, menu File macOS thực sự (nhóm Commands) và tiêu đề cửa sổ phản ứng theo dõi danh mục đang mở.
 
 - **Client SwiftUI iOS** (`ios/`) — Ứng dụng iPhone / iPad **chỉ remote**. Không có quyền truy cập file cục bộ và không nhúng daemon: nó khám phá daemon qua Wi‑Fi (mDNS), kết nối qua kênh TLS ghim dấu vân tay sau khi ghép nối một lần, duyệt qua gRPC và **phát trực tiếp** video (HLS giảm tỷ lệ) từ máy chủ media của daemon. Thay thế kéo editor bằng sheet chia sẻ iOS và thêm tải lên từ Ảnh / Files. Xem [`ios/README.md`](ios/README.md).
+
+- **Kotlin Compose Android client** (`android/`) — A **remote-only**
+  Android phone / tablet app. Connects to a daemon over the LAN (NSD
+  discovery), streams video via ExoPlayer, and replaces editor drag-out with
+  the Android share intent. Also embeds the full Rust core for on-device local
+  library access — browse, catalog, and upload footage directly from the
+  device. See [`android/README.md`](android/README.md).
 
 - **ReelVaultKit** (`kit/`) — Gói SwiftPM cục bộ của Swift dùng chung được sử dụng bởi **cả hai** client Apple: model, view-model, client gRPC, discovery, TLS ghim và lớp cache/phát trực tiếp media.
 
@@ -55,7 +62,14 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 **Core**
 - [x] Daemon gRPC với bề mặt RPC đầy đủ (video, tìm kiếm, quét, thẻ, bộ sưu tập, chồng, bộ lọc, trạng thái, cấu hình, vòng đời danh mục).
 - [x] Danh mục SQLite với chế độ WAL + FTS5; hot-swap danh mục runtime qua `OpenCatalog` / `CloseCatalog`.
-- [x] Trích xuất metadata FFprobe (codec, độ phân giải, FPS, bitrate, HDR, EXIF, GPS, camera/ống kính).
+- [x] Rich metadata extraction via FFprobe + platform-native helpers: codec,
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera., độ phân giải, FPS, bitrate, HDR, EXIF, GPS, camera/ống kính).
 - [x] Tạo thumbnail và scrub-frame theo phong cách Lightroom (10 khung hình mỗi video) với khóa theo video để loại bỏ công việc trùng lặp.
 - [x] Giới hạn ffmpeg đồng thời (mặc định theo số CPU máy chủ) để giữ quét thư viện lớn không làm quá tải bộ lưu trữ SAN.
 - [x] Quét thư viện với đệ quy tùy chọn và tự động nhóm biến thể.
@@ -174,7 +188,8 @@ Khi khởi chạy lần đầu, ứng dụng khám phá daemon qua mDNS, bạn �
 
 ## Đóng góp
 
-Xem [`CLAUDE.md`](CLAUDE.md) để biết hướng dẫn phát triển. Pull request được chào đón — vui lòng giữ tương đương tính năng hai client, và thêm tiêu đề SPDX vào bất kỳ file nguồn mới nào (xem Giấy phép bên dưới).
+Xem [`CLAUDE.md`](CLAUDE.md) để biết hướng dẫn phát triển. Pull request được chào đón — vui lòng giữ tương đương tính năng trên cả bốn client, nơi áp dụng
+(xem CLAUDE.md để biết các ngoại lệ hợp lệ theo nền tảng), và thêm tiêu đề SPDX vào bất kỳ file nguồn mới nào (xem Giấy phép bên dưới).
 
 ## Giấy phép
 

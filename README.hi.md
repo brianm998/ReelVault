@@ -22,9 +22,9 @@ ReelVault आपकी मदद करता है:
 ## आर्किटेक्चर
 
 ```
-Desktop / macOS clients          iOS client (iPhone / iPad)
+Desktop / macOS clients          iOS / Android clients
    ↓ gRPC over loopback             ↓ gRPC + HTTPS media over the LAN
-   │                                │ (mDNS discovery · pinned TLS · paired)
+   │                                │ (mDNS/NSD discovery · pinned TLS · paired)
    └───────────────┬────────────────┘
                    ↓
         Rust Backend Daemon (reelvault-core)
@@ -39,6 +39,13 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 - **SwiftUI macOS क्लाइंट** (`macos/`) — फीचर-पैरिटी नेटिव macOS ऐप, उसी ऑटो-स्पॉन फ्लो के साथ, एक रियल macOS File मेनू (Commands ग्रुप), और एक रिएक्टिव विंडो टाइटल जो खुले कैटलॉग को ट्रैक करता है।
 
 - **SwiftUI iOS क्लाइंट** (`ios/`) — एक **केवल-रिमोट** iPhone / iPad ऐप। इसके पास लोकल फाइल एक्सेस नहीं है और कोई डेमन एम्बेड नहीं है: यह Wi‑Fi (mDNS) पर डेमन डिस्कवर करता है, एक बार पेयरिंग के बाद फिंगरप्रिंट-पिन्ड TLS चैनल से कनेक्ट होता है, gRPC पर ब्राउज़ करता है, और डेमन के मीडिया सर्वर से वीडियो (डाउनस्केल्ड HLS) **स्ट्रीम** करता है। एडिटर ड्रैग-आउट को iOS शेयर शीट से रिप्लेस करता है और Photos / Files से अपलोड जोड़ता है। देखें [`ios/README.md`](ios/README.md)।
+
+- **Kotlin Compose Android client** (`android/`) — A **remote-only**
+  Android phone / tablet app. Connects to a daemon over the LAN (NSD
+  discovery), streams video via ExoPlayer, and replaces editor drag-out with
+  the Android share intent. Also embeds the full Rust core for on-device local
+  library access — browse, catalog, and upload footage directly from the
+  device. See [`android/README.md`](android/README.md).
 
 - **ReelVaultKit** (`kit/`) — **दोनों** Apple क्लाइंट द्वारा उपयोग किए जाने वाले शेयर्ड Swift का एक लोकल SwiftPM पैकेज: मॉडल, व्यू-मॉडल, gRPC क्लाइंट, डिस्कवरी, पिन्ड TLS, और मीडिया कैशे/स्ट्रीमिंग लेयर।
 
@@ -55,7 +62,21 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 **कोर**
 - [x] gRPC डेमन पूर्ण RPC सर्फेस के साथ (वीडियो, सर्च, स्कैन, टैग, कलेक्शन, स्टैक, फ़िल्टर, स्टेटस, कॉन्फिग, कैटलॉग लाइफसाइकिल)।
 - [x] WAL मोड + FTS5 के साथ SQLite कैटलॉग; `OpenCatalog` / `CloseCatalog` के ज़रिए रनटाइम कैटलॉग हॉट-स्वैप।
-- [x] FFprobe मेटाडेटा एक्सट्रैक्शन (कोडेक, रेज़ोल्यूशन, FPS, बिटरेट, HDR, EXIF, GPS, कैमरा/लेंस)।
+- [x] Rich metadata extraction via FFprobe + platform-native helpers: codec,
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera.
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera.
 - [x] थंबनेल और Lightroom-स्टाइल स्क्रब-फ्रेम जनरेशन (10 फ्रेम प्रति वीडियो) डुप्लिकेट काम से बचने के लिए प्रति-वीडियो लॉक के साथ।
 - [x] कंकरेंट-ffmpeg थ्रॉटल (डिफ़ॉल्ट रूप से होस्ट CPU काउंट) बड़े-लाइब्रेरी स्कैन से SAN-बैक्ड स्टोरेज को थ्रैश होने से बचाने के लिए।
 - [x] ऑप्शनल रिकर्सन और वेरिएंट ऑटो-ग्रुपिंग के साथ लाइब्रेरी स्कैनिंग।
@@ -174,7 +195,8 @@ make build            # iOS Simulator; or open ReelVault.xcodeproj to run on a d
 
 ## योगदान
 
-डेवलपमेंट गाइडलाइन के लिए [`CLAUDE.md`](CLAUDE.md) देखें। Pull requests का स्वागत है — कृपया दोनों क्लाइंट में फीचर-पैरिटी बनाए रखें, और किसी भी नए सोर्स फाइल में SPDX हेडर जोड़ें (नीचे लाइसेंस देखें)।
+डेवलपमेंट गाइडलाइन के लिए [`CLAUDE.md`](CLAUDE.md) देखें। Pull requests का स्वागत है — कृपया सभी चारों क्लाइंट में फीचर-पैरिटी बनाए रखें जहाँ उचित हो
+(प्रति-प्लेटफ़ॉर्म वैध विचलन के लिए CLAUDE.md देखें), और किसी भी नए सोर्स फाइल में SPDX हेडर जोड़ें (नीचे लाइसेंस देखें)।
 
 ## लाइसेंस
 

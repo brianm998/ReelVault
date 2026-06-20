@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.reelvault.data.remote.DiscoveredServer
 import com.reelvault.data.remote.ServerChoice
+import com.reelvault.util.Strings
 
 /** Shown while the startup scan (mDNS + loopback probe) runs. */
 @Composable
@@ -172,13 +173,13 @@ fun PairingCodeEntryScreen(
             }
             Spacer(Modifier.height(20.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TextButton(onClick = onCancel, enabled = !busy) { Text("Cancel") }
+                TextButton(onClick = onCancel, enabled = !busy) { Text(Strings["ui_cancel"]) }
                 Button(onClick = { onSubmit(code) }, enabled = canSubmit) {
                     if (busy) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(8.dp))
                     }
-                    Text("Pair")
+                    Text(Strings["ui_pair"])
                 }
             }
         }

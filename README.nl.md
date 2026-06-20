@@ -32,9 +32,9 @@ ReelVault helpt u:
 ## Architectuur
 
 ```
-Desktop / macOS clients          iOS client (iPhone / iPad)
+Desktop / macOS clients          iOS / Android clients
    ↓ gRPC over loopback             ↓ gRPC + HTTPS media over the LAN
-   │                                │ (mDNS discovery · pinned TLS · paired)
+   │                                │ (mDNS/NSD discovery · pinned TLS · paired)
    └───────────────┬────────────────┘
                    ↓
         Rust Backend Daemon (reelvault-core)
@@ -64,6 +64,13 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
   eenmalige koppeling, bladert via gRPC en **streamt** video (verkleinde HLS) van de
   mediaserver van de daemon. Vervangt het slepen naar de editor door het iOS-deelblad en
   voegt uploaden toe vanuit Foto's / Bestanden. Zie [`ios/README.md`](ios/README.md).
+
+- **Kotlin Compose Android client** (`android/`) — A **remote-only**
+  Android phone / tablet app. Connects to a daemon over the LAN (NSD
+  discovery), streams video via ExoPlayer, and replaces editor drag-out with
+  the Android share intent. Also embeds the full Rust core for on-device local
+  library access — browse, catalog, and upload footage directly from the
+  device. See [`android/README.md`](android/README.md).
 
 - **ReelVaultKit** (`kit/`) — Een lokaal SwiftPM-pakket met gedeelde Swift-code die door
   **beide** Apple-clients wordt gebruikt: modellen, view-modellen, de gRPC-client, detectie,
@@ -97,8 +104,21 @@ uploaden; zie [`ios/README.md`](ios/README.md).
       collecties, stacks, filters, status, configuratie, levenscyclus van catalogus).
 - [x] SQLite-catalogus met WAL-modus + FTS5; dynamisch wisselen van catalogus via
       `OpenCatalog` / `CloseCatalog`.
-- [x] FFprobe-metadata-extractie (codec, resolutie, FPS, bitrate, HDR,
-      EXIF, GPS, camera/lens).
+- [x] Rich metadata extraction via FFprobe + platform-native helpers: codec,
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera.
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera.
 - [x] Miniaturen en Lightroom-stijl scrubframe-generatie (10 frames per
       video) met per-video vergrendelingen om dubbel werk te vermijden.
 - [x] Gelijktijdige ffmpeg-begrenzing (standaard het aantal CPU-kernen van de host) om te
@@ -257,9 +277,8 @@ koppelingsmodel, staan in [`ios/README.md`](ios/README.md).
 
 ## Bijdragen
 
-Zie [`CLAUDE.md`](CLAUDE.md) voor ontwikkelingsrichtlijnen. Pull requests zijn welkom —
-houd de functiepariteit tussen de twee clients in stand en voeg SPDX-headers toe aan
-nieuwe bronbestanden (zie Licentie hieronder).
+Zie [`CLAUDE.md`](CLAUDE.md) voor ontwikkelingsrichtlijnen. Pull requests zijn welkom — zorg voor functiepariteit in alle vier clients waar van toepassing
+(zie CLAUDE.md voor legitieme platformspecifieke afwijkingen), en voeg SPDX-headers toe aan nieuwe bronbestanden (zie Licentie hieronder).
 
 ## Licentie
 

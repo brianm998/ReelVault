@@ -26,6 +26,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import com.reelvault.util.Strings
 
 /**
  * Dialog for setting the capture date/time on one or more videos. Uses
@@ -233,7 +234,7 @@ fun CaptureDateDialog(
                         if (defaultInferred != null) {
                             Tooltip(text = "Apply $defaultInferred, read from the filename with your default method.") {
                                 Button(onClick = { applyInferredDate(defaultInferred) }) {
-                                    Text("Set as $defaultInferred")
+                                    Text(Strings.format("ui_set_as_default", defaultInferred))
                                 }
                             }
                         }
@@ -291,7 +292,7 @@ fun CaptureDateDialog(
                                 previewInferred?.let { applyInferredDate(it) }
                             },
                             enabled = previewInferred != null,
-                        ) { Text("Use detected date") }
+                        ) { Text(Strings["ui_use_detected_date"]) }
                     }
                 }
             }
@@ -306,12 +307,12 @@ fun CaptureDateDialog(
                         " to $n video$plural."
                 } else "Pick a date first."
             ) {
-                Button(onClick = commit, enabled = enabled) { Text("Save") }
+                Button(onClick = commit, enabled = enabled) { Text(Strings["ui_save"]) }
             }
         },
         dismissButton = {
             Tooltip(text = "Close without changing any capture date.") {
-                TextButton(onClick = onDismiss) { Text("Cancel") }
+                TextButton(onClick = onDismiss) { Text(Strings["ui_cancel"]) }
             }
         },
         properties = DialogProperties(usePlatformDefaultWidth = false),

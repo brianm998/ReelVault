@@ -1,0 +1,566 @@
+<resources>
+    <string name="app_name">ReelVault</string>
+
+    <!-- ── Common ───────────────────────────────────────────────────────── -->
+    <string name="common_back">Back</string>
+    <string name="nav_history_back">Back</string>
+    <string name="nav_history_forward">آگے</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_save">محفوظ کریں</string>
+    <string name="common_done">مکمل</string>
+    <string name="common_clear">صاف کریں</string>
+    <string name="common_selected">منتخب شدہ</string>
+    <string name="common_offline">آف لائن</string>
+    <string name="common_unavailable">دستیاب نہیں</string>
+    <string name="common_unknown_error">نامعلوم خرابی</string>
+
+    <!-- ── Connection flow ──────────────────────────────────────────────── -->
+    <string name="conn_reconnecting_to">%1$s سے دوبارہ منسلک ہو رہا ہے…</string>
+    <string name="conn_connecting_to">%1$s سے مربوط ہو رہا ہے…</string>
+    <string name="conn_connecting">مربوط ہو رہا ہے…</string>
+    <string name="conn_pairing_with">%1$s کے ساتھ جوڑا جا رہا ہے…</string>
+    <string name="conn_could_not_connect_named">%1$s سے مربوط نہیں ہو سکا۔ تصدیق کریں کہ ڈیمن چل رہا ہے اور دوبارہ کوشش کریں۔</string>
+    <string name="conn_could_not_connect_simple">%1$s سے مربوط نہیں ہو سکا۔</string>
+    <string name="conn_pairing_rejected">جوڑنا مسترد ہوا — کوڈ چیک کریں اور دوبارہ کوشش کریں۔</string>
+    <string name="conn_looking_for_servers">ReelVault سرورز تلاش کیے جا رہے ہیں…</string>
+    <string name="conn_scanning_network">مقامی نیٹ ورک اسکین ہو رہا ہے</string>
+    <string name="conn_connect_title">ReelVault سے مربوط ہوں</string>
+    <string name="conn_rescan">دوبارہ اسکین کریں</string>
+    <string name="conn_no_servers_found">کوئی سرور نہیں ملا</string>
+    <string name="conn_no_servers_hint">اس WiFi نیٹ ورک کے کسی کمپیوٹر پر --remote کے ساتھ ReelVault کور ڈیمن شروع کریں، پھر دوبارہ اسکین کریں۔</string>
+    <string name="conn_available_servers">Available servers</string>
+    <string name="conn_enter_address_manually">پتہ دستی طور پر درج کریں</string>
+    <string name="conn_browse_local_videos">Browse local videos</string>
+    <string name="conn_requires_pairing">جوڑنا ضروری ہے</string>
+    <string name="conn_enter_pairing_code">جوڑی بنانے کا کوڈ درج کریں</string>
+    <string name="conn_pair_with">%1$s کے ساتھ جوڑیں</string>
+    <string name="conn_pairing_instructions">ReelVault چلانے والے کمپیوٹر پر، 6 ہندسوں کا کوڈ ظاہر کرنے کے لیے File ▸ Pair a New Device منتخب کریں (ایک بغیر اسکرین سرور بھی اسے لاگ کرتا ہے)۔ نیچے درج کریں — آپ کو یہ صرف ایک بار کرنا ہوگا۔</string>
+    <string name="conn_pin_placeholder">000000</string>
+    <string name="conn_pair_button">جوڑیں</string>
+    <string name="conn_connect_manually">دستی طور پر مربوط ہوں</string>
+    <string name="conn_host_label">ہوسٹ یا IP پتہ</string>
+    <string name="conn_host_placeholder">192.168.1.100</string>
+    <string name="conn_grpc_port_label">gRPC پورٹ</string>
+    <string name="conn_grpc_port_placeholder">50051</string>
+    <string name="conn_fingerprint_label">Cert fingerprint (SHA-256, optional)</string>
+    <string name="conn_fingerprint_placeholder">abcd1234…</string>
+    <string name="conn_fetch">حاصل کریں</string>
+    <string name="conn_could_not_reach">%1$s:%2$d تک نہیں پہنچا جا سکا — ہوسٹ کی تصدیق کریں اور یہ بھی کہ ڈیمن چل رہا ہے۔</string>
+    <string name="conn_connect_button">مربوط ہوں</string>
+    <string name="conn_retry">دوبارہ کوشش کریں</string>
+    <string name="conn_enter_address">پتہ درج کریں</string>
+
+    <!-- ── Library grid ─────────────────────────────────────────────────── -->
+    <string name="grid_incoming_pairing_title">آنے والی پیئرنگ کی درخواست</string>
+    <string name="grid_incoming_pairing_message">%1$s wants to connect to this library. Allow?</string>
+    <string name="grid_allow">Allow</string>
+    <string name="grid_deny">انکار کریں</string>
+    <string name="grid_close_search">تلاش بند کریں</string>
+    <string name="grid_search_videos_hint">ویڈیوز تلاش کریں…</string>
+    <string name="grid_selected_count">%1$d selected</string>
+    <string name="grid_clear_selection">انتخاب صاف کریں</string>
+    <string name="grid_open_library_panel">لائبریری پینل کھولیں</string>
+    <string name="grid_search">تلاش کریں</string>
+    <string name="grid_sort">ترتیب</string>
+    <string name="grid_switch_to_list_view">فہرست ویو پر جائیں</string>
+    <string name="grid_switch_to_grid_view">گرڈ ویو پر جائیں</string>
+    <string name="grid_more_options">مزید اختیارات</string>
+    <string name="grid_map">نقشہ</string>
+    <string name="grid_card_stats">Card Stats</string>
+    <string name="grid_configure_card_stats">کارڈ کے اعداد و شمار ترتیب دیں</string>
+    <string name="grid_settings">ترتیبات</string>
+    <string name="grid_disconnect">منقطع کریں</string>
+    <string name="grid_sort_by">ترتیب بنیاد</string>
+    <string name="grid_sort_ascending_arrow">%1$s ↑</string>
+    <string name="grid_sort_descending_arrow">%1$s ↓</string>
+    <string name="grid_library">لائبریری</string>
+    <string name="grid_clear_filters">فلٹرز صاف کریں</string>
+    <string name="grid_close">بند کریں</string>
+    <string name="grid_catalog">Catalog</string>
+    <string name="grid_remote_library">ریموٹ لائبریری</string>
+    <string name="grid_local_videos">مقامی ویڈیوز</string>
+    <string name="grid_all_videos">All Videos</string>
+    <string name="grid_locations">مقامات</string>
+    <string name="grid_keywords">کلیدی الفاظ</string>
+    <string name="grid_collections">مجموعے</string>
+    <string name="grid_no_videos">کوئی ویڈیو نہیں</string>
+    <string name="grid_processing">پراسیسنگ جاری ہے…</string>
+    <string name="grid_percent">%1$d%%</string>
+    <string name="grid_no_videos_match_search">No videos match \&quot;%1$s\&quot;</string>
+    <string name="grid_no_videos_with_keyword">اس کلیدی لفظ کے ساتھ کوئی ویڈیو نہیں</string>
+    <string name="grid_collection_empty">یہ کلیکشن خالی ہے</string>
+    <string name="grid_smart_collection_empty">اس سمارٹ مجموعے سے کوئی ویڈیو مطابقت نہیں رکھتی</string>
+    <string name="grid_no_videos_in_library">لائبریری میں کوئی ویڈیو نہیں</string>
+    <string name="grid_empty_add_location_hint">Add a library location in Settings to get started.</string>
+    <string name="grid_empty_no_match_filter">…یا موجودہ فلٹر سے کوئی ویڈیو مطابقت نہیں رکھتی</string>
+    <string name="grid_reset_filter">فلٹر ری سیٹ کریں</string>
+    <string name="grid_clear_location_filter">مقام کا فلٹر صاف کریں</string>
+    <string name="grid_star_count">%1$d star</string>
+    <plurals name="grid_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="other">%1$d videos</item>
+    </plurals>
+    <plurals name="grid_location_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="other">%1$d videos</item>
+    </plurals>
+
+    <!-- ── Map ──────────────────────────────────────────────────────────── -->
+    <string name="map_title">نقشہ</string>
+    <string name="map_load_failed">نقشہ ڈیٹا لوڈ کرنے میں ناکامی: %1$s</string>
+    <string name="map_unknown_error">نامعلوم خرابی</string>
+    <string name="map_no_geotagged">No geotagged videos.\nVideos with GPS metadata appear here on the map.</string>
+    <string name="map_geotagged_count">%1$d geotagged</string>
+    <string name="map_switch_to_satellite">سیٹلائٹ تصویر پر جائیں</string>
+    <string name="map_switch_to_standard">معیاری نقشے پر جائیں</string>
+    <plurals name="map_marker_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="other">%1$d videos</item>
+    </plurals>
+
+    <!-- ── Local media ──────────────────────────────────────────────────── -->
+    <string name="local_selected_count">%1$d selected</string>
+    <string name="local_title">مقامی ویڈیوز</string>
+    <string name="local_clear_selection">انتخاب صاف کریں</string>
+    <string name="local_upload_to_server">سرور پر اپ لوڈ کریں</string>
+    <string name="local_select_all">سب منتخب کریں</string>
+    <string name="local_upload_failed">اپ لوڈ ناکام ہوا: %1$s</string>
+    <string name="local_no_videos_found">ڈیوائس پر کوئی ویڈیو نہیں ملی</string>
+    <string name="local_not_connected_hint">منسلک نہیں — اپ لوڈ کرنے کے لیے ReelVault سرور سے منسلک ہوں</string>
+    <string name="local_uploaded">اپ لوڈ ہو گیا</string>
+    <string name="local_video_access_denied">ویڈیو تک رسائی سے انکار</string>
+    <string name="local_permission_hint">Grant \&quot;Videos\&quot; permission in Settings → Apps → ReelVault → Permissions to browse local videos.</string>
+    <plurals name="local_uploaded_count">
+        <item quantity="one">Uploaded %1$d video</item>
+        <item quantity="other">Uploaded %1$d videos</item>
+    </plurals>
+    <plurals name="local_selected_upload_hint">
+        <item quantity="one">%1$d video selected — tap ↑ to upload to server</item>
+        <item quantity="other">%1$d videos selected — tap ↑ to upload to server</item>
+    </plurals>
+
+    <!-- ── Settings ─────────────────────────────────────────────────────── -->
+    <string name="settings_title">ترتیبات</string>
+    <string name="settings_back">Back</string>
+    <string name="settings_library_locations">لائبریری کے مقامات</string>
+    <string name="settings_no_watched_folders">کوئی مانیٹر شدہ فولڈر نہیں</string>
+    <string name="settings_rescan_complete">دوبارہ اسکین مکمل</string>
+    <string name="settings_rescan_failed">دوبارہ اسکین ناکام ہوا: %1$s</string>
+    <string name="settings_about">About</string>
+    <string name="settings_app_version">App Version</string>
+    <string name="settings_loading_daemon_info">ڈیمن کی معلومات لوڈ ہو رہی ہیں…</string>
+    <string name="settings_connection">کنکشن</string>
+    <string name="settings_server_connection">سرور کنیکشن</string>
+    <string name="settings_connected_remote">ریموٹ ڈیمن سے %1$s:%2$d پر مربوط ہے</string>
+    <string name="settings_connected_local">مقامی ڈیمن سے مربوط ہے</string>
+    <string name="settings_disconnected">سرور سے منقطع ہو گیا</string>
+    <string name="settings_forget_server">سرور بھول جائیں</string>
+    <string name="settings_forget_server_confirm_title">کیا یہ سرور بھول جائیں؟</string>
+    <string name="settings_forget_server_confirm_body">یہ آپ کے محفوظ کردہ اسناد صاف کر دے گا اور کنکشن اسکرین پر واپس لے جائے گا۔ دوبارہ منسلک ہونے کے لیے آپ کو دوبارہ پیئر کرنا ہوگا۔</string>
+    <string name="settings_forget_server_confirm_action">بھول جائیں</string>
+    <string name="settings_server_forgotten">سرور فراموش کر دیا گیا</string>
+    <string name="settings_reconnected">کامیابی سے دوبارہ منسلک ہو گیا</string>
+    <string name="settings_reconnect_failed">دوبارہ منسلک ہونا ناکام ہوا</string>
+    <string name="settings_reconnect">دوبارہ منسلک کریں</string>
+    <string name="settings_scan">اسکین کریں</string>
+    <string name="settings_full_rescan">مکمل دوبارہ اسکین</string>
+    <string name="settings_full_rescan_desc">تمام مانیٹر شدہ فولڈرز کو دوبارہ انڈیکس کریں، میٹا ڈیٹا نکالیں اور نئی یا تبدیل شدہ ویڈیوز کے تھمب نیلز بنائیں۔</string>
+    <string name="settings_full_scan_complete">مکمل اسکین ہو گیا</string>
+    <string name="settings_scan_failed">اسکین ناکام ہوا: %1$s</string>
+    <string name="settings_scanning">اسکین جاری ہے…</string>
+    <string name="settings_start_full_scan">مکمل اسکین شروع کریں</string>
+    <string name="settings_collapse">سمیٹیں</string>
+    <string name="settings_expand">پھیلائیں</string>
+    <string name="settings_last_scanned">آخری اسکین: %1$s</string>
+    <string name="settings_never_scanned">کبھی اسکین نہیں ہوا</string>
+    <string name="settings_non_recursive"> (non-recursive)</string>
+    <string name="settings_disabled"> (disabled)</string>
+    <string name="settings_rescan_path">%1$s دوبارہ اسکین کریں</string>
+    <string name="settings_daemon_version">ڈیمن ورژن</string>
+    <string name="settings_videos_indexed">انڈیکس شدہ ویڈیوز</string>
+    <string name="settings_cache_size">Cache Size</string>
+    <string name="settings_uptime">فعال وقت</string>
+    <string name="settings_loading">لوڈ ہو رہا ہے…</string>
+    <plurals name="settings_location_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="other">%1$d videos</item>
+    </plurals>
+
+    <!-- ── Detail ───────────────────────────────────────────────────────── -->
+    <string name="detail_title">تفصیل</string>
+    <string name="detail_share">شیئر کریں</string>
+    <string name="detail_share_subject">%1$s شیئر کریں</string>
+    <string name="detail_video_not_found">ویڈیو نہیں ملی</string>
+    <string name="detail_section_file_info">فائل کی معلومات</string>
+    <string name="detail_section_video">ویڈیو</string>
+    <string name="detail_section_audio">Audio</string>
+    <string name="detail_section_capture">Capture</string>
+    <string name="detail_field_filename">فائل کا نام</string>
+    <string name="detail_field_path">راستہ</string>
+    <string name="detail_field_size">سائز</string>
+    <string name="detail_field_indexed">فہرست بند</string>
+    <string name="detail_field_online">آن لائن</string>
+    <string name="detail_value_online_yes">ہاں</string>
+    <string name="detail_value_online_no">نہیں (آف لائن)</string>
+    <string name="detail_field_resolution">ریزولیوشن</string>
+    <string name="detail_field_codec">کوڈیک</string>
+    <string name="detail_field_fps">FPS</string>
+    <string name="detail_field_bitrate">Bitrate</string>
+    <string name="detail_field_frames">فریمز</string>
+    <string name="detail_field_hdr">HDR</string>
+    <string name="detail_field_spatial">اسپیشل ویڈیو</string>
+    <string name="detail_field_360">360° Video</string>
+    <string name="detail_field_gps_track">GPS ٹریک</string>
+    <string name="detail_value_yes">ہاں</string>
+    <string name="detail_field_color_space">کلر اسپیس</string>
+    <string name="detail_field_dynamic_range">ڈائنامک رینج</string>
+    <string name="detail_field_capture_rate">Capture Rate</string>
+    <string name="detail_field_timecode">ٹائم کوڈ</string>
+    <string name="detail_field_bit_depth">Bit Depth</string>
+    <string name="detail_field_audio_bit_depth">Audio Bit Depth</string>
+    <string name="detail_field_audio_language">Audio Language</string>
+    <string name="detail_field_audio_tracks">Audio Tracks</string>
+    <string name="detail_field_resolution_status">ریزولیوشن کی حالت</string>
+    <string name="detail_value_full_resolution">مکمل ریزولیوشن</string>
+    <string name="detail_value_not_full_resolution">مکمل ریزولیوشن نہیں</string>
+    <string name="detail_field_channels">چینلز</string>
+    <string name="detail_field_sample_rate">سیمپل ریٹ</string>
+    <string name="detail_value_sample_rate">%1$d Hz</string>
+    <string name="detail_field_date">تاریخ</string>
+    <string name="detail_field_camera">Camera</string>
+    <string name="detail_field_camera_internal">Camera (internal)</string>
+    <string name="detail_field_lens">لینس</string>
+    <string name="detail_field_iso">ISO</string>
+    <string name="detail_value_iso">ISO %1$d</string>
+    <string name="detail_field_aperture">Aperture</string>
+    <string name="detail_field_exposure">نمائش</string>
+    <string name="detail_field_focal_length">فوکل لمبائی</string>
+    <string name="detail_field_exposure_mode">نمائش موڈ</string>
+    <string name="detail_field_exposure_program">نمائش پروگرام</string>
+    <string name="detail_field_white_balance">وائٹ بیلنس</string>
+    <string name="detail_em_dash">—</string>
+    <string name="detail_section_location">مقام</string>
+    <string name="detail_field_gps">GPS</string>
+    <string name="detail_field_altitude">Altitude</string>
+    <string name="detail_value_altitude">%1$.1f m</string>
+    <string name="detail_no_location">کوئی مقام نہیں</string>
+    <string name="detail_change_location">Change location…</string>
+    <string name="detail_set_location">مقام سیٹ کریں…</string>
+    <string name="detail_remove_location">مقام ہٹائیں</string>
+    <string name="detail_show_on_map">نقشے پر دکھائیں</string>
+    <string name="detail_set_location_title">مقام سیٹ کریں</string>
+    <string name="detail_drag_to_position">پن رکھنے کے لیے نقشہ کھینچیں۔</string>
+    <string name="detail_write_location_to_file">فائل میں لوکیشن لکھیں</string>
+    <string name="detail_write_location_desc">Also embeds the GPS tag in the video file, not just the catalog.</string>
+    <string name="detail_section_tags">ٹیگز</string>
+    <string name="detail_add_tag">Add tag</string>
+    <string name="detail_no_tags">کوئی ٹیگ نہیں</string>
+    <string name="detail_remove_tag">%1$s ہٹائیں</string>
+    <string name="detail_add_tag_title">Add Keyword</string>
+    <string name="detail_all_tags_applied">All keywords are already applied.</string>
+    <string name="detail_tag_picker_new_hint">Add a keyword…</string>
+    <string name="detail_tag_picker_add_button">Add</string>
+    <string name="detail_tag_picker_existing">موجودہ کلیدی الفاظ</string>
+    <string name="detail_tag_picker_no_others">ابھی تک کوئی دوسرا کلیدی لفظ نہیں — اوپر ٹائپ کریں۔</string>
+    <string name="detail_section_notes">نوٹس</string>
+    <string name="detail_edit">ترمیم کریں</string>
+    <string name="detail_no_notes">کوئی نوٹس نہیں</string>
+    <string name="detail_section_rating">ریٹنگ</string>
+    <string name="detail_rating_out_of_five">%1$d / 5</string>
+    <string name="detail_section_color_label">COLOR LABEL</string>
+    <string name="detail_color_label_none">N</string>
+    <string name="detail_color_label_selected">%1$s selected</string>
+    <string name="detail_section_proxies">پراکسیز</string>
+    <string name="detail_proxy_auto">Auto</string>
+    <string name="detail_section_collections">COLLECTIONS</string>
+    <string name="detail_no_collections">ابھی تک کوئی مجموعہ نہیں۔</string>
+    <string name="detail_collection_toggle">کلیکشن رکنیت تبدیل کریں: %1$s</string>
+    <string name="detail_share_preparing">شیئرنگ کے لیے فائل تیار کی جا رہی ہے…</string>
+    <string name="detail_share_failed">شیئرنگ کے لیے ویڈیو ڈاؤن لوڈ نہیں ہو سکی: %1$s</string>
+    <string name="detail_share_no_connection">سرور سے منسلک نہیں — ریموٹ ویڈیو شیئر نہیں کی جا سکتی۔</string>
+    <string name="detail_audio_channels_mono">1 (Mono)</string>
+    <string name="detail_audio_channels_stereo">2 (Stereo)</string>
+    <string name="detail_audio_channels_51">5.1 Surround</string>
+    <string name="detail_audio_channels_71">7.1 Surround</string>
+    <plurals name="detail_star_count">
+        <item quantity="one">%1$d star</item>
+        <item quantity="other">%1$d stars</item>
+    </plurals>
+
+    <!-- ── Filter bar ───────────────────────────────────────────────────── -->
+    <string name="filter_filters">فلٹرز</string>
+    <string name="filter_clear_all">سب صاف کریں</string>
+    <string name="filter_remove_filter">فلٹر ہٹائیں</string>
+    <string name="filter_sort_ascending">بڑھتی ترتیب</string>
+    <string name="filter_sort_descending">گھٹتی ترتیب</string>
+    <string name="filter_filters_and_sort">فلٹرز اور ترتیب</string>
+    <string name="filter_done">مکمل</string>
+    <string name="filter_search">تلاش</string>
+    <string name="filter_search_placeholder">فائل نام، نوٹس تلاش کریں…</string>
+    <string name="filter_clear_search">تلاش صاف کریں</string>
+    <string name="filter_minimum_rating">کم از کم درجہ بندی</string>
+    <string name="filter_any">Any</string>
+    <string name="filter_rating_plus">%1$d+</string>
+    <string name="filter_keywords">کلیدی الفاظ</string>
+    <string name="filter_all">All</string>
+    <string name="filter_tag_with_count">%1$s (%2$d)</string>
+    <string name="filter_collections">COLLECTIONS</string>
+    <string name="filter_collection_with_count">%1$s (%2$d)</string>
+    <string name="filter_sort">ترتیب دیں</string>
+    <string name="filter_change_sort_field">ترتیب کا فیلڈ تبدیل کریں</string>
+    <string name="filter_sort_ascending_reverse">بڑھتی ترتیب — پلٹنے کے لیے تھپتھپائیں</string>
+    <string name="filter_sort_descending_reverse">گھٹتی ترتیب — پلٹنے کے لیے تھپتھپائیں</string>
+    <string name="filter_ascending">Ascending</string>
+    <string name="filter_descending">نزولی</string>
+
+    <!-- Colour label filter -->
+    <string name="filter_color_label">COLOR LABEL</string>
+
+    <!-- Attribute filters -->
+    <string name="filter_attributes">ATTRIBUTES</string>
+    <string name="filter_attr_location">مقام</string>
+    <string name="filter_attr_keywords">کلیدی الفاظ</string>
+    <string name="filter_attr_proxies">پراکسیز</string>
+    <string name="filter_attr_full_res">مکمل ریزولیوشن</string>
+    <string name="filter_attr_audio">Audio</string>
+    <!-- "Has" / "Doesn\'t have" chip labels in the attribute tri-state row -->
+    <string name="filter_attr_yes">موجود ہے</string>
+    <string name="filter_attr_no_label">نہیں</string>
+    <!-- Active-filter chip labels: "Has Location", "No Proxies", etc. -->
+    <string name="filter_attr_has">%1$s موجود ہے</string>
+    <string name="filter_attr_no">کوئی %1$s نہیں</string>
+
+    <!-- Orientation filter -->
+    <string name="filter_orientation">سمت</string>
+    <string name="filter_orientation_any">Any</string>
+    <string name="filter_orientation_portrait">عمودی</string>
+    <string name="filter_orientation_landscape">افقی</string>
+
+    <!-- ── Sort field names ─────────────────────────────────────────────── -->
+    <string name="sort_date_indexed">انڈیکسنگ کی تاریخ</string>
+    <string name="sort_date_captured">ریکارڈنگ کی تاریخ</string>
+    <string name="sort_filename">فائل کا نام</string>
+    <string name="sort_file_size">فائل کا حجم</string>
+    <string name="sort_duration">دورانیہ</string>
+    <string name="sort_rating">ریٹنگ</string>
+    <string name="sort_frame_rate">فریم ریٹ</string>
+    <string name="sort_codec">کوڈیک</string>
+    <string name="sort_camera">Camera</string>
+    <string name="sort_resolution">ریزولیوشن</string>
+    <string name="sort_bitrate">Bitrate</string>
+    <string name="sort_lens">لینس</string>
+    <string name="sort_iso">ISO</string>
+    <string name="sort_aperture">Aperture</string>
+    <string name="sort_exposure_time">نمائش وقت</string>
+    <string name="sort_focal_length">فوکل لمبائی</string>
+    <string name="sort_keyword">کلیدی لفظ</string>
+
+    <!-- ── Card stats configuration ─────────────────────────────────────── -->
+    <string name="card_stats_sheet_title">Card Stats</string>
+    <string name="card_stats_sheet_subtitle">ہر کارڈ کے اوپر دکھائے جانے والے چار اعداد و شمار منتخب کریں۔</string>
+    <string name="card_stats_slot_label">سلاٹ %1$d</string>
+    <!-- GridStatKey display names (must match shared GridStatKey.displayName) -->
+    <string name="grid_stat_none">(empty)</string>
+    <string name="grid_stat_filename">فائل کا نام</string>
+    <string name="grid_stat_file_size">فائل کا حجم</string>
+    <string name="grid_stat_resolution">ریزولیوشن</string>
+    <string name="grid_stat_pixel_dimensions">پکسل کے ابعاد</string>
+    <string name="grid_stat_duration">دورانیہ</string>
+    <string name="grid_stat_video_codec">ویڈیو کوڈیک</string>
+    <string name="grid_stat_audio_codec">Audio codec</string>
+    <string name="grid_stat_fps">FPS</string>
+    <string name="grid_stat_frame_count">فریم تعداد</string>
+    <string name="grid_stat_bitrate">Bitrate</string>
+    <string name="grid_stat_camera">Camera</string>
+    <string name="grid_stat_lens">لینس</string>
+    <string name="grid_stat_capture_date">Capture date</string>
+    <string name="grid_stat_capture_year">Capture year</string>
+    <string name="grid_stat_iso">ISO</string>
+    <string name="grid_stat_aperture">Aperture</string>
+    <string name="grid_stat_exposure">نمائش</string>
+    <string name="grid_stat_focal_length">فوکل لمبائی</string>
+    <string name="grid_stat_location">مقام</string>
+    <!-- stat cell tap hint -->
+    <string name="card_stat_tap_to_change">سلاٹ بدلنے کے لیے تھپتھپائیں</string>
+
+    <!-- ── Cards / badges ───────────────────────────────────────────────── -->
+    <string name="card_no_thumbnail">کوئی تھمب نیل نہیں</string>
+    <string name="card_offline">آف لائن</string>
+    <string name="card_selected">منتخب شدہ</string>
+    <string name="card_full_resolution">مکمل ریزولیوشن</string>
+    <string name="card_not_full_resolution">مکمل ریزولیوشن نہیں</string>
+    <string name="card_has_audio">آڈیو ٹریک موجود ہے</string>
+    <string name="card_file_offline">فائل آف لائن</string>
+    <string name="card_star">%1$d star</string>
+    <!-- Rating / label context menu on card long-press -->
+    <string name="card_menu_rating">ریٹنگ</string>
+    <string name="card_menu_rating_none">کوئی نہیں</string>
+    <string name="card_menu_color_label">رنگ کا لیبل</string>
+    <string name="card_menu_label_none">کوئی نہیں</string>
+    <string name="card_menu_label_red">سرخ</string>
+    <string name="card_menu_label_yellow">زرد</string>
+    <string name="card_menu_label_green">سبز</string>
+    <string name="card_menu_label_blue">Blue</string>
+    <string name="card_menu_label_purple">جامنی</string>
+    <string name="card_set_rating_desc">%1$d ستارہ ریٹنگ سیٹ کریں</string>
+    <string name="card_clear_rating_desc">درجہ بندی صاف کریں</string>
+    <string name="card_set_color_label_desc">رنگین لیبل سیٹ کریں: %1$s</string>
+    <string name="card_clear_color_label_desc">رنگ کا لیبل صاف کریں</string>
+    <plurals name="card_keyword_count">
+        <item quantity="one">%1$d keyword</item>
+        <item quantity="other">%1$d keywords</item>
+    </plurals>
+    <plurals name="card_proxy_count">
+        <item quantity="one">%1$d proxy available</item>
+        <item quantity="other">%1$d proxies available</item>
+    </plurals>
+    <plurals name="card_stack_count">
+        <item quantity="one">Stack of %1$d</item>
+        <item quantity="other">Stack of %1$d</item>
+    </plurals>
+
+    <!-- ── Video player ─────────────────────────────────────────────────── -->
+    <string name="player_no_stream">کوئی اسٹریم دستیاب نہیں</string>
+    <string name="player_play">چلائیں</string>
+    <string name="player_pause">توقف</string>
+    <string name="player_volume">آواز کی شدت</string>
+    <string name="player_quality">معیار</string>
+    <string name="player_full_screen">مکمل اسکرین</string>
+    <string name="player_exit_full_screen">فل اسکرین سے باہر نکلیں</string>
+    <string name="player_retry">دوبارہ کوشش کریں</string>
+    <string name="player_selected">منتخب شدہ</string>
+    <string name="player_cancel">Cancel</string>
+    <string name="player_playback_error">پلے بیک میں خرابی</string>
+
+    <!-- ── ViewModel errors (snackbars) ─────────────────────────────────── -->
+    <string name="err_load_more_videos">مزید ویڈیوز لوڈ کرنے میں ناکامی: %1$s</string>
+    <string name="err_load_videos">ویڈیوز لوڈ کرنے میں ناکامی: %1$s</string>
+    <string name="err_load_metadata">میٹا ڈیٹا لوڈ کرنے میں ناکامی: %1$s</string>
+    <string name="err_video_not_found">ویڈیو نہیں ملی</string>
+    <string name="err_update_notes">نوٹس اپ ڈیٹ کرنے میں ناکامی</string>
+    <string name="err_update_notes_detail">نوٹس اپ ڈیٹ کرنے میں ناکامی: %1$s</string>
+    <string name="err_add_tag">ٹیگ شامل کرنے میں ناکامی</string>
+    <string name="err_add_tag_detail">ٹیگ شامل کرنے میں ناکامی: %1$s</string>
+    <string name="err_remove_tag">ٹیگ حذف کرنے میں ناکامی</string>
+    <string name="err_remove_tag_detail">ٹیگ حذف کرنے میں ناکامی: %1$s</string>
+    <string name="err_update_rating">درجہ بندی اپ ڈیٹ کرنے میں ناکامی: %1$s</string>
+    <string name="err_update_color_label">رنگ لیبل اپ ڈیٹ کرنے میں ناکامی: %1$s</string>
+    <string name="err_update_location">مقام اپ ڈیٹ کرنے میں ناکامی</string>
+    <string name="err_update_location_detail">مقام اپ ڈیٹ کرنے میں ناکامی: %1$s</string>
+    <string name="err_remove_location">مقام حذف کرنے میں ناکامی</string>
+    <string name="err_remove_location_detail">مقام حذف کرنے میں ناکامی: %1$s</string>
+    <string name="err_add_to_collection">مجموعہ میں شامل کرنے میں ناکامی</string>
+    <string name="err_add_to_collection_detail">مجموعہ میں شامل کرنے میں ناکامی: %1$s</string>
+    <string name="err_remove_from_collection">مجموعہ سے حذف کرنے میں ناکامی</string>
+    <string name="err_remove_from_collection_detail">مجموعہ سے حذف کرنے میں ناکامی: %1$s</string>
+    <string name="err_apply_keyword">Failed to create/apply keyword \'%1$s\'</string>
+    <string name="err_apply_keyword_detail">Apply keyword failed: %1$s</string>
+    <string name="err_load_grid_settings">کارڈ اعداد و شمار کنفیگریشن لوڈ کرنے میں ناکامی: %1$s</string>
+    <string name="err_save_grid_settings">کارڈ اعداد و شمار کنفیگریشن محفوظ کرنے میں ناکامی: %1$s</string>
+    <string name="scan_target_default">لائبریری</string>
+    <string name="scan_scanning_target">%1$s اسکین ہو رہا ہے…</string>
+    <string name="pairing_a_device">A device</string>
+
+    <!-- ── Grid density / thumbnail size ────────────────────────────── -->
+    <string name="grid_density_label">تھمب نیل کا سائز</string>
+    <string name="grid_density_smaller">چھوٹے تھمب نیل</string>
+    <string name="grid_density_larger">بڑے تھمب نیل</string>
+    <string name="grid_density_sheet_title">تھمب نیل کا سائز</string>
+    <string name="grid_density_sheet_subtitle">اسکرین پر کتنے کالم آئیں یہ ترتیب دینے کے لیے کھینچیں۔</string>
+    <string name="grid_density_menu_item">تھمب نیل کا سائز</string>
+
+    <!-- ── Stacking / grouping ────────────────────────────────────────── -->
+    <string name="stack_combine_into_stack">اسٹیک میں یکجا کریں</string>
+    <string name="stack_select_at_least_two">اسٹیک بنانے کے لیے کم از کم 2 ویڈیوز منتخب کریں</string>
+    <string name="stack_combine_failed">اسٹیک بنانے میں ناکامی</string>
+    <string name="stack_combine_error">اسٹیک ناکام ہوا: %1$s</string>
+    <string name="stack_remove_from_stack">اسٹیک سے ہٹائیں</string>
+    <string name="stack_remove_failed">اسٹیک سے حذف کرنے میں ناکامی</string>
+    <string name="stack_remove_error">ہٹانا ناکام ہوا: %1$s</string>
+    <string name="stack_unstack">اسٹیک ختم کریں</string>
+    <string name="stack_unstack_error">اسٹیک ختم کرنا ناکام ہوا: %1$s</string>
+    <string name="stack_promote_to_leader">لیڈر بنائیں</string>
+    <string name="stack_promote_failed">ویڈیو ترقی دینے میں ناکامی</string>
+    <string name="stack_promote_error">ترقی ناکام ہوئی: %1$s</string>
+    <string name="stack_load_members_error">اسٹیک کے ارکان لوڈ نہیں ہو سکے: %1$s</string>
+    <string name="stack_members_title">اسٹیک کے اراکین</string>
+    <string name="stack_members_preferred_label">قائد</string>
+    <string name="stack_members_promote_action">ترقی دیں</string>
+    <string name="stack_members_remove_action">ہٹائیں</string>
+    <string name="stack_section_header">اسٹیک</string>
+    <plurals name="stack_combined_message">
+        <item quantity="one">Combined into a stack of %1$d video</item>
+        <item quantity="other">Combined into a stack of %1$d videos</item>
+    </plurals>
+
+    <!-- ── Batch actions (multi-select top bar) ───────────────────────── -->
+    <string name="batch_organize">منتخب ویڈیوز منظم کریں</string>
+    <string name="batch_share">منتخب ویڈیوز شیئر کریں</string>
+    <string name="batch_share_preparing">%1$d ویڈیوز تیار کی جا رہی ہیں…</string>
+    <string name="batch_share_failed">شیئرنگ کے لیے فائلیں تیار نہیں ہو سکیں</string>
+    <string name="batch_share_title">%1$d ویڈیوز شیئر کریں</string>
+    <string name="batch_add_keyword_hint">Add a keyword…</string>
+    <string name="batch_existing_keywords">موجودہ کلیدی الفاظ — لگانے کے لیے ٹیپ کریں</string>
+    <string name="batch_apply_keyword">Apply keyword: %1$s</string>
+    <string name="batch_add_to_collection">Add to collection</string>
+    <string name="batch_add_to_collection_name">Add to %1$s</string>
+    <plurals name="batch_organize_title">
+        <item quantity="one">Organize %1$d video</item>
+        <item quantity="other">Organize %1$d videos</item>
+    </plurals>
+
+    <!-- ── Visuals / Graphs section (detail view) ─────────────────────── -->
+    <string name="detail_section_visuals">بصری عناصر</string>
+    <string name="detail_graphs_brightness">Brightness</string>
+    <string name="detail_graphs_color_over_time">وقت کے ساتھ رنگ</string>
+    <string name="detail_graphs_rgb_channels">RGB چینلز</string>
+    <string name="detail_graphs_loudness">بلندی</string>
+    <string name="detail_graphs_analyzing_audio">Analyzing audio…</string>
+    <string name="detail_graphs_analyzing_frames">Analyzing frames…</string>
+    <string name="detail_graphs_select_video">ایک ویڈیو منتخب کریں</string>
+
+    <!-- ── Offline library ────────────────────────────────────────────── -->
+    <string name="offline_title">ڈاؤن لوڈ ہو گیا</string>
+    <string name="offline_empty_title">کوئی ڈاؤن لوڈ نہیں</string>
+    <string name="offline_empty_desc">While connected to a server, choose &quot;Download for Offline&quot; on a video to watch it here without a connection.</string>
+    <string name="offline_section_title">آف لائن</string>
+    <string name="offline_available_offline">Available offline</string>
+    <string name="offline_downloading">ڈاؤن لوڈ ہو رہا ہے…</string>
+    <string name="offline_download_button">آف لائن کے لیے ڈاؤن لوڈ کریں</string>
+    <string name="offline_quality_title">ڈاؤن لوڈ کا معیار</string>
+    <string name="offline_quality_original">اصل</string>
+    <string name="offline_quality_720p">720p (smaller)</string>
+    <string name="offline_remove_download">ڈاؤن لوڈ ہٹائیں</string>
+    <string name="offline_remove_title">ڈاؤن لوڈ ہٹائیں؟</string>
+    <string name="offline_remove_body">&quot;%1$s&quot; will be deleted from this device.</string>
+    <string name="offline_remove_confirm">ہٹائیں</string>
+    <string name="offline_file_missing">یہ ڈاؤن لوڈ آلے پر موجود نہیں۔</string>
+    <string name="offline_downloaded_quality">اس نام سے ڈاؤن لوڈ ہوا</string>
+    <string name="offline_browse_downloads">Browse Downloads</string>
+
+    <!-- On-device (Local) library — embedded Rust core -->
+    <string name="local_starting">آلے پر لائبریری شروع ہو رہی ہے…</string>
+    <string name="local_start_failed">Couldn\'t start the on-device library.</string>
+    <string name="local_permission_needed">ReelVault کو آن ڈیوائس لائبریری بنانے کے لیے آپ کی ویڈیوز تک رسائی درکار ہے۔</string>
+    <string name="local_importing_banner">مقامی ویڈیوز درآمد ہو رہی ہیں — ReelVault کھلا رکھیں</string>
+    <string name="local_open_library">ڈیوائس پر لائبریری کھولیں</string>
+    <string name="local_this_device">اس ڈیوائس پر</string>
+    <string name="grid_server_library">سرور</string>
+
+    <!-- Local → remote upload -->
+    <string name="upload_action">سرور پر اپ لوڈ کریں</string>
+    <string name="upload_title">%1$s پر اپ لوڈ کریں</string>
+    <string name="upload_preparing">تیاری جاری ہے…</string>
+    <string name="upload_uploading">اپ لوڈ ہو رہا ہے…</string>
+    <string name="upload_done">اپ لوڈ ہو گیا</string>
+    <string name="upload_failed">ناکام</string>
+    <string name="upload_skipped">%1$d skipped (not on-device files)</string>
+    <string name="upload_close">بند کریں</string>
+
+    <!-- Server unreachable / offline mode prompt -->
+    <string name="offline_server_unreachable_title">سرور ناقابل رسائی</string>
+    <string name="offline_server_unreachable_message">ReelVault سرور تک رسائی ممکن نہیں۔ آپ ڈاؤن لوڈ کردہ ویڈیوز آف لائن دیکھ سکتے ہیں۔</string>
+    <string name="offline_go_offline">آف لائن ہو جائیں</string>
+    <string name="offline_keep_waiting">انتظار جاری رکھیں</string>
+
+</resources>

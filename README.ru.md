@@ -31,9 +31,9 @@ ReelVault позволяет вам:
 ## Архитектура
 
 ```
-Desktop / macOS clients          iOS client (iPhone / iPad)
+Desktop / macOS clients          iOS / Android clients
    ↓ gRPC over loopback             ↓ gRPC + HTTPS media over the LAN
-   │                                │ (mDNS discovery · pinned TLS · paired)
+   │                                │ (mDNS/NSD discovery · pinned TLS · paired)
    └───────────────┬────────────────┘
                    ↓
         Rust Backend Daemon (reelvault-core)
@@ -64,6 +64,13 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
   видео (масштабированный HLS) с медиасервера демона. Заменяет перетаскивание в редактор
   на системный лист общего доступа iOS и добавляет загрузку из «Фото» / Files.
   См. [`ios/README.md`](ios/README.md).
+
+- **Kotlin Compose Android client** (`android/`) — A **remote-only**
+  Android phone / tablet app. Connects to a daemon over the LAN (NSD
+  discovery), streams video via ExoPlayer, and replaces editor drag-out with
+  the Android share intent. Also embeds the full Rust core for on-device local
+  library access — browse, catalog, and upload footage directly from the
+  device. See [`android/README.md`](android/README.md).
 
 - **ReelVaultKit** (`kit/`) — локальный SwiftPM-пакет общего Swift-кода, используемого
   **обоими** клиентами Apple: модели, view-модели, gRPC-клиент, обнаружение,
@@ -97,7 +104,14 @@ macOS-клиент добавляет нативные команды в стр�
       коллекции, стеки, фильтры, статус, конфигурация, жизненный цикл каталога).
 - [x] Каталог SQLite с WAL-режимом + FTS5; горячая замена каталога во время работы через
       `OpenCatalog` / `CloseCatalog`.
-- [x] Извлечение метаданных FFprobe (кодек, разрешение, FPS, битрейт, HDR,
+- [x] Rich metadata extraction via FFprobe + platform-native helpers: codec,
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera., разрешение, FPS, битрейт, HDR,
       EXIF, GPS, камера/объектив).
 - [x] Генерация миниатюр и кадров скраббинга в стиле Lightroom (10 кадров на
       видео) с блокировками на каждое видео для устранения дублирования работы.
@@ -257,7 +271,8 @@ make build            # iOS Simulator; or open ReelVault.xcodeproj to run on a d
 ## Участие в разработке
 
 Руководство по разработке см. в [`CLAUDE.md`](CLAUDE.md). Pull-запросы приветствуются —
-пожалуйста, поддерживайте паритет функций между двумя клиентами и добавляйте заголовки SPDX
+пожалуйста, поддерживайте паритет функций между всеми четырьмя клиентами там, где это применимо
+(допустимые отклонения для каждой платформы см. в CLAUDE.md), и добавляйте заголовки SPDX
 в любые новые исходные файлы (см. раздел «Лицензия» ниже).
 
 ## Лицензия

@@ -22,9 +22,9 @@ ReelVault vám umožní:
 ## Architektura
 
 ```
-Desktop / macOS clients          iOS client (iPhone / iPad)
+Desktop / macOS clients          iOS / Android clients
    ↓ gRPC over loopback             ↓ gRPC + HTTPS media over the LAN
-   │                                │ (mDNS discovery · pinned TLS · paired)
+   │                                │ (mDNS/NSD discovery · pinned TLS · paired)
    └───────────────┬────────────────┘
                    ↓
         Rust Backend Daemon (reelvault-core)
@@ -39,6 +39,13 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 - **SwiftUI macOS klient** (`macos/`) — nativní macOS aplikace s paritou funkcí, se stejným tokem automatického spouštění, skutečnou nabídkou Soubor macOS (skupina Commands) a reaktivním názvem okna sledujícím otevřený katalog.
 
 - **SwiftUI iOS klient** (`ios/`) — aplikace pro iPhone / iPad **pouze pro vzdálené připojení**. Nemá přístup k místním souborům a neobsahuje žádný démon: nalézá démon přes Wi‑Fi (mDNS), připojuje se přes TLS kanál s připnutým otiskem prstu po jednorázovém spárování, prochází přes gRPC a **streamuje** video (HLS se sníženou kvalitou) z mediálního serveru démona. Nahrazuje přetažení do editoru sdíleným listem iOS a přidává nahrávání z Fotek / Souborů. Viz [`ios/README.md`](ios/README.md).
+
+- **Kotlin Compose Android client** (`android/`) — A **remote-only**
+  Android phone / tablet app. Connects to a daemon over the LAN (NSD
+  discovery), streams video via ExoPlayer, and replaces editor drag-out with
+  the Android share intent. Also embeds the full Rust core for on-device local
+  library access — browse, catalog, and upload footage directly from the
+  device. See [`android/README.md`](android/README.md).
 
 - **ReelVaultKit** (`kit/`) — místní SwiftPM balíček se sdíleným Swift kódem používaným **oběma** klienty Apple: modely, view-modely, gRPC klient, objevování, připnutý TLS a vrstva cache/streamování médií.
 
@@ -55,7 +62,14 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 **Core**
 - [x] gRPC démon s plným povrchem RPC (videa, vyhledávání, skenování, tagy, kolekce, zásobníky, filtry, stav, konfigurace, životní cyklus katalogu).
 - [x] Katalog SQLite s režimem WAL + FTS5; hot-swap katalogu za běhu přes `OpenCatalog` / `CloseCatalog`.
-- [x] Extrakce metadat přes FFprobe (kodek, rozlišení, FPS, bitrate, HDR, EXIF, GPS, kamera/objektiv).
+- [x] Rich metadata extraction via FFprobe + platform-native helpers: codec,
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera., rozlišení, FPS, bitrate, HDR, EXIF, GPS, kamera/objektiv).
 - [x] Generování náhledů a scrub-snímků ve stylu Lightroom (10 snímků na video) s uzamčením pro každé video, aby se předešlo duplicitní práci.
 - [x] Omezení souběžného ffmpeg (výchozí nastavení dle počtu jader CPU hostitele), aby skenování velkých knihoven nepřetěžovalo úložiště SAN.
 - [x] Skenování knihovny s volitelnou rekurzí a automatickým seskupením variant.
@@ -174,7 +188,8 @@ Při prvním spuštění aplikace nalezne démona přes mDNS, zařízení jednou
 
 ## Přispívání
 
-Pokyny pro vývoj najdete v [`CLAUDE.md`](CLAUDE.md). Pull requesty jsou vítány — prosíme zachovejte paritu funkcí mezi oběma klienty a přidejte záhlaví SPDX ke všem novým zdrojovým souborům (viz Licence níže).
+Pokyny pro vývoj najdete v [`CLAUDE.md`](CLAUDE.md). Pull requesty jsou vítány — prosíme zachovejte paritu funkcí napříč všemi čtyřmi klienty, kde to připadá v úvahu
+(viz CLAUDE.md pro legitimní odchylky pro danou platformu), a přidejte záhlaví SPDX ke všem novým zdrojovým souborům (viz Licence níže).
 
 ## Licence
 

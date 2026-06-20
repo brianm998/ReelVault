@@ -1,0 +1,566 @@
+<resources>
+    <string name="app_name">ReelVault</string>
+
+    <!-- ── Common ───────────────────────────────────────────────────────── -->
+    <string name="common_back">পিছনে</string>
+    <string name="nav_history_back">পিছনে</string>
+    <string name="nav_history_forward">এগিয়ে যান</string>
+    <string name="common_cancel">বাতিল করুন</string>
+    <string name="common_save">সংরক্ষণ করুন</string>
+    <string name="common_done">সম্পন্ন</string>
+    <string name="common_clear">পরিষ্কার করুন</string>
+    <string name="common_selected">নির্বাচিত</string>
+    <string name="common_offline">অফলাইন</string>
+    <string name="common_unavailable">অনুপলব্ধ</string>
+    <string name="common_unknown_error">অজানা ত্রুটি</string>
+
+    <!-- ── Connection flow ──────────────────────────────────────────────── -->
+    <string name="conn_reconnecting_to">%1$s-এ পুনরায় সংযোগ করা হচ্ছে…</string>
+    <string name="conn_connecting_to">%1$s-এ সংযুক্ত হচ্ছে…</string>
+    <string name="conn_connecting">সংযুক্ত হচ্ছে…</string>
+    <string name="conn_pairing_with">%1$s-এর সাথে পেয়ার করা হচ্ছে…</string>
+    <string name="conn_could_not_connect_named">%1$s-এ সংযুক্ত হওয়া যায়নি। ডেমন চলছে কিনা যাচাই করুন এবং আবার চেষ্টা করুন।</string>
+    <string name="conn_could_not_connect_simple">%1$s-এ সংযুক্ত হওয়া যায়নি।</string>
+    <string name="conn_pairing_rejected">পেয়ারিং প্রত্যাখ্যাত হয়েছে — কোডটি যাচাই করে আবার চেষ্টা করুন।</string>
+    <string name="conn_looking_for_servers">ReelVault সার্ভার খোঁজা হচ্ছে…</string>
+    <string name="conn_scanning_network">স্থানীয় নেটওয়ার্ক স্ক্যান করা হচ্ছে</string>
+    <string name="conn_connect_title">ReelVault-এ সংযুক্ত করুন</string>
+    <string name="conn_rescan">পুনরায় স্ক্যান করুন</string>
+    <string name="conn_no_servers_found">কোনো সার্ভার পাওয়া যায়নি</string>
+    <string name="conn_no_servers_hint">এই WiFi নেটওয়ার্কের কোনো কম্পিউটারে --remote দিয়ে একটি ReelVault কোর ডেমন চালু করুন, তারপর পুনরায় স্ক্যান করুন।</string>
+    <string name="conn_available_servers">উপলব্ধ সার্ভার</string>
+    <string name="conn_enter_address_manually">ম্যানুয়ালি ঠিকানা প্রবেশ করান</string>
+    <string name="conn_browse_local_videos">স্থানীয় ভিডিও ব্রাউজ করুন</string>
+    <string name="conn_requires_pairing">পেয়ারিং প্রয়োজন</string>
+    <string name="conn_enter_pairing_code">পেয়ারিং কোড প্রবেশ করান</string>
+    <string name="conn_pair_with">%1$s-এর সাথে পেয়ার করুন</string>
+    <string name="conn_pairing_instructions">ReelVault চলছে এমন কম্পিউটারে, File ▸ Pair a New Device বেছে নিন একটি ৬-সংখ্যার কোড দেখতে (একটি হেডলেস সার্ভারও এটি লগ করে)। নিচে এটি প্রবেশ করান — আপনাকে এটি মাত্র একবার করতে হবে।</string>
+    <string name="conn_pin_placeholder">000000</string>
+    <string name="conn_pair_button">পেয়ার করুন</string>
+    <string name="conn_connect_manually">ম্যানুয়ালি সংযুক্ত করুন</string>
+    <string name="conn_host_label">হোস্ট বা আইপি ঠিকানা</string>
+    <string name="conn_host_placeholder">192.168.1.100</string>
+    <string name="conn_grpc_port_label">gRPC পোর্ট</string>
+    <string name="conn_grpc_port_placeholder">50051</string>
+    <string name="conn_fingerprint_label">সার্ট ফিঙ্গারপ্রিন্ট (SHA-256, ঐচ্ছিক)</string>
+    <string name="conn_fingerprint_placeholder">abcd1234…</string>
+    <string name="conn_fetch">আনুন</string>
+    <string name="conn_could_not_reach">%1$s:%2$d-এ পৌঁছানো যায়নি — হোস্ট এবং ডেমন চলছে কিনা যাচাই করুন।</string>
+    <string name="conn_connect_button">সংযুক্ত করুন</string>
+    <string name="conn_retry">পুনরায় চেষ্টা করুন</string>
+    <string name="conn_enter_address">ঠিকানা প্রবেশ করান</string>
+
+    <!-- ── Library grid ─────────────────────────────────────────────────── -->
+    <string name="grid_incoming_pairing_title">পেয়ারিং অনুরোধ আসছে</string>
+    <string name="grid_incoming_pairing_message">%1$s wants to connect to this library. Allow?</string>
+    <string name="grid_allow">অনুমতি দিন</string>
+    <string name="grid_deny">প্রত্যাখ্যান করুন</string>
+    <string name="grid_close_search">অনুসন্ধান বন্ধ করুন</string>
+    <string name="grid_search_videos_hint">ভিডিও অনুসন্ধান করুন…</string>
+    <string name="grid_selected_count">%1$d selected</string>
+    <string name="grid_clear_selection">নির্বাচন সরান</string>
+    <string name="grid_open_library_panel">লাইব্রেরি প্যানেল খুলুন</string>
+    <string name="grid_search">অনুসন্ধান</string>
+    <string name="grid_sort">বাছাই করুন</string>
+    <string name="grid_switch_to_list_view">তালিকা ভিউতে যান</string>
+    <string name="grid_switch_to_grid_view">গ্রিড ভিউতে যান</string>
+    <string name="grid_more_options">আরও বিকল্প</string>
+    <string name="grid_map">মানচিত্র</string>
+    <string name="grid_card_stats">কার্ড পরিসংখ্যান</string>
+    <string name="grid_configure_card_stats">কার্ড পরিসংখ্যান কনফিগার করুন</string>
+    <string name="grid_settings">সেটিংস</string>
+    <string name="grid_disconnect">সংযোগ বিচ্ছিন্ন করুন</string>
+    <string name="grid_sort_by">অনুযায়ী বাছাই করুন</string>
+    <string name="grid_sort_ascending_arrow">%1$s ↑</string>
+    <string name="grid_sort_descending_arrow">%1$s ↓</string>
+    <string name="grid_library">লাইব্রেরি</string>
+    <string name="grid_clear_filters">ফিল্টার সরান</string>
+    <string name="grid_close">বন্ধ করুন</string>
+    <string name="grid_catalog">ক্যাটালগ</string>
+    <string name="grid_remote_library">রিমোট লাইব্রেরি</string>
+    <string name="grid_local_videos">স্থানীয় ভিডিও</string>
+    <string name="grid_all_videos">সকল ভিডিও</string>
+    <string name="grid_locations">অবস্থানসমূহ</string>
+    <string name="grid_keywords">কীওয়ার্ডসমূহ</string>
+    <string name="grid_collections">সংগ্রহসমূহ</string>
+    <string name="grid_no_videos">কোনো ভিডিও নেই</string>
+    <string name="grid_processing">প্রক্রিয়া করা হচ্ছে…</string>
+    <string name="grid_percent">%1$d%%</string>
+    <string name="grid_no_videos_match_search">No videos match \&quot;%1$s\&quot;</string>
+    <string name="grid_no_videos_with_keyword">এই কীওয়ার্ড সহ কোনো ভিডিও নেই</string>
+    <string name="grid_collection_empty">এই সংগ্রহটি খালি</string>
+    <string name="grid_smart_collection_empty">এই স্মার্ট সংকলনের সাথে কোনো ভিডিও মেলে না</string>
+    <string name="grid_no_videos_in_library">লাইব্রেরিতে কোনো ভিডিও নেই</string>
+    <string name="grid_empty_add_location_hint">শুরু করতে সেটিংসে একটি লাইব্রেরি অবস্থান যোগ করুন।</string>
+    <string name="grid_empty_no_match_filter">…অথবা বর্তমান ফিল্টারের সাথে কোনো ভিডিও মেলে না</string>
+    <string name="grid_reset_filter">ফিল্টার রিসেট করুন</string>
+    <string name="grid_clear_location_filter">অবস্থান ফিল্টার সরান</string>
+    <string name="grid_star_count">%1$d star</string>
+    <plurals name="grid_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="other">%1$d videos</item>
+    </plurals>
+    <plurals name="grid_location_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="other">%1$d videos</item>
+    </plurals>
+
+    <!-- ── Map ──────────────────────────────────────────────────────────── -->
+    <string name="map_title">মানচিত্র</string>
+    <string name="map_load_failed">ম্যাপ ডেটা লোড করতে ব্যর্থ হয়েছে: %1$s</string>
+    <string name="map_unknown_error">অজানা ত্রুটি</string>
+    <string name="map_no_geotagged">No geotagged videos.\nVideos with GPS metadata appear here on the map.</string>
+    <string name="map_geotagged_count">%1$d geotagged</string>
+    <string name="map_switch_to_satellite">স্যাটেলাইট চিত্রে যান</string>
+    <string name="map_switch_to_standard">আদর্শ মানচিত্রে যান</string>
+    <plurals name="map_marker_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="other">%1$d videos</item>
+    </plurals>
+
+    <!-- ── Local media ──────────────────────────────────────────────────── -->
+    <string name="local_selected_count">%1$d selected</string>
+    <string name="local_title">স্থানীয় ভিডিও</string>
+    <string name="local_clear_selection">নির্বাচন সরান</string>
+    <string name="local_upload_to_server">সার্ভারে আপলোড করুন</string>
+    <string name="local_select_all">সব নির্বাচন করুন</string>
+    <string name="local_upload_failed">আপলোড ব্যর্থ হয়েছে: %1$s</string>
+    <string name="local_no_videos_found">ডিভাইসে কোনো ভিডিও পাওয়া যায়নি</string>
+    <string name="local_not_connected_hint">সংযুক্ত নয় — আপলোড করতে একটি ReelVault সার্ভারে সংযুক্ত হন</string>
+    <string name="local_uploaded">আপলোড হয়েছে</string>
+    <string name="local_video_access_denied">ভিডিও অ্যাক্সেস অস্বীকৃত</string>
+    <string name="local_permission_hint">Grant \&quot;Videos\&quot; permission in Settings → Apps → ReelVault → Permissions to browse local videos.</string>
+    <plurals name="local_uploaded_count">
+        <item quantity="one">Uploaded %1$d video</item>
+        <item quantity="other">Uploaded %1$d videos</item>
+    </plurals>
+    <plurals name="local_selected_upload_hint">
+        <item quantity="one">%1$d video selected — tap ↑ to upload to server</item>
+        <item quantity="other">%1$d videos selected — tap ↑ to upload to server</item>
+    </plurals>
+
+    <!-- ── Settings ─────────────────────────────────────────────────────── -->
+    <string name="settings_title">সেটিংস</string>
+    <string name="settings_back">পিছনে</string>
+    <string name="settings_library_locations">লাইব্রেরির অবস্থানসমূহ</string>
+    <string name="settings_no_watched_folders">কোনো পর্যবেক্ষিত ফোল্ডার নেই</string>
+    <string name="settings_rescan_complete">পুনরায় স্ক্যান সম্পন্ন</string>
+    <string name="settings_rescan_failed">পুনরায় স্ক্যান ব্যর্থ হয়েছে: %1$s</string>
+    <string name="settings_about">সম্পর্কে</string>
+    <string name="settings_app_version">অ্যাপ সংস্করণ</string>
+    <string name="settings_loading_daemon_info">ডেমন তথ্য লোড করা হচ্ছে…</string>
+    <string name="settings_connection">সংযোগ</string>
+    <string name="settings_server_connection">সার্ভার সংযোগ</string>
+    <string name="settings_connected_remote">%1$s:%2$d-এ রিমোট ডেমনের সাথে সংযুক্ত</string>
+    <string name="settings_connected_local">স্থানীয় ডেমনের সাথে সংযুক্ত</string>
+    <string name="settings_disconnected">সার্ভার থেকে সংযোগ বিচ্ছিন্ন</string>
+    <string name="settings_forget_server">সার্ভার ভুলে যান</string>
+    <string name="settings_forget_server_confirm_title">এই সার্ভারটি ভুলে যাবেন?</string>
+    <string name="settings_forget_server_confirm_body">এটি আপনার সংরক্ষিত শংসাপত্র মুছে দেবে এবং সংযোগ পর্দায় ফিরে যাবে। পুনরায় সংযুক্ত হতে আপনাকে আবার পেয়ার করতে হবে।</string>
+    <string name="settings_forget_server_confirm_action">ভুলে যান</string>
+    <string name="settings_server_forgotten">সার্ভার মুছে ফেলা হয়েছে</string>
+    <string name="settings_reconnected">সফলভাবে পুনরায় সংযোগ হয়েছে</string>
+    <string name="settings_reconnect_failed">পুনরায় সংযোগ ব্যর্থ হয়েছে</string>
+    <string name="settings_reconnect">পুনরায় সংযোগ করুন</string>
+    <string name="settings_scan">স্ক্যান করুন</string>
+    <string name="settings_full_rescan">সম্পূর্ণ পুনরায় স্ক্যান</string>
+    <string name="settings_full_rescan_desc">সকল পর্যবেক্ষিত ফোল্ডার পুনরায় ইন্ডেক্স করুন, নতুন বা পরিবর্তিত ভিডিওর মেটাডেটা বের করুন এবং থাম্বনেইল তৈরি করুন।</string>
+    <string name="settings_full_scan_complete">সম্পূর্ণ স্ক্যান শেষ হয়েছে</string>
+    <string name="settings_scan_failed">স্ক্যান ব্যর্থ হয়েছে: %1$s</string>
+    <string name="settings_scanning">স্ক্যান করা হচ্ছে…</string>
+    <string name="settings_start_full_scan">সম্পূর্ণ স্ক্যান শুরু করুন</string>
+    <string name="settings_collapse">সংকুচিত করুন</string>
+    <string name="settings_expand">প্রসারিত করুন</string>
+    <string name="settings_last_scanned">সর্বশেষ স্ক্যান: %1$s</string>
+    <string name="settings_never_scanned">কখনও স্ক্যান করা হয়নি</string>
+    <string name="settings_non_recursive"> (non-recursive)</string>
+    <string name="settings_disabled"> (disabled)</string>
+    <string name="settings_rescan_path">%1$s পুনরায় স্ক্যান করুন</string>
+    <string name="settings_daemon_version">ডেমন সংস্করণ</string>
+    <string name="settings_videos_indexed">ইন্ডেক্স করা ভিডিও</string>
+    <string name="settings_cache_size">ক্যাশ আকার</string>
+    <string name="settings_uptime">আপটাইম</string>
+    <string name="settings_loading">লোড হচ্ছে…</string>
+    <plurals name="settings_location_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="other">%1$d videos</item>
+    </plurals>
+
+    <!-- ── Detail ───────────────────────────────────────────────────────── -->
+    <string name="detail_title">বিস্তারিত</string>
+    <string name="detail_share">শেয়ার করুন</string>
+    <string name="detail_share_subject">%1$s শেয়ার করুন</string>
+    <string name="detail_video_not_found">ভিডিও পাওয়া যায়নি</string>
+    <string name="detail_section_file_info">ফাইলের তথ্য</string>
+    <string name="detail_section_video">ভিডিও</string>
+    <string name="detail_section_audio">অডিও</string>
+    <string name="detail_section_capture">ক্যাপচার</string>
+    <string name="detail_field_filename">ফাইলের নাম</string>
+    <string name="detail_field_path">পথ</string>
+    <string name="detail_field_size">আকার</string>
+    <string name="detail_field_indexed">সূচিবদ্ধ</string>
+    <string name="detail_field_online">অনলাইন</string>
+    <string name="detail_value_online_yes">হ্যাঁ</string>
+    <string name="detail_value_online_no">না (অফলাইন)</string>
+    <string name="detail_field_resolution">রেজোলিউশন</string>
+    <string name="detail_field_codec">কোডেক</string>
+    <string name="detail_field_fps">FPS</string>
+    <string name="detail_field_bitrate">বিটরেট</string>
+    <string name="detail_field_frames">ফ্রেম</string>
+    <string name="detail_field_hdr">HDR</string>
+    <string name="detail_field_spatial">স্থানিক ভিডিও</string>
+    <string name="detail_field_360">৩৬০° ভিডিও</string>
+    <string name="detail_field_gps_track">GPS ট্র্যাক</string>
+    <string name="detail_value_yes">হ্যাঁ</string>
+    <string name="detail_field_color_space">রঙের স্থান</string>
+    <string name="detail_field_dynamic_range">ডায়নামিক রেঞ্জ</string>
+    <string name="detail_field_capture_rate">ক্যাপচার রেট</string>
+    <string name="detail_field_timecode">টাইমকোড</string>
+    <string name="detail_field_bit_depth">বিট গভীরতা</string>
+    <string name="detail_field_audio_bit_depth">অডিও বিট গভীরতা</string>
+    <string name="detail_field_audio_language">অডিও ভাষা</string>
+    <string name="detail_field_audio_tracks">অডিও ট্র্যাক</string>
+    <string name="detail_field_resolution_status">রেজোলিউশন অবস্থা</string>
+    <string name="detail_value_full_resolution">সম্পূর্ণ রেজোলিউশন</string>
+    <string name="detail_value_not_full_resolution">সম্পূর্ণ রেজোলিউশন নয়</string>
+    <string name="detail_field_channels">চ্যানেল</string>
+    <string name="detail_field_sample_rate">স্যাম্পল রেট</string>
+    <string name="detail_value_sample_rate">%1$d Hz</string>
+    <string name="detail_field_date">তারিখ</string>
+    <string name="detail_field_camera">ক্যামেরা</string>
+    <string name="detail_field_camera_internal">ক্যামেরা (অভ্যন্তরীণ)</string>
+    <string name="detail_field_lens">লেন্স</string>
+    <string name="detail_field_iso">ISO</string>
+    <string name="detail_value_iso">ISO %1$d</string>
+    <string name="detail_field_aperture">অ্যাপার্চার</string>
+    <string name="detail_field_exposure">এক্সপোজার</string>
+    <string name="detail_field_focal_length">ফোকাল দৈর্ঘ্য</string>
+    <string name="detail_field_exposure_mode">এক্সপোজার মোড</string>
+    <string name="detail_field_exposure_program">এক্সপোজার প্রোগ্রাম</string>
+    <string name="detail_field_white_balance">হোয়াইট ব্যালেন্স</string>
+    <string name="detail_em_dash">—</string>
+    <string name="detail_section_location">অবস্থান</string>
+    <string name="detail_field_gps">GPS</string>
+    <string name="detail_field_altitude">উচ্চতা</string>
+    <string name="detail_value_altitude">%1$.1f m</string>
+    <string name="detail_no_location">কোনো অবস্থান নেই</string>
+    <string name="detail_change_location">অবস্থান পরিবর্তন করুন…</string>
+    <string name="detail_set_location">অবস্থান সেট করুন…</string>
+    <string name="detail_remove_location">অবস্থান সরান</string>
+    <string name="detail_show_on_map">মানচিত্রে দেখান</string>
+    <string name="detail_set_location_title">অবস্থান সেট করুন</string>
+    <string name="detail_drag_to_position">পিন স্থাপন করতে মানচিত্র টেনে আনুন।</string>
+    <string name="detail_write_location_to_file">ফাইলে অবস্থান লিখুন</string>
+    <string name="detail_write_location_desc">শুধু ক্যাটালগে নয়, ভিডিও ফাইলেও GPS ট্যাগ এম্বেড করে।</string>
+    <string name="detail_section_tags">ট্যাগসমূহ</string>
+    <string name="detail_add_tag">ট্যাগ যোগ করুন</string>
+    <string name="detail_no_tags">কোনো ট্যাগ নেই</string>
+    <string name="detail_remove_tag">%1$s সরান</string>
+    <string name="detail_add_tag_title">কীওয়ার্ড যোগ করুন</string>
+    <string name="detail_all_tags_applied">সমস্ত কীওয়ার্ড ইতিমধ্যে প্রয়োগ করা হয়েছে।</string>
+    <string name="detail_tag_picker_new_hint">একটি কীওয়ার্ড যোগ করুন…</string>
+    <string name="detail_tag_picker_add_button">যোগ করুন</string>
+    <string name="detail_tag_picker_existing">বিদ্যমান কীওয়ার্ড</string>
+    <string name="detail_tag_picker_no_others">এখনও অন্য কোনো কীওয়ার্ড নেই — উপরে একটি টাইপ করুন।</string>
+    <string name="detail_section_notes">নোট</string>
+    <string name="detail_edit">সম্পাদনা করুন</string>
+    <string name="detail_no_notes">কোনো নোট নেই</string>
+    <string name="detail_section_rating">রেটিং</string>
+    <string name="detail_rating_out_of_five">%1$d / 5</string>
+    <string name="detail_section_color_label">রঙের লেবেল</string>
+    <string name="detail_color_label_none">N</string>
+    <string name="detail_color_label_selected">%1$s selected</string>
+    <string name="detail_section_proxies">প্রক্সি</string>
+    <string name="detail_proxy_auto">স্বয়ংক্রিয়</string>
+    <string name="detail_section_collections">সংগ্রহসমূহ</string>
+    <string name="detail_no_collections">এখনও কোনো সংকলন নেই।</string>
+    <string name="detail_collection_toggle">সংগ্রহের সদস্যপদ পরিবর্তন করুন: %1$s</string>
+    <string name="detail_share_preparing">শেয়ারের জন্য ফাইল প্রস্তুত করা হচ্ছে…</string>
+    <string name="detail_share_failed">শেয়ারের জন্য ভিডিও ডাউনলোড করা যায়নি: %1$s</string>
+    <string name="detail_share_no_connection">কোনো সার্ভারের সাথে সংযুক্ত নেই — দূরবর্তী ভিডিও শেয়ার করা যাচ্ছে না।</string>
+    <string name="detail_audio_channels_mono">1 (মনো)</string>
+    <string name="detail_audio_channels_stereo">2 (স্টেরিও)</string>
+    <string name="detail_audio_channels_51">5.1 সারাউন্ড</string>
+    <string name="detail_audio_channels_71">7.1 সারাউন্ড</string>
+    <plurals name="detail_star_count">
+        <item quantity="one">%1$d star</item>
+        <item quantity="other">%1$d stars</item>
+    </plurals>
+
+    <!-- ── Filter bar ───────────────────────────────────────────────────── -->
+    <string name="filter_filters">ফিল্টার</string>
+    <string name="filter_clear_all">সব পরিষ্কার করুন</string>
+    <string name="filter_remove_filter">ফিল্টার সরান</string>
+    <string name="filter_sort_ascending">ঊর্ধ্বক্রমে বাছাই করুন</string>
+    <string name="filter_sort_descending">অবরোহ ক্রমে বাছাই করুন</string>
+    <string name="filter_filters_and_sort">ফিল্টার ও বাছাই</string>
+    <string name="filter_done">সম্পন্ন</string>
+    <string name="filter_search">অনুসন্ধান</string>
+    <string name="filter_search_placeholder">ফাইলনাম, নোট অনুসন্ধান করুন…</string>
+    <string name="filter_clear_search">অনুসন্ধান সরান</string>
+    <string name="filter_minimum_rating">সর্বনিম্ন রেটিং</string>
+    <string name="filter_any">যেকোনো</string>
+    <string name="filter_rating_plus">%1$d+</string>
+    <string name="filter_keywords">কীওয়ার্ড</string>
+    <string name="filter_all">সকল</string>
+    <string name="filter_tag_with_count">%1$s (%2$d)</string>
+    <string name="filter_collections">সংগ্রহসমূহ</string>
+    <string name="filter_collection_with_count">%1$s (%2$d)</string>
+    <string name="filter_sort">বাছাই</string>
+    <string name="filter_change_sort_field">সাজানোর ক্ষেত্র পরিবর্তন করুন</string>
+    <string name="filter_sort_ascending_reverse">ঊর্ধ্বক্রমে বাছাই — উল্টাতে ট্যাপ করুন</string>
+    <string name="filter_sort_descending_reverse">অবরোহ ক্রমে বাছাই — উল্টাতে ট্যাপ করুন</string>
+    <string name="filter_ascending">ঊর্ধ্বক্রম</string>
+    <string name="filter_descending">অবরোহী</string>
+
+    <!-- Colour label filter -->
+    <string name="filter_color_label">রঙের লেবেল</string>
+
+    <!-- Attribute filters -->
+    <string name="filter_attributes">বৈশিষ্ট্যসমূহ</string>
+    <string name="filter_attr_location">অবস্থান</string>
+    <string name="filter_attr_keywords">কীওয়ার্ডসমূহ</string>
+    <string name="filter_attr_proxies">প্রক্সি</string>
+    <string name="filter_attr_full_res">সম্পূর্ণ রেজোলিউশন</string>
+    <string name="filter_attr_audio">অডিও</string>
+    <!-- "Has" / "Doesn\'t have" chip labels in the attribute tri-state row -->
+    <string name="filter_attr_yes">আছে</string>
+    <string name="filter_attr_no_label">না</string>
+    <!-- Active-filter chip labels: "Has Location", "No Proxies", etc. -->
+    <string name="filter_attr_has">%1$s আছে</string>
+    <string name="filter_attr_no">কোনো %1$s নেই</string>
+
+    <!-- Orientation filter -->
+    <string name="filter_orientation">অভিমুখ</string>
+    <string name="filter_orientation_any">যেকোনো</string>
+    <string name="filter_orientation_portrait">পোর্ট্রেট</string>
+    <string name="filter_orientation_landscape">ল্যান্ডস্কেপ</string>
+
+    <!-- ── Sort field names ─────────────────────────────────────────────── -->
+    <string name="sort_date_indexed">সূচিকৃত তারিখ</string>
+    <string name="sort_date_captured">ধারণের তারিখ</string>
+    <string name="sort_filename">ফাইলের নাম</string>
+    <string name="sort_file_size">ফাইলের আকার</string>
+    <string name="sort_duration">সময়কাল</string>
+    <string name="sort_rating">রেটিং</string>
+    <string name="sort_frame_rate">ফ্রেম রেট</string>
+    <string name="sort_codec">কোডেক</string>
+    <string name="sort_camera">ক্যামেরা</string>
+    <string name="sort_resolution">রেজোলিউশন</string>
+    <string name="sort_bitrate">বিটরেট</string>
+    <string name="sort_lens">লেন্স</string>
+    <string name="sort_iso">ISO</string>
+    <string name="sort_aperture">অ্যাপার্চার</string>
+    <string name="sort_exposure_time">এক্সপোজার সময়</string>
+    <string name="sort_focal_length">ফোকাল দৈর্ঘ্য</string>
+    <string name="sort_keyword">কীওয়ার্ড</string>
+
+    <!-- ── Card stats configuration ─────────────────────────────────────── -->
+    <string name="card_stats_sheet_title">কার্ড পরিসংখ্যান</string>
+    <string name="card_stats_sheet_subtitle">প্রতিটি কার্ডের শীর্ষে প্রদর্শিত চারটি পরিসংখ্যান বেছে নিন।</string>
+    <string name="card_stats_slot_label">স্লট %1$d</string>
+    <!-- GridStatKey display names (must match shared GridStatKey.displayName) -->
+    <string name="grid_stat_none">(খালি)</string>
+    <string name="grid_stat_filename">ফাইলের নাম</string>
+    <string name="grid_stat_file_size">ফাইলের আকার</string>
+    <string name="grid_stat_resolution">রেজোলিউশন</string>
+    <string name="grid_stat_pixel_dimensions">পিক্সেল মাত্রা</string>
+    <string name="grid_stat_duration">সময়কাল</string>
+    <string name="grid_stat_video_codec">ভিডিও কোডেক</string>
+    <string name="grid_stat_audio_codec">অডিও কোডেক</string>
+    <string name="grid_stat_fps">FPS</string>
+    <string name="grid_stat_frame_count">ফ্রেম সংখ্যা</string>
+    <string name="grid_stat_bitrate">বিটরেট</string>
+    <string name="grid_stat_camera">ক্যামেরা</string>
+    <string name="grid_stat_lens">লেন্স</string>
+    <string name="grid_stat_capture_date">ক্যাপচারের তারিখ</string>
+    <string name="grid_stat_capture_year">ক্যাপচারের বছর</string>
+    <string name="grid_stat_iso">ISO</string>
+    <string name="grid_stat_aperture">অ্যাপার্চার</string>
+    <string name="grid_stat_exposure">এক্সপোজার</string>
+    <string name="grid_stat_focal_length">ফোকাল দৈর্ঘ্য</string>
+    <string name="grid_stat_location">অবস্থান</string>
+    <!-- stat cell tap hint -->
+    <string name="card_stat_tap_to_change">স্লট পরিবর্তন করতে ট্যাপ করুন</string>
+
+    <!-- ── Cards / badges ───────────────────────────────────────────────── -->
+    <string name="card_no_thumbnail">কোনো থাম্বনেইল নেই</string>
+    <string name="card_offline">অফলাইন</string>
+    <string name="card_selected">নির্বাচিত</string>
+    <string name="card_full_resolution">সম্পূর্ণ রেজোলিউশন</string>
+    <string name="card_not_full_resolution">সম্পূর্ণ রেজোলিউশন নয়</string>
+    <string name="card_has_audio">একটি অডিও ট্র্যাক আছে</string>
+    <string name="card_file_offline">ফাইল অফলাইনে</string>
+    <string name="card_star">%1$d star</string>
+    <!-- Rating / label context menu on card long-press -->
+    <string name="card_menu_rating">রেটিং</string>
+    <string name="card_menu_rating_none">কিছু নেই</string>
+    <string name="card_menu_color_label">রঙের লেবেল</string>
+    <string name="card_menu_label_none">কিছু নেই</string>
+    <string name="card_menu_label_red">লাল</string>
+    <string name="card_menu_label_yellow">হলুদ</string>
+    <string name="card_menu_label_green">সবুজ</string>
+    <string name="card_menu_label_blue">নীল</string>
+    <string name="card_menu_label_purple">বেগুনি</string>
+    <string name="card_set_rating_desc">%1$d-তারকা রেটিং সেট করুন</string>
+    <string name="card_clear_rating_desc">রেটিং সরান</string>
+    <string name="card_set_color_label_desc">রঙের লেবেল সেট করুন: %1$s</string>
+    <string name="card_clear_color_label_desc">রঙের লেবেল সরান</string>
+    <plurals name="card_keyword_count">
+        <item quantity="one">%1$d keyword</item>
+        <item quantity="other">%1$d keywords</item>
+    </plurals>
+    <plurals name="card_proxy_count">
+        <item quantity="one">%1$d proxy available</item>
+        <item quantity="other">%1$d proxies available</item>
+    </plurals>
+    <plurals name="card_stack_count">
+        <item quantity="one">Stack of %1$d</item>
+        <item quantity="other">Stack of %1$d</item>
+    </plurals>
+
+    <!-- ── Video player ─────────────────────────────────────────────────── -->
+    <string name="player_no_stream">কোনো স্ট্রিম পাওয়া যাচ্ছে না</string>
+    <string name="player_play">চালান</string>
+    <string name="player_pause">বিরতি</string>
+    <string name="player_volume">ভলিউম</string>
+    <string name="player_quality">মান</string>
+    <string name="player_full_screen">পূর্ণ পর্দা</string>
+    <string name="player_exit_full_screen">পূর্ণ স্ক্রিন থেকে বের হন</string>
+    <string name="player_retry">পুনরায় চেষ্টা করুন</string>
+    <string name="player_selected">নির্বাচিত</string>
+    <string name="player_cancel">বাতিল করুন</string>
+    <string name="player_playback_error">প্লেব্যাক ত্রুটি</string>
+
+    <!-- ── ViewModel errors (snackbars) ─────────────────────────────────── -->
+    <string name="err_load_more_videos">আরও ভিডিও লোড করতে ব্যর্থ হয়েছে: %1$s</string>
+    <string name="err_load_videos">ভিডিও লোড করতে ব্যর্থ হয়েছে: %1$s</string>
+    <string name="err_load_metadata">মেটাডেটা লোড করতে ব্যর্থ হয়েছে: %1$s</string>
+    <string name="err_video_not_found">ভিডিও পাওয়া যায়নি</string>
+    <string name="err_update_notes">নোট আপডেট করতে ব্যর্থ হয়েছে</string>
+    <string name="err_update_notes_detail">নোট আপডেট করতে ব্যর্থ হয়েছে: %1$s</string>
+    <string name="err_add_tag">ট্যাগ যোগ করতে ব্যর্থ হয়েছে</string>
+    <string name="err_add_tag_detail">ট্যাগ যোগ করতে ব্যর্থ হয়েছে: %1$s</string>
+    <string name="err_remove_tag">ট্যাগ সরাতে ব্যর্থ হয়েছে</string>
+    <string name="err_remove_tag_detail">ট্যাগ সরাতে ব্যর্থ হয়েছে: %1$s</string>
+    <string name="err_update_rating">রেটিং আপডেট করতে ব্যর্থ হয়েছে: %1$s</string>
+    <string name="err_update_color_label">রঙের লেবেল আপডেট করতে ব্যর্থ হয়েছে: %1$s</string>
+    <string name="err_update_location">লোকেশন আপডেট করতে ব্যর্থ হয়েছে</string>
+    <string name="err_update_location_detail">লোকেশন আপডেট করতে ব্যর্থ হয়েছে: %1$s</string>
+    <string name="err_remove_location">লোকেশন সরাতে ব্যর্থ হয়েছে</string>
+    <string name="err_remove_location_detail">লোকেশন সরাতে ব্যর্থ হয়েছে: %1$s</string>
+    <string name="err_add_to_collection">সংগ্রহে যোগ করতে ব্যর্থ হয়েছে</string>
+    <string name="err_add_to_collection_detail">সংগ্রহে যোগ করতে ব্যর্থ হয়েছে: %1$s</string>
+    <string name="err_remove_from_collection">সংগ্রহ থেকে সরাতে ব্যর্থ হয়েছে</string>
+    <string name="err_remove_from_collection_detail">সংগ্রহ থেকে সরাতে ব্যর্থ হয়েছে: %1$s</string>
+    <string name="err_apply_keyword">Failed to create/apply keyword \'%1$s\'</string>
+    <string name="err_apply_keyword_detail">কীওয়ার্ড প্রয়োগ ব্যর্থ হয়েছে: %1$s</string>
+    <string name="err_load_grid_settings">কার্ড-স্ট্যাটস কনফিগারেশন লোড করতে ব্যর্থ হয়েছে: %1$s</string>
+    <string name="err_save_grid_settings">কার্ড-স্ট্যাটস কনফিগারেশন সংরক্ষণ করতে ব্যর্থ হয়েছে: %1$s</string>
+    <string name="scan_target_default">লাইব্রেরি</string>
+    <string name="scan_scanning_target">%1$s স্ক্যান করা হচ্ছে…</string>
+    <string name="pairing_a_device">একটি ডিভাইস</string>
+
+    <!-- ── Grid density / thumbnail size ────────────────────────────── -->
+    <string name="grid_density_label">থাম্বনেইলের আকার</string>
+    <string name="grid_density_smaller">ছোট থাম্বনেইল</string>
+    <string name="grid_density_larger">বড় থাম্বনেইল</string>
+    <string name="grid_density_sheet_title">থাম্বনেইলের আকার</string>
+    <string name="grid_density_sheet_subtitle">স্ক্রিনে কতটি কলাম ফিট হবে তা সমন্বয় করতে টেনে আনুন।</string>
+    <string name="grid_density_menu_item">থাম্বনেইলের আকার</string>
+
+    <!-- ── Stacking / grouping ────────────────────────────────────────── -->
+    <string name="stack_combine_into_stack">স্ট্যাকে একত্রিত করুন</string>
+    <string name="stack_select_at_least_two">স্ট্যাক তৈরি করতে কমপক্ষে ২টি ভিডিও নির্বাচন করুন</string>
+    <string name="stack_combine_failed">স্ট্যাক তৈরি করতে ব্যর্থ হয়েছে</string>
+    <string name="stack_combine_error">স্ট্যাক ব্যর্থ হয়েছে: %1$s</string>
+    <string name="stack_remove_from_stack">স্ট্যাক থেকে সরান</string>
+    <string name="stack_remove_failed">স্ট্যাক থেকে সরাতে ব্যর্থ হয়েছে</string>
+    <string name="stack_remove_error">সরানো ব্যর্থ হয়েছে: %1$s</string>
+    <string name="stack_unstack">আনস্ট্যাক করুন</string>
+    <string name="stack_unstack_error">আনস্ট্যাক ব্যর্থ হয়েছে: %1$s</string>
+    <string name="stack_promote_to_leader">লিডার হিসেবে প্রমোট করুন</string>
+    <string name="stack_promote_failed">ভিডিও প্রমোট করতে ব্যর্থ হয়েছে</string>
+    <string name="stack_promote_error">প্রমোট ব্যর্থ হয়েছে: %1$s</string>
+    <string name="stack_load_members_error">স্ট্যাক সদস্যগুলি লোড করা যায়নি: %1$s</string>
+    <string name="stack_members_title">স্ট্যাক সদস্যগণ</string>
+    <string name="stack_members_preferred_label">প্রধান</string>
+    <string name="stack_members_promote_action">প্রমোট করুন</string>
+    <string name="stack_members_remove_action">সরান</string>
+    <string name="stack_section_header">স্ট্যাক</string>
+    <plurals name="stack_combined_message">
+        <item quantity="one">Combined into a stack of %1$d video</item>
+        <item quantity="other">Combined into a stack of %1$d videos</item>
+    </plurals>
+
+    <!-- ── Batch actions (multi-select top bar) ───────────────────────── -->
+    <string name="batch_organize">নির্বাচিত ভিডিওগুলি সংগঠিত করুন</string>
+    <string name="batch_share">নির্বাচিত ভিডিও শেয়ার করুন</string>
+    <string name="batch_share_preparing">%1$d টি ভিডিও প্রস্তুত করা হচ্ছে…</string>
+    <string name="batch_share_failed">শেয়ারের জন্য ফাইল প্রস্তুত করা যায়নি</string>
+    <string name="batch_share_title">%1$d টি ভিডিও শেয়ার করুন</string>
+    <string name="batch_add_keyword_hint">একটি কীওয়ার্ড যোগ করুন…</string>
+    <string name="batch_existing_keywords">বিদ্যমান কীওয়ার্ড — প্রয়োগ করতে ট্যাপ করুন</string>
+    <string name="batch_apply_keyword">কীওয়ার্ড প্রয়োগ করুন: %1$s</string>
+    <string name="batch_add_to_collection">সংগ্রহে যোগ করুন</string>
+    <string name="batch_add_to_collection_name">%1$s-এ যোগ করুন</string>
+    <plurals name="batch_organize_title">
+        <item quantity="one">Organize %1$d video</item>
+        <item quantity="other">Organize %1$d videos</item>
+    </plurals>
+
+    <!-- ── Visuals / Graphs section (detail view) ─────────────────────── -->
+    <string name="detail_section_visuals">ভিজ্যুয়ালস</string>
+    <string name="detail_graphs_brightness">উজ্জ্বলতা</string>
+    <string name="detail_graphs_color_over_time">সময়ের সাথে রঙ</string>
+    <string name="detail_graphs_rgb_channels">RGB চ্যানেল</string>
+    <string name="detail_graphs_loudness">জোরতা</string>
+    <string name="detail_graphs_analyzing_audio">অডিও বিশ্লেষণ করা হচ্ছে…</string>
+    <string name="detail_graphs_analyzing_frames">ফ্রেম বিশ্লেষণ করা হচ্ছে…</string>
+    <string name="detail_graphs_select_video">একটি ভিডিও নির্বাচন করুন</string>
+
+    <!-- ── Offline library ────────────────────────────────────────────── -->
+    <string name="offline_title">ডাউনলোড হয়েছে</string>
+    <string name="offline_empty_title">কোনো ডাউনলোড নেই</string>
+    <string name="offline_empty_desc">While connected to a server, choose &quot;Download for Offline&quot; on a video to watch it here without a connection.</string>
+    <string name="offline_section_title">অফলাইন</string>
+    <string name="offline_available_offline">অফলাইনে উপলব্ধ</string>
+    <string name="offline_downloading">ডাউনলোড হচ্ছে…</string>
+    <string name="offline_download_button">অফলাইনের জন্য ডাউনলোড করুন</string>
+    <string name="offline_quality_title">ডাউনলোড মান</string>
+    <string name="offline_quality_original">মূল</string>
+    <string name="offline_quality_720p">720p (ছোট)</string>
+    <string name="offline_remove_download">ডাউনলোড সরান</string>
+    <string name="offline_remove_title">ডাউনলোড সরাবেন?</string>
+    <string name="offline_remove_body">&quot;%1$s&quot; will be deleted from this device.</string>
+    <string name="offline_remove_confirm">সরান</string>
+    <string name="offline_file_missing">এই ডাউনলোডটি ডিভাইসে নেই।</string>
+    <string name="offline_downloaded_quality">হিসেবে ডাউনলোড হয়েছে</string>
+    <string name="offline_browse_downloads">ডাউনলোড ব্রাউজ করুন</string>
+
+    <!-- On-device (Local) library — embedded Rust core -->
+    <string name="local_starting">ডিভাইসে লাইব্রেরি শুরু হচ্ছে…</string>
+    <string name="local_start_failed">Couldn\'t start the on-device library.</string>
+    <string name="local_permission_needed">ডিভাইসে লাইব্রেরি তৈরি করতে ReelVault-এর আপনার ভিডিওতে অ্যাক্সেস প্রয়োজন।</string>
+    <string name="local_importing_banner">স্থানীয় ভিডিও আমদানি করা হচ্ছে — ReelVault খোলা রাখুন</string>
+    <string name="local_open_library">ডিভাইস-এ লাইব্রেরি খুলুন</string>
+    <string name="local_this_device">এই ডিভাইসে</string>
+    <string name="grid_server_library">সার্ভার</string>
+
+    <!-- Local → remote upload -->
+    <string name="upload_action">সার্ভারে আপলোড করুন</string>
+    <string name="upload_title">%1$s-এ আপলোড করুন</string>
+    <string name="upload_preparing">প্রস্তুত করা হচ্ছে…</string>
+    <string name="upload_uploading">আপলোড হচ্ছে…</string>
+    <string name="upload_done">আপলোড হয়েছে</string>
+    <string name="upload_failed">ব্যর্থ হয়েছে</string>
+    <string name="upload_skipped">%1$d skipped (not on-device files)</string>
+    <string name="upload_close">বন্ধ করুন</string>
+
+    <!-- Server unreachable / offline mode prompt -->
+    <string name="offline_server_unreachable_title">সার্ভারে পৌঁছানো যাচ্ছে না</string>
+    <string name="offline_server_unreachable_message">ReelVault সার্ভারে আর পৌঁছানো যাচ্ছে না। আপনি আপনার ডাউনলোড করা ভিডিওগুলি অফলাইনে দেখতে পারবেন।</string>
+    <string name="offline_go_offline">অফলাইনে যান</string>
+    <string name="offline_keep_waiting">অপেক্ষা করতে থাকুন</string>
+
+</resources>

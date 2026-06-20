@@ -5,7 +5,7 @@ visitor's preferred language from their browser settings. A language selector
 in the top-right corner of the page allows manual override; the choice is
 persisted in `localStorage`.
 
-Arabic uses right-to-left (RTL) layout automatically.
+Arabic and Urdu use right-to-left (RTL) layout automatically.
 
 ## Supported languages
 
@@ -31,6 +31,8 @@ Arabic uses right-to-left (RTL) layout automatically.
 | `th`    | Thai                  | ภาษาไทย              |
 | `uk`    | Ukrainian             | Українська            |
 | `cs`    | Czech                 | Čeština               |
+| `ur`    | Urdu (RTL)            | اردو                  |
+| `bn`    | Bengali               | বাংলা                 |
 
 ## Adding a new language
 
@@ -41,4 +43,4 @@ Arabic uses right-to-left (RTL) layout automatically.
    rule (e.g. `zh-*` → `zh`, `pt-*` → `pt-br`).
 4. Add a row to this table.
 5. If the language is RTL, update the `dir` assignment in `setLang()`:
-   change `(lang === 'ar')` to `(lang === 'ar' || lang === 'he')` etc.
+   change `(lang === 'ar')` to `(lang === 'ar' || lang === 'ur')` etc.

@@ -22,9 +22,9 @@ ReelVault ช่วยให้คุณ:
 ## สถาปัตยกรรม
 
 ```
-Desktop / macOS clients          iOS client (iPhone / iPad)
+Desktop / macOS clients          iOS / Android clients
    ↓ gRPC over loopback             ↓ gRPC + HTTPS media over the LAN
-   │                                │ (mDNS discovery · pinned TLS · paired)
+   │                                │ (mDNS/NSD discovery · pinned TLS · paired)
    └───────────────┬────────────────┘
                    ↓
         Rust Backend Daemon (reelvault-core)
@@ -39,6 +39,13 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 - **SwiftUI macOS client** (`macos/`) — แอป macOS native ที่มีฟีเจอร์เท่าเทียมกัน พร้อมกระแส auto-spawn เดียวกัน เมนู File macOS จริง (กลุ่ม Commands) และชื่อหน้าต่างแบบ reactive ที่ติดตามแคตตาล็อกที่เปิดอยู่
 
 - **SwiftUI iOS client** (`ios/`) — แอป iPhone / iPad **สำหรับ remote เท่านั้น** ไม่มีการเข้าถึงไฟล์ในเครื่องและไม่มี daemon ฝังไว้: ค้นหา daemon ผ่าน Wi‑Fi (mDNS) เชื่อมต่อผ่านช่อง TLS ที่ pin fingerprint หลังจากจับคู่ครั้งเดียว เรียกดูผ่าน gRPC และ **สตรีม** วิดีโอ (HLS ที่ลดขนาดแล้ว) จากเซิร์ฟเวอร์มีเดียของ daemon แทนที่การลาก editor ด้วย iOS share sheet และเพิ่มการอัปโหลดจาก Photos / Files ดู [`ios/README.md`](ios/README.md)
+
+- **Kotlin Compose Android client** (`android/`) — A **remote-only**
+  Android phone / tablet app. Connects to a daemon over the LAN (NSD
+  discovery), streams video via ExoPlayer, and replaces editor drag-out with
+  the Android share intent. Also embeds the full Rust core for on-device local
+  library access — browse, catalog, and upload footage directly from the
+  device. See [`android/README.md`](android/README.md).
 
 - **ReelVaultKit** (`kit/`) — แพ็กเกจ SwiftPM ในเครื่องของ Swift ที่ใช้ร่วมกันโดย **ทั้งสอง** Apple client: โมเดล view-model client gRPC การค้นพบ TLS ที่ pin และเลเยอร์แคช/สตรีมมิงมีเดีย
 
@@ -55,7 +62,14 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 **Core**
 - [x] daemon gRPC พร้อมพื้นผิว RPC ครบถ้วน (วิดีโอ ค้นหา สแกน แท็ก คอลเลกชัน สแต็ก ตัวกรอง สถานะ การตั้งค่า วงจรชีวิตแคตตาล็อก)
 - [x] แคตตาล็อก SQLite พร้อมโหมด WAL + FTS5; hot-swap แคตตาล็อก runtime ผ่าน `OpenCatalog` / `CloseCatalog`
-- [x] การดึงเมทาดาตา FFprobe (codec ความละเอียด FPS บิตเรต HDR EXIF GPS กล้อง/เลนส์)
+- [x] Rich metadata extraction via FFprobe + platform-native helpers: codec,
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera. ความละเอียด FPS บิตเรต HDR EXIF GPS กล้อง/เลนส์)
 - [x] การสร้างภาพขนาดย่อและ scrub-frame แบบ Lightroom (10 เฟรมต่อวิดีโอ) พร้อม lock แต่ละวิดีโอเพื่อหลีกเลี่ยงงานซ้ำ
 - [x] การจำกัด ffmpeg พร้อมกัน (ค่าเริ่มต้นตามจำนวน CPU ของโฮสต์) เพื่อป้องกันการสแกนไลบรารีขนาดใหญ่ทำให้ที่เก็บข้อมูล SAN ทำงานหนักเกินไป
 - [x] การสแกนไลบรารีพร้อมการซ้ำแบบเลือกได้และการจัดกลุ่มตัวแปรอัตโนมัติ
@@ -174,7 +188,8 @@ make build            # iOS Simulator; or open ReelVault.xcodeproj to run on a d
 
 ## การมีส่วนร่วม
 
-ดู [`CLAUDE.md`](CLAUDE.md) สำหรับแนวทางการพัฒนา ยินดีรับ Pull request — กรุณารักษาความเท่าเทียมของฟีเจอร์ระหว่างสอง client และเพิ่มส่วนหัว SPDX ให้กับไฟล์ซอร์สใหม่ (ดูสิทธิ์การใช้งานด้านล่าง)
+ดู [`CLAUDE.md`](CLAUDE.md) สำหรับแนวทางการพัฒนา ยินดีรับ Pull request — กรุณารักษาความเท่าเทียมของฟีเจอร์ใน client ทั้งสี่ตัวตามที่เหมาะสม
+(ดู CLAUDE.md สำหรับการเบี่ยงเบนต่อแพลตฟอร์มที่ถูกต้อง) และเพิ่มส่วนหัว SPDX ให้กับไฟล์ซอร์สใหม่ (ดูสิทธิ์การใช้งานด้านล่าง)
 
 ## สิทธิ์การใช้งาน
 

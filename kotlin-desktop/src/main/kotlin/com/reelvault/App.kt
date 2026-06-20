@@ -1459,14 +1459,14 @@ fun ReelVaultApp(
                                 )
                                 Spacer(modifier = Modifier.weight(1f))
                                 TextButton(onClick = { gridViewModel.dismissIncomingPairing() }) {
-                                    Text("Dismiss")
+                                    Text(Strings["ui_dismiss"])
                                 }
                                 Spacer(modifier = Modifier.width(ReelVaultSpacing.Small))
                                 Button(onClick = {
                                     gridViewModel.dismissIncomingPairing()
                                     showPairDeviceDialog = true
                                 }) {
-                                    Text("Allow")
+                                    Text(Strings["ui_allow"])
                                 }
                             }
                         }
@@ -1874,7 +1874,7 @@ fun ReelVaultApp(
                                             tint = MaterialTheme.colorScheme.error
                                         )
                                     },
-                                    title = { Text("Delete collection?") },
+                                    title = { Text(Strings["ui_delete_collection"]) },
                                     text = {
                                         Text(
                                             "\"${col.name}\" will be permanently deleted. " +
@@ -1891,11 +1891,11 @@ fun ReelVaultApp(
                                             colors = ButtonDefaults.buttonColors(
                                                 containerColor = MaterialTheme.colorScheme.error
                                             )
-                                        ) { Text("Delete") }
+                                        ) { Text(Strings["ui_delete"]) }
                                     },
                                     dismissButton = {
                                         TextButton(onClick = { pendingDeleteCollection = null }) {
-                                            Text("Cancel")
+                                            Text(Strings["ui_cancel"])
                                         }
                                     }
                                 )
@@ -1905,7 +1905,7 @@ fun ReelVaultApp(
                             if (showSmartCollectionDialog) {
                                 AlertDialog(
                                     onDismissRequest = { showSmartCollectionDialog = false },
-                                    title = { Text("Save as Smart Collection") },
+                                    title = { Text(Strings["ui_save_as_smart_collection"]) },
                                     text = {
                                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                             Text(
@@ -1917,7 +1917,7 @@ fun ReelVaultApp(
                                             TextField(
                                                 value = smartCollectionName,
                                                 onValueChange = { smartCollectionName = it },
-                                                placeholder = { Text("Collection name") },
+                                                placeholder = { Text(Strings["ui_collection_name"]) },
                                                 singleLine = true,
                                                 modifier = Modifier.trackTextEntryFocus(),
                                                 colors = TextFieldDefaults.colors(
@@ -1940,11 +1940,11 @@ fun ReelVaultApp(
                                                 }
                                                 showSmartCollectionDialog = false
                                             }
-                                        ) { Text("Save") }
+                                        ) { Text(Strings["ui_save"]) }
                                     },
                                     dismissButton = {
                                         TextButton(onClick = { showSmartCollectionDialog = false }) {
-                                            Text("Cancel")
+                                            Text(Strings["ui_cancel"])
                                         }
                                     }
                                 )
@@ -1962,7 +1962,7 @@ fun ReelVaultApp(
                                             tint = MaterialTheme.colorScheme.error
                                         )
                                     },
-                                    title = { Text("Remove library location?") },
+                                    title = { Text(Strings["ui_remove_library_location"]) },
                                     text = {
                                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                             Text("\"${loc.path}\"")
@@ -1983,11 +1983,11 @@ fun ReelVaultApp(
                                             colors = ButtonDefaults.buttonColors(
                                                 containerColor = MaterialTheme.colorScheme.error
                                             )
-                                        ) { Text("Remove") }
+                                        ) { Text(Strings["ui_remove"]) }
                                     },
                                     dismissButton = {
                                         TextButton(onClick = { pendingRemoveLocation = null }) {
-                                            Text("Cancel")
+                                            Text(Strings["ui_cancel"])
                                         }
                                     }
                                 )
@@ -2113,10 +2113,10 @@ fun ReelVaultApp(
                                         )
                                         if (diverged) {
                                             TextButton(onClick = { gridViewModel.revertActiveSmartCollection() }) {
-                                                Text("Reset to default")
+                                                Text(Strings["ui_reset_to_default"])
                                             }
                                             Button(onClick = { gridViewModel.updateActiveSmartCollection() }) {
-                                                Text("Update collection")
+                                                Text(Strings["ui_update_collection"])
                                             }
                                         }
                                         IconButton(onClick = { gridViewModel.clearSmartCollectionShowAll() }) {
@@ -2920,7 +2920,7 @@ fun HelpDialog(onDismiss: () -> Unit) {
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text(Strings["ui_close"]) }
         }
     )
 }
@@ -3134,7 +3134,7 @@ fun ReelVaultTopBar(
                     tint = MaterialTheme.colorScheme.error
                 )
             },
-            title = { Text("Forget this server?") },
+            title = { Text(Strings["ui_forget_this_server"]) },
             text = {
                 Text(
                     "Clears this device's pairing token. You'll need to enter a new " +
@@ -3151,11 +3151,11 @@ fun ReelVaultTopBar(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error
                     )
-                ) { Text("Forget & Re-pair") }
+                ) { Text(Strings["ui_forget_re_pair"]) }
             },
             dismissButton = {
                 TextButton(onClick = { showForgetServerConfirm = false }) {
-                    Text("Cancel")
+                    Text(Strings["ui_cancel"])
                 }
             }
         )
@@ -3229,19 +3229,19 @@ fun ReelVaultTopBar(
                     }
                     DropdownMenu(expanded = showFileMenu, onDismissRequest = { showFileMenu = false }) {
                         DropdownMenuItem(
-                            text = { Text("Open Catalog…") },
+                            text = { Text(Strings["ui_open_catalog"]) },
                             onClick = { onOpenCatalog(); showFileMenu = false },
                             leadingIcon = { Icon(Icons.Default.FolderOpen, contentDescription = null) }
                         )
                         DropdownMenuItem(
-                            text = { Text("Close Catalog") },
+                            text = { Text(Strings["ui_close_catalog"]) },
                             onClick = { onCloseCatalog(); showFileMenu = false },
                             enabled = catalogIsOpen,
                             leadingIcon = { Icon(Icons.Default.Close, contentDescription = null) }
                         )
                         HorizontalDivider()
                         DropdownMenuItem(
-                            text = { Text("Pair a New Device…") },
+                            text = { Text(Strings["ui_pair_a_new_device"]) },
                             onClick = { onPairDevice(); showFileMenu = false },
                             enabled = !isRemoteSource,
                             leadingIcon = { Icon(Icons.Default.PhoneIphone, contentDescription = null) }
@@ -3514,17 +3514,17 @@ fun ReelVaultTopBar(
                             onDismissRequest = { settingsOpen = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Playback & Proxies…") },
+                                text = { Text(Strings["ui_playback_proxies"]) },
                                 leadingIcon = { Icon(Icons.Default.PlayCircleOutline, contentDescription = null) },
                                 onClick = { settingsOpen = false; onConfigurePlayback() }
                             )
                             DropdownMenuItem(
-                                text = { Text("Library — Auto-Tagging…") },
+                                text = { Text(Strings["ui_library_auto_tagging"]) },
                                 leadingIcon = { Icon(Icons.Default.VideoLibrary, contentDescription = null) },
                                 onClick = { settingsOpen = false; onConfigureLibrary() }
                             )
                             DropdownMenuItem(
-                                text = { Text("Appearance…") },
+                                text = { Text(Strings["ui_appearance"]) },
                                 leadingIcon = { Icon(Icons.Default.Palette, contentDescription = null) },
                                 onClick = { settingsOpen = false; onConfigureAppearance() }
                             )
@@ -3533,7 +3533,7 @@ fun ReelVaultTopBar(
                             // holding the camera- and lens-name editors.
                             Box {
                                 DropdownMenuItem(
-                                    text = { Text("Names") },
+                                    text = { Text(Strings["ui_names"]) },
                                     leadingIcon = { Icon(Icons.Default.TextFields, contentDescription = null) },
                                     trailingIcon = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
                                     onClick = { namesOpen = true }
@@ -3544,14 +3544,14 @@ fun ReelVaultTopBar(
                                     offset = androidx.compose.ui.unit.DpOffset(x = 180.dp, y = 0.dp)
                                 ) {
                                     DropdownMenuItem(
-                                        text = { Text("Camera Names…") },
+                                        text = { Text(Strings["ui_camera_names"]) },
                                         leadingIcon = { Icon(Icons.Default.Camera, contentDescription = null) },
                                         onClick = {
                                             namesOpen = false; settingsOpen = false; onConfigureCameraNames()
                                         }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Lens Names…") },
+                                        text = { Text(Strings["ui_lens_names"]) },
                                         leadingIcon = { Icon(Icons.Default.Lens, contentDescription = null) },
                                         onClick = {
                                             namesOpen = false; settingsOpen = false; onConfigureLensNames()
@@ -3760,7 +3760,7 @@ fun AddLibraryDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Library Locations") },
+        title = { Text(Strings["ui_add_library_locations"]) },
         text = {
             Column {
                 Text(
@@ -4112,7 +4112,7 @@ fun AddLibraryDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(Strings["ui_cancel"])
             }
         }
     )
@@ -4183,7 +4183,7 @@ fun ConnectionErrorScreen(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(ReelVaultSpacing.Small))
-                    Text("Retry")
+                    Text(Strings["ui_retry"])
                 }
             }
 
@@ -4192,7 +4192,7 @@ fun ConnectionErrorScreen(
             if (onChooseDifferentServer != null) {
                 Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
                 TextButton(onClick = onChooseDifferentServer) {
-                    Text("Choose a Different Server…")
+                    Text(Strings["ui_choose_a_different_server"])
                 }
             }
         }
