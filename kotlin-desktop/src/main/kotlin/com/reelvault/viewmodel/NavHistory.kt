@@ -5,6 +5,7 @@ package com.reelvault.viewmodel
 
 import com.reelvault.ViewMode
 import com.reelvault.data.models.AttributeFilterState
+import com.reelvault.data.models.LibraryFilterMode
 import com.reelvault.data.models.MetadataColumn
 import com.reelvault.data.models.OrientationFilterState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,7 +36,9 @@ data class NavState(
     val collectionId: String?,
     val tagId: String,
     val videoId: String?,
-    // Library filter state
+    // Library filter state — including the active editor mode so the filter bar
+    // shows the right panel (Text / Attribute / Metadata / Clear) on restore.
+    val libraryFilterMode: LibraryFilterMode,
     val searchQuery: String,
     val filterMinRating: Int,
     val filterColorLabel: String,

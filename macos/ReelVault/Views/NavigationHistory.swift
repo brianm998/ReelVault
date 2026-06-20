@@ -22,7 +22,9 @@ struct NavState: Equatable {
     var collectionId: String?
     var tagId: String
     var selectedVideoId: String?
-    // Library filter state
+    // Library filter state — including the active editor mode so the filter bar
+    // shows the right panel (Text / Attribute / Metadata / Clear) on restore.
+    var libraryFilterMode: LibraryFilterMode
     var searchQuery: String
     var filterMinRating: Int32
     var filterColorLabel: String

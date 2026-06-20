@@ -1535,6 +1535,13 @@ class GridViewModel(
         if (mode == com.reelvault.data.models.LibraryFilterMode.Metadata) scheduleFacetRefresh()
     }
 
+    /** Restore the active filter-bar editor during a back/forward history restore.
+     *  Unlike [setLibraryFilterMode], the .Clear case does NOT call clearLibraryFilter()
+     *  here — the caller is responsible for restoring all filter values separately. */
+    fun restoreLibraryFilterMode(mode: com.reelvault.data.models.LibraryFilterMode) {
+        _libraryFilterMode.value = mode
+    }
+
     /** The active metadata-column constraints sent to the daemon. Each column
      *  with a non-empty selection becomes one filter whose value is its selected
      *  tokens joined by [METADATA_VALUE_SEPARATOR]; the daemon OR-matches them. */

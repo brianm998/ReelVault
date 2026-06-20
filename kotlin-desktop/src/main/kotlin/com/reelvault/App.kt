@@ -776,6 +776,7 @@ fun ReelVaultApp(
     val navTagId by gridViewModel.filterTagId.collectAsState()
     val navLocationPaths by gridViewModel.selectedLocationPaths.collectAsState()
     val navSelectedVideoId by gridViewModel.selectedVideoId.collectAsState()
+    val navLibraryFilterMode by gridViewModel.libraryFilterMode.collectAsState()
     val navSearchQuery by gridViewModel.searchQuery.collectAsState()
     val navFilterMinRating by gridViewModel.filterMinRating.collectAsState()
     val navFilterColorLabel by gridViewModel.filterColorLabel.collectAsState()
@@ -792,6 +793,7 @@ fun ReelVaultApp(
         collectionId = navCollectionId,
         tagId = navTagId,
         videoId = navSelectedVideoId,
+        libraryFilterMode = navLibraryFilterMode,
         searchQuery = navSearchQuery,
         filterMinRating = navFilterMinRating,
         filterColorLabel = navFilterColorLabel,
@@ -819,6 +821,9 @@ fun ReelVaultApp(
         viewMode = s.viewMode
         // Restore library filter state after source filters so any smart-collection
         // side effects are overridden with the exact recorded values.
+        // libraryFilterMode is restored via restoreLibraryFilterMode (not
+        // setLibraryFilterMode) to avoid the .Clear branch calling clearLibraryFilter().
+        gridViewModel.restoreLibraryFilterMode(s.libraryFilterMode)
         gridViewModel.setSearchQuery(s.searchQuery)
         gridViewModel.setMinRatingFilter(s.filterMinRating)
         gridViewModel.setColorLabelFilter(s.filterColorLabel)

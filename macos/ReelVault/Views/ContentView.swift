@@ -528,6 +528,7 @@ struct ContentView: View {
                  collectionId: gridViewModel.selectedCollectionId,
                  tagId: gridViewModel.filterTagId,
                  selectedVideoId: gridViewModel.selectedVideoId,
+                 libraryFilterMode: gridViewModel.libraryFilterMode,
                  searchQuery: gridViewModel.searchQuery,
                  filterMinRating: gridViewModel.filterMinRating,
                  filterColorLabel: gridViewModel.filterColorLabel,
@@ -556,6 +557,10 @@ struct ContentView: View {
         gridViewModel.selectedVideoId = s.selectedVideoId
         // Restore the library filter state. Called after source filters so any
         // smart-collection side effects are overridden with the recorded values.
+        // libraryFilterMode is set directly (not via setLibraryFilterMode) because
+        // the setter's .clear branch calls clearLibraryFilter() as a side effect,
+        // which would wipe the values we're about to restore.
+        gridViewModel.libraryFilterMode = s.libraryFilterMode
         gridViewModel.restoreFilterState(
             searchQuery: s.searchQuery,
             filterMinRating: s.filterMinRating,
