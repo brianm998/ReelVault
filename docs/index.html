@@ -359,6 +359,55 @@
     }
     .mobile-secondary a:hover { text-decoration: underline; }
 
+    /* Server-on-a-computer note (revealed from a mobile screen) */
+    .server-note {
+      margin-top: 16px;
+      padding: 16px 18px;
+      background: var(--accent-bg);
+      border: 1px solid var(--accent-border);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      text-align: left;
+    }
+    .server-note strong { color: var(--text); }
+    .server-url {
+      display: block;
+      margin: 12px 0;
+      padding: 10px 12px;
+      background: rgba(0,0,0,0.3);
+      border-radius: var(--radius-sm);
+      font-family: 'SF Mono', Consolas, 'Courier New', monospace;
+      font-size: 12.5px;
+      color: var(--text);
+      word-break: break-all;
+      text-align: center;
+    }
+    .server-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .server-copy {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 14px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .server-copy:hover { border-color: var(--border-hover); }
+    .server-note a {
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: none;
+      font-size: 13px;
+    }
+    .server-note a:hover { text-decoration: underline; }
+
     /* ── Footer ─────────────────────────────────────────────────────────── */
     footer {
       margin-top: 44px;
@@ -429,9 +478,18 @@
       <a class="appstore-btn" id="ios-cta" href="#" target="_blank">Request TestFlight access</a>
       <div class="mobile-secondary" id="ios-secondary"></div>
     </div>
-    <div style="text-align:center; font-size:13px; color:var(--text-muted); margin-top:8px;">
+    <div id="ios-server-prompt" style="text-align:center; font-size:13px; color:var(--text-muted); margin-top:8px;">
       <span data-i18n="needServer">Need to set up the server?</span>
-      <button class="platform-change" style="font-size:13px;" onclick="showDesktopFlow()" data-i18n="getDesktop">Get the desktop app →</button>
+      <button class="platform-change" style="font-size:13px;" onclick="showServerHelp('ios')" data-i18n="getDesktop">Get the desktop app →</button>
+    </div>
+    <div class="server-note" id="ios-server-note" style="display:none;">
+      <strong data-i18n="serverHelpTitle">Set up the server on a computer</strong><br>
+      <span data-i18n="serverHelpBody">The ReelVault library server runs on a Mac, PC, or Linux computer — it can't be installed on iOS or Android. Open this page on your computer to download it:</span>
+      <code class="server-url" id="ios-server-url"></code>
+      <div class="server-actions">
+        <button class="server-copy" id="ios-copy" onclick="copyPageLink('ios')" data-i18n="copyLink">Copy link</button>
+        <a href="https://github.com/brianm998/ReelVault/releases" target="_blank" data-i18n="viewAllBtn">View all downloads on GitHub ↗</a>
+      </div>
     </div>
   </div>
 
@@ -448,9 +506,18 @@
       <a class="appstore-btn" id="android-cta" href="#" target="_blank">Request beta access</a>
       <div class="mobile-secondary" id="android-secondary"></div>
     </div>
-    <div style="text-align:center; font-size:13px; color:var(--text-muted); margin-top:8px;">
+    <div id="android-server-prompt" style="text-align:center; font-size:13px; color:var(--text-muted); margin-top:8px;">
       <span data-i18n="needServer">Need to set up the server?</span>
-      <button class="platform-change" style="font-size:13px;" onclick="showDesktopFlow()" data-i18n="getDesktop">Get the desktop app →</button>
+      <button class="platform-change" style="font-size:13px;" onclick="showServerHelp('android')" data-i18n="getDesktop">Get the desktop app →</button>
+    </div>
+    <div class="server-note" id="android-server-note" style="display:none;">
+      <strong data-i18n="serverHelpTitle">Set up the server on a computer</strong><br>
+      <span data-i18n="serverHelpBody">The ReelVault library server runs on a Mac, PC, or Linux computer — it can't be installed on iOS or Android. Open this page on your computer to download it:</span>
+      <code class="server-url" id="android-server-url"></code>
+      <div class="server-actions">
+        <button class="server-copy" id="android-copy" onclick="copyPageLink('android')" data-i18n="copyLink">Copy link</button>
+        <a href="https://github.com/brianm998/ReelVault/releases" target="_blank" data-i18n="viewAllBtn">View all downloads on GitHub ↗</a>
+      </div>
     </div>
   </div>
 
@@ -696,6 +763,10 @@
         androidMailBody: "Hi! I'd like to test ReelVault on Android.\n\nMy Google account email (the one signed in on my device):\n\nThanks!",
         needServer: "Need to set up the server?",
         getDesktop: "Get the desktop app →",
+        serverHelpTitle: "Set up the server on a computer",
+        serverHelpBody: "The ReelVault library server runs on a Mac, PC, or Linux computer — it can't be installed on iOS or Android. Open this page on your computer to download it:",
+        copyLink: "Copy link",
+        copyLinkDone: "Copied!",
         iosCardTitle: "Also install the iOS app",
         iosCardDesc: "The server you're downloading above advertises itself on your local WiFi via mDNS. Open the ReelVault iOS app on the same network and it will find your library automatically — no IP addresses to type.",
         appStoreLink: "Get ReelVault on the App Store →",
@@ -760,6 +831,10 @@
         androidMailBody: "您好！我想测试 Android 版 ReelVault。\n\n我设备上登录的 Google 账号邮箱：\n\n谢谢！",
         needServer: "需要设置服务器？",
         getDesktop: "获取桌面版 →",
+        serverHelpTitle: "在电脑上设置服务器",
+        serverHelpBody: "ReelVault 媒体库服务器运行在 Mac、PC 或 Linux 电脑上——无法安装在 iOS 或 Android 上。请在您的电脑上打开此页面进行下载：",
+        copyLink: "复制链接",
+        copyLinkDone: "已复制！",
         iosCardTitle: "同时安装 iOS 应用",
         iosCardDesc: "您正在下载的服务器会通过 mDNS 在本地 WiFi 上广播自身。在同一网络上打开 ReelVault iOS 应用，它会自动找到您的视频库——无需输入任何 IP 地址。",
         appStoreLink: "在 App Store 下载 ReelVault →",
@@ -823,6 +898,10 @@
         androidMailBody: "¡Hola! Me gustaría probar ReelVault en Android.\n\nMi correo de cuenta de Google (la que tengo en mi dispositivo):\n\n¡Gracias!",
         needServer: "¿Necesitas configurar el servidor?",
         getDesktop: "Obtener la app de escritorio →",
+        serverHelpTitle: "Configura el servidor en un ordenador",
+        serverHelpBody: "El servidor de biblioteca de ReelVault se ejecuta en un Mac, PC o Linux — no se puede instalar en iOS ni Android. Abre esta página en tu ordenador para descargarlo:",
+        copyLink: "Copiar enlace",
+        copyLinkDone: "¡Copiado!",
         iosCardTitle: "Instala también la app para iOS",
         iosCardDesc: "El servidor que estás descargando se anuncia en tu WiFi local mediante mDNS. Abre la app ReelVault para iOS en la misma red y encontrará tu biblioteca automáticamente — sin necesidad de escribir direcciones IP.",
         appStoreLink: "Obtener ReelVault en el App Store →",
@@ -886,6 +965,10 @@
         androidMailBody: "Hallo! Ich möchte ReelVault unter Android testen.\n\nMeine Google-Konto-E-Mail (die auf meinem Gerät angemeldet ist):\n\nDanke!",
         needServer: "Server einrichten?",
         getDesktop: "Desktop-App holen →",
+        serverHelpTitle: "Server auf einem Computer einrichten",
+        serverHelpBody: "Der ReelVault-Bibliotheksserver läuft auf einem Mac, PC oder Linux-Computer — er kann nicht auf iOS oder Android installiert werden. Öffne diese Seite auf deinem Computer, um ihn herunterzuladen:",
+        copyLink: "Link kopieren",
+        copyLinkDone: "Kopiert!",
         iosCardTitle: "Installiere auch die iOS-App",
         iosCardDesc: "Der Server, den du gerade herunterlädst, kündigt sich über mDNS in deinem lokalen WiFi an. Öffne die ReelVault iOS-App im selben Netzwerk und sie findet deine Bibliothek automatisch — keine IP-Adressen eintippen.",
         appStoreLink: "ReelVault im App Store holen →",
@@ -949,6 +1032,10 @@
         androidMailBody: "こんにちは！Android 版 ReelVault をテストしたいです。\n\nデバイスにログインしている Google アカウントのメールアドレス：\n\nよろしくお願いします！",
         needServer: "サーバーのセットアップが必要ですか？",
         getDesktop: "デスクトップアプリを入手 →",
+        serverHelpTitle: "コンピューターでサーバーを設定",
+        serverHelpBody: "ReelVault のライブラリサーバーは Mac、PC、または Linux のコンピューターで動作します — iOS や Android にはインストールできません。お使いのコンピューターでこのページを開いてダウンロードしてください：",
+        copyLink: "リンクをコピー",
+        copyLinkDone: "コピーしました！",
         iosCardTitle: "iOS アプリもインストールする",
         iosCardDesc: "ダウンロードするサーバーは mDNS を使ってローカル WiFi 上に自身を通知します。同じネットワーク上で ReelVault iOS アプリを開くと、ライブラリが自動的に見つかります — IP アドレスの入力不要。",
         appStoreLink: "App Store で ReelVault を入手 →",
@@ -1012,6 +1099,10 @@
         androidMailBody: "Bonjour ! J'aimerais tester ReelVault sur Android.\n\nMon e-mail de compte Google (celui connecté sur mon appareil) :\n\nMerci !",
         needServer: "Besoin de configurer le serveur ?",
         getDesktop: "Obtenir l'application de bureau →",
+        serverHelpTitle: "Configurer le serveur sur un ordinateur",
+        serverHelpBody: "Le serveur de bibliothèque ReelVault fonctionne sur un Mac, un PC ou Linux — il ne peut pas être installé sur iOS ni Android. Ouvrez cette page sur votre ordinateur pour le télécharger :",
+        copyLink: "Copier le lien",
+        copyLinkDone: "Copié !",
         iosCardTitle: "Installez aussi l'application iOS",
         iosCardDesc: "Le serveur que vous téléchargez s'annonce sur votre WiFi local via mDNS. Ouvrez l'application ReelVault iOS sur le même réseau et elle trouvera votre bibliothèque automatiquement — sans saisir d'adresses IP.",
         appStoreLink: "Obtenir ReelVault sur l'App Store →",
@@ -1075,6 +1166,10 @@
         androidMailBody: "Olá! Gostaria de testar o ReelVault no Android.\n\nMeu e-mail da conta do Google (a que está conectada no meu dispositivo):\n\nObrigado!",
         needServer: "Precisa configurar o servidor?",
         getDesktop: "Obter o aplicativo desktop →",
+        serverHelpTitle: "Configure o servidor em um computador",
+        serverHelpBody: "O servidor de biblioteca do ReelVault roda em um Mac, PC ou Linux — não pode ser instalado no iOS ou Android. Abra esta página no seu computador para baixá-lo:",
+        copyLink: "Copiar link",
+        copyLinkDone: "Copiado!",
         iosCardTitle: "Instale também o aplicativo iOS",
         iosCardDesc: "O servidor que você está baixando se anuncia no seu WiFi local via mDNS. Abra o aplicativo ReelVault iOS na mesma rede e ele encontrará sua biblioteca automaticamente — sem precisar digitar endereços IP.",
         appStoreLink: "Obter ReelVault na App Store →",
@@ -1138,6 +1233,10 @@
         androidMailBody: "안녕하세요! Android에서 ReelVault를 테스트하고 싶습니다.\n\n기기에 로그인된 Google 계정 이메일:\n\n감사합니다!",
         needServer: "서버를 설정해야 하나요?",
         getDesktop: "데스크탑 앱 받기 →",
+        serverHelpTitle: "컴퓨터에서 서버 설정",
+        serverHelpBody: "ReelVault 라이브러리 서버는 Mac, PC 또는 Linux 컴퓨터에서 실행됩니다 — iOS나 Android에는 설치할 수 없습니다. 컴퓨터에서 이 페이지를 열어 다운로드하세요:",
+        copyLink: "링크 복사",
+        copyLinkDone: "복사됨!",
         iosCardTitle: "iOS 앱도 설치하세요",
         iosCardDesc: "다운로드하는 서버는 mDNS를 통해 로컬 WiFi에서 자신을 광고합니다. 같은 네트워크에서 ReelVault iOS 앱을 열면 라이브러리를 자동으로 찾습니다 — IP 주소를 입력할 필요가 없습니다.",
         appStoreLink: "App Store에서 ReelVault 받기 →",
@@ -1201,6 +1300,10 @@
         androidMailBody: "Ciao! Vorrei provare ReelVault su Android.\n\nLa mia email dell'account Google (quella collegata sul mio dispositivo):\n\nGrazie!",
         needServer: "Hai bisogno di configurare il server?",
         getDesktop: "Scarica l'app desktop →",
+        serverHelpTitle: "Configura il server su un computer",
+        serverHelpBody: "Il server della libreria di ReelVault funziona su Mac, PC o Linux — non può essere installato su iOS o Android. Apri questa pagina sul tuo computer per scaricarlo:",
+        copyLink: "Copia link",
+        copyLinkDone: "Copiato!",
         iosCardTitle: "Installa anche l'app iOS",
         iosCardDesc: "Il server che stai scaricando si annuncia sulla tua WiFi locale tramite mDNS. Apri l'app ReelVault iOS sulla stessa rete e troverà automaticamente la tua libreria — senza digitare indirizzi IP.",
         appStoreLink: "Ottieni ReelVault sull'App Store →",
@@ -1264,6 +1367,10 @@
         androidMailBody: "Здравствуйте! Я хотел бы протестировать ReelVault на Android.\n\nМой адрес аккаунта Google (вошедший на моём устройстве):\n\nСпасибо!",
         needServer: "Нужно настроить сервер?",
         getDesktop: "Получить приложение для рабочего стола →",
+        serverHelpTitle: "Настройте сервер на компьютере",
+        serverHelpBody: "Сервер библиотеки ReelVault работает на компьютере с Mac, PC или Linux — его нельзя установить на iOS или Android. Откройте эту страницу на компьютере, чтобы скачать его:",
+        copyLink: "Скопировать ссылку",
+        copyLinkDone: "Скопировано!",
         iosCardTitle: "Также установите iOS-приложение",
         iosCardDesc: "Сервер, который вы загружаете, объявляет о себе в локальной WiFi-сети через mDNS. Откройте приложение ReelVault для iOS в той же сети, и оно автоматически найдёт вашу библиотеку — без ввода IP-адресов.",
         appStoreLink: "Получить ReelVault в App Store →",
@@ -1327,6 +1434,10 @@
         androidMailBody: "Cześć! Chciałbym przetestować ReelVault na Androidzie.\n\nMój adres e-mail konta Google (zalogowany na moim urządzeniu):\n\nDziękuję!",
         needServer: "Chcesz skonfigurować serwer?",
         getDesktop: "Pobierz aplikację desktopową →",
+        serverHelpTitle: "Skonfiguruj serwer na komputerze",
+        serverHelpBody: "Serwer biblioteki ReelVault działa na komputerze Mac, PC lub Linux — nie można go zainstalować na iOS ani Androidzie. Otwórz tę stronę na komputerze, aby go pobrać:",
+        copyLink: "Kopiuj link",
+        copyLinkDone: "Skopiowano!",
         iosCardTitle: "Zainstaluj też aplikację iOS",
         iosCardDesc: "Pobierany serwer ogłasza się w lokalnej sieci WiFi przez mDNS. Otwórz aplikację ReelVault dla iOS w tej samej sieci, a automatycznie znajdzie Twoją bibliotekę — bez wpisywania adresów IP.",
         appStoreLink: "Pobierz ReelVault z App Store →",
@@ -1390,6 +1501,10 @@
         androidMailBody: "Hoi! Ik wil ReelVault graag testen op Android.\n\nMijn Google-account-e-mailadres (waarmee ik op mijn apparaat ben ingelogd):\n\nBedankt!",
         needServer: "Wil je de server instellen?",
         getDesktop: "De desktopapp ophalen →",
+        serverHelpTitle: "Stel de server in op een computer",
+        serverHelpBody: "De ReelVault-bibliotheekserver draait op een Mac, pc of Linux-computer — hij kan niet op iOS of Android worden geïnstalleerd. Open deze pagina op je computer om hem te downloaden:",
+        copyLink: "Link kopiëren",
+        copyLinkDone: "Gekopieerd!",
         iosCardTitle: "Installeer ook de iOS-app",
         iosCardDesc: "De server die je downloadt kondigt zichzelf aan op je lokale WiFi via mDNS. Open de ReelVault iOS-app op hetzelfde netwerk en hij vindt je bibliotheek automatisch — geen IP-adressen nodig.",
         appStoreLink: "ReelVault halen in de App Store →",
@@ -1453,6 +1568,10 @@
         androidMailBody: "Merhaba! ReelVault'u Android'de test etmek istiyorum.\n\nCihazımda oturum açtığım Google hesabı e-postam:\n\nTeşekkürler!",
         needServer: "Sunucu kurmanız mı gerekiyor?",
         getDesktop: "Masaüstü uygulamasını edinin →",
+        serverHelpTitle: "Sunucuyu bir bilgisayarda kurun",
+        serverHelpBody: "ReelVault kitaplık sunucusu Mac, PC veya Linux bilgisayarda çalışır — iOS veya Android'e kurulamaz. İndirmek için bu sayfayı bilgisayarınızda açın:",
+        copyLink: "Bağlantıyı kopyala",
+        copyLinkDone: "Kopyalandı!",
         iosCardTitle: "iOS uygulamasını da yükleyin",
         iosCardDesc: "İndirdiğiniz sunucu, mDNS aracılığıyla yerel WiFi'nızda kendini duyurur. Aynı ağda ReelVault iOS uygulamasını açın ve kütüphanenizi otomatik olarak bulsun — IP adresi girmenize gerek yok.",
         appStoreLink: "ReelVault'u App Store'dan Edinin →",
@@ -1516,6 +1635,10 @@
         androidMailBody: "مرحبًا! أرغب في تجربة ReelVault على Android.\n\nبريد حساب Google الخاص بي (المسجَّل على جهازي):\n\nشكرًا!",
         needServer: "هل تحتاج إلى إعداد الخادم؟",
         getDesktop: "احصل على تطبيق سطح المكتب ←",
+        serverHelpTitle: "إعداد الخادم على جهاز كمبيوتر",
+        serverHelpBody: "يعمل خادم مكتبة ReelVault على جهاز Mac أو PC أو Linux — ولا يمكن تثبيته على iOS أو Android. افتح هذه الصفحة على جهاز الكمبيوتر الخاص بك لتنزيله:",
+        copyLink: "نسخ الرابط",
+        copyLinkDone: "تم النسخ!",
         iosCardTitle: "ثبِّت تطبيق iOS أيضًا",
         iosCardDesc: "الخادم الذي تقوم بتنزيله يُعلن عن نفسه على شبكة WiFi المحلية عبر mDNS. افتح تطبيق ReelVault لنظام iOS على نفس الشبكة وسيجد مكتبتك تلقائيًا — دون الحاجة إلى كتابة عناوين IP.",
         appStoreLink: "احصل على ReelVault من App Store ←",
@@ -1579,6 +1702,10 @@
         androidMailBody: "नमस्ते! मैं Android पर ReelVault टेस्ट करना चाहता/चाहती हूँ।\n\nमेरा Google खाता ईमेल (जो मेरे डिवाइस पर साइन-इन है):\n\nधन्यवाद!",
         needServer: "सर्वर सेट अप करना है?",
         getDesktop: "डेस्कटॉप ऐप प्राप्त करें →",
+        serverHelpTitle: "कंप्यूटर पर सर्वर सेट करें",
+        serverHelpBody: "ReelVault लाइब्रेरी सर्वर Mac, PC या Linux कंप्यूटर पर चलता है — इसे iOS या Android पर इंस्टॉल नहीं किया जा सकता। इसे डाउनलोड करने के लिए यह पेज अपने कंप्यूटर पर खोलें:",
+        copyLink: "लिंक कॉपी करें",
+        copyLinkDone: "कॉपी हो गया!",
         iosCardTitle: "iOS ऐप भी इंस्टॉल करें",
         iosCardDesc: "आप जो सर्वर डाउनलोड कर रहे हैं वह mDNS के ज़रिए आपके लोकल WiFi पर खुद को प्रचारित करता है। उसी नेटवर्क पर ReelVault iOS ऐप खोलें और यह आपकी लाइब्रेरी स्वचालित रूप से ढूंढ लेगा — कोई IP पता टाइप करने की ज़रूरत नहीं।",
         appStoreLink: "App Store पर ReelVault प्राप्त करें →",
@@ -1642,6 +1769,10 @@
         androidMailBody: "Halo! Saya ingin menguji ReelVault di Android.\n\nEmail akun Google saya (yang masuk di perangkat saya):\n\nTerima kasih!",
         needServer: "Perlu menyiapkan server?",
         getDesktop: "Dapatkan aplikasi desktop →",
+        serverHelpTitle: "Siapkan server di komputer",
+        serverHelpBody: "Server pustaka ReelVault berjalan di komputer Mac, PC, atau Linux — tidak bisa dipasang di iOS atau Android. Buka halaman ini di komputer Anda untuk mengunduhnya:",
+        copyLink: "Salin tautan",
+        copyLinkDone: "Tersalin!",
         iosCardTitle: "Pasang juga aplikasi iOS",
         iosCardDesc: "Server yang Anda unduh mengiklankan dirinya di WiFi lokal melalui mDNS. Buka aplikasi ReelVault iOS di jaringan yang sama dan aplikasi akan menemukan perpustakaan Anda secara otomatis — tidak perlu mengetik alamat IP.",
         appStoreLink: "Dapatkan ReelVault di App Store →",
@@ -1705,6 +1836,10 @@
         androidMailBody: "Xin chào! Tôi muốn thử nghiệm ReelVault trên Android.\n\nEmail tài khoản Google của tôi (đang đăng nhập trên thiết bị của tôi):\n\nCảm ơn!",
         needServer: "Cần thiết lập máy chủ?",
         getDesktop: "Tải ứng dụng máy tính để bàn →",
+        serverHelpTitle: "Thiết lập máy chủ trên máy tính",
+        serverHelpBody: "Máy chủ thư viện ReelVault chạy trên máy tính Mac, PC hoặc Linux — không thể cài đặt trên iOS hay Android. Mở trang này trên máy tính của bạn để tải xuống:",
+        copyLink: "Sao chép liên kết",
+        copyLinkDone: "Đã sao chép!",
         iosCardTitle: "Cũng cài ứng dụng iOS",
         iosCardDesc: "Máy chủ bạn đang tải xuống tự quảng bá trên WiFi cục bộ của bạn qua mDNS. Mở ứng dụng ReelVault iOS trên cùng mạng và nó sẽ tự động tìm thư viện của bạn — không cần nhập địa chỉ IP.",
         appStoreLink: "Tải ReelVault trên App Store →",
@@ -1768,6 +1903,10 @@
         androidMailBody: "สวัสดี! ฉันอยากทดสอบ ReelVault บน Android\n\nอีเมลบัญชี Google ของฉัน (ที่ลงชื่อเข้าใช้บนอุปกรณ์ของฉัน):\n\nขอบคุณ!",
         needServer: "ต้องการตั้งค่าเซิร์ฟเวอร์?",
         getDesktop: "รับแอปเดสก์ท็อป →",
+        serverHelpTitle: "ตั้งค่าเซิร์ฟเวอร์บนคอมพิวเตอร์",
+        serverHelpBody: "เซิร์ฟเวอร์คลังของ ReelVault ทำงานบนคอมพิวเตอร์ Mac, PC หรือ Linux — ไม่สามารถติดตั้งบน iOS หรือ Android ได้ เปิดหน้านี้บนคอมพิวเตอร์ของคุณเพื่อดาวน์โหลด:",
+        copyLink: "คัดลอกลิงก์",
+        copyLinkDone: "คัดลอกแล้ว!",
         iosCardTitle: "ติดตั้งแอป iOS ด้วย",
         iosCardDesc: "เซิร์ฟเวอร์ที่คุณกำลังดาวน์โหลดประกาศตัวเองบน WiFi ท้องถิ่นของคุณผ่าน mDNS เปิดแอป ReelVault iOS บนเครือข่ายเดียวกันและแอปจะค้นหาคลังของคุณโดยอัตโนมัติ — ไม่ต้องพิมพ์ที่อยู่ IP",
         appStoreLink: "รับ ReelVault บน App Store →",
@@ -1831,6 +1970,10 @@
         androidMailBody: "Вітаю! Я хотів би протестувати ReelVault на Android.\n\nМоя адреса облікового запису Google (під якою я увійшов на пристрої):\n\nДякую!",
         needServer: "Потрібно налаштувати сервер?",
         getDesktop: "Отримати настільний застосунок →",
+        serverHelpTitle: "Налаштуйте сервер на комп'ютері",
+        serverHelpBody: "Сервер бібліотеки ReelVault працює на комп'ютері з Mac, PC або Linux — його не можна встановити на iOS чи Android. Відкрийте цю сторінку на комп'ютері, щоб завантажити його:",
+        copyLink: "Скопіювати посилання",
+        copyLinkDone: "Скопійовано!",
         iosCardTitle: "Також встановіть iOS-застосунок",
         iosCardDesc: "Сервер, який ви завантажуєте, оголошує себе у локальній мережі WiFi через mDNS. Відкрийте застосунок ReelVault для iOS у тій самій мережі, і він автоматично знайде вашу бібліотеку — без введення IP-адрес.",
         appStoreLink: "Отримати ReelVault в App Store →",
@@ -1894,6 +2037,10 @@
         androidMailBody: "Dobrý den! Rád bych otestoval ReelVault na Androidu.\n\nMůj e-mail účtu Google (přihlášený na mém zařízení):\n\nDěkuji!",
         needServer: "Potřebujete nastavit server?",
         getDesktop: "Získat desktopovou aplikaci →",
+        serverHelpTitle: "Nastavte server v počítači",
+        serverHelpBody: "Knihovní server ReelVault běží na počítači s Macem, PC nebo Linuxem — nelze jej nainstalovat na iOS ani Android. Otevřete tuto stránku v počítači a stáhněte si jej:",
+        copyLink: "Kopírovat odkaz",
+        copyLinkDone: "Zkopírováno!",
         iosCardTitle: "Nainstalujte také aplikaci iOS",
         iosCardDesc: "Server, který stahujete, se oznamuje v místní síti WiFi prostřednictvím mDNS. Otevřete aplikaci ReelVault pro iOS ve stejné síti a automaticky najde vaši knihovnu — bez zadávání IP adres.",
         appStoreLink: "Získat ReelVault v App Store →",
@@ -1957,6 +2104,10 @@
         androidMailBody: "سلام! میں Android پر ReelVault آزمانا چاہتا ہوں۔\n\nمیرا Google اکاؤنٹ ای میل (جو میرے آلے پر سائن ان ہے):\n\nشکریہ!",
         needServer: "سرور ترتیب دینے کی ضرورت ہے؟",
         getDesktop: "ڈیسک ٹاپ ایپ حاصل کریں ←",
+        serverHelpTitle: "کمپیوٹر پر سرور سیٹ اپ کریں",
+        serverHelpBody: "ReelVault لائبریری سرور Mac، PC یا Linux کمپیوٹر پر چلتا ہے — اسے iOS یا Android پر انسٹال نہیں کیا جا سکتا۔ اسے ڈاؤن لوڈ کرنے کے لیے یہ صفحہ اپنے کمپیوٹر پر کھولیں:",
+        copyLink: "لنک کاپی کریں",
+        copyLinkDone: "کاپی ہو گیا!",
         iosCardTitle: "iOS ایپ بھی نصب کریں",
         iosCardDesc: "The server you're downloading above advertises itself on your local WiFi via mDNS. Open the ReelVault iOS app on the same network and it will find your library automatically — no IP addresses to type.",
         appStoreLink: "App Store پر ReelVault حاصل کریں ←",
@@ -2020,6 +2171,10 @@
         androidMailBody: "হ্যালো! আমি Android-এ ReelVault পরীক্ষা করতে চাই।\n\nআমার Google অ্যাকাউন্ট ইমেল (যেটি আমার ডিভাইসে সাইন ইন করা আছে):\n\nধন্যবাদ!",
         needServer: "Need to set up the server?",
         getDesktop: "Get the desktop app →",
+        serverHelpTitle: "কম্পিউটারে সার্ভার সেট আপ করুন",
+        serverHelpBody: "ReelVault লাইব্রেরি সার্ভার Mac, PC বা Linux কম্পিউটারে চলে — এটি iOS বা Android-এ ইনস্টল করা যায় না। এটি ডাউনলোড করতে আপনার কম্পিউটারে এই পৃষ্ঠাটি খুলুন:",
+        copyLink: "লিঙ্ক কপি করুন",
+        copyLinkDone: "কপি হয়েছে!",
         iosCardTitle: "Also install the iOS app",
         iosCardDesc: "The server you're downloading above advertises itself on your local WiFi via mDNS. Open the ReelVault iOS app on the same network and it will find your library automatically — no IP addresses to type.",
         appStoreLink: "Get ReelVault on the App Store →",
@@ -2314,11 +2469,36 @@
       area.innerHTML = html;
     }
 
-    // ── Show/hide mobile vs desktop screen ───────────────────────────────────
-    function showDesktopFlow() {
-      document.getElementById('ios-screen').style.display     = 'none';
-      document.getElementById('android-screen').style.display = 'none';
-      document.getElementById('desktop-screen').style.display = '';
+    // ── Server-on-a-computer help (from a mobile screen) ──────────────────────
+    // The Rust daemon can't run on iOS/Android — it lives on a desktop computer
+    // (the mobile apps only embed it for their own on-device library). So instead
+    // of a broken desktop install flow, we tell mobile users to open this same
+    // page on their computer.
+    function pageURL() {
+      return window.location.origin + window.location.pathname;
+    }
+
+    function showServerHelp(platform) {
+      const prompt = document.getElementById(platform + '-server-prompt');
+      const note   = document.getElementById(platform + '-server-note');
+      const urlEl  = document.getElementById(platform + '-server-url');
+      if (urlEl)  urlEl.textContent = pageURL();
+      if (prompt) prompt.style.display = 'none';
+      if (note) {
+        note.style.display = '';
+        if (note.scrollIntoView) note.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
+    function copyPageLink(platform) {
+      const btn = document.getElementById(platform + '-copy');
+      const restore = () => { if (btn) btn.textContent = txt('copyLink'); };
+      try {
+        navigator.clipboard.writeText(pageURL()).then(() => {
+          if (btn) btn.textContent = txt('copyLinkDone');
+          setTimeout(restore, 2000);
+        }, () => {});
+      } catch (e) { /* clipboard unavailable — the URL is shown above regardless */ }
     }
 
     // ── Expose handlers for inline onclick / onchange attrs ───────────────────
@@ -2326,7 +2506,8 @@
     window.pickOS               = pickOS;
     window.pickMode             = pickMode;
     window.togglePlatformPicker = togglePlatformPicker;
-    window.showDesktopFlow      = showDesktopFlow;
+    window.showServerHelp       = showServerHelp;
+    window.copyPageLink         = copyPageLink;
 
     // ── Init ──────────────────────────────────────────────────────────────────
     // Apply language (also updates data-i18n elements and calls render())
