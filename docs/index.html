@@ -511,6 +511,7 @@
       <button class="platform-change" onclick="togglePlatformPicker()" data-i18n="changeBtn">Change</button>
     </div>
     <div class="platform-picker" id="platform-picker">
+      <button class="os-btn" data-os="ios"     onclick="pickOS(this)">iOS</button>
       <button class="os-btn" data-os="mac"     onclick="pickOS(this)">macOS</button>
       <button class="os-btn" data-os="windows" onclick="pickOS(this)">Windows</button>
       <button class="os-btn" data-os="linux"   onclick="pickOS(this)">Linux</button>
@@ -684,6 +685,7 @@
     }
 
     const OS_META = {
+      ios:     { label: 'iOS',     icon: '📱' },
       mac:     { label: 'macOS',   icon: '🍎' },
       windows: { label: 'Windows', icon: '🪟' },
       linux:   { label: 'Linux',   icon: '🐧' },
