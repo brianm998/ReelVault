@@ -345,6 +345,20 @@
     }
     .appstore-btn:hover { opacity: 0.88; }
 
+    /* Secondary line under a mobile CTA (beta note / alternate channel link) */
+    .mobile-secondary {
+      margin-top: 14px;
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .mobile-secondary a {
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .mobile-secondary a:hover { text-decoration: underline; }
+
     /* ── Footer ─────────────────────────────────────────────────────────── */
     footer {
       margin-top: 44px;
@@ -412,9 +426,8 @@
         ReelVault for iOS connects to your Mac, PC, or Linux library server over WiFi
         so you can browse and play your full video collection from anywhere in your home.
       </p>
-      <a class="appstore-btn" href="APPSTORE_URL_PLACEHOLDER" target="_blank" data-i18n="appStoreBtn">
-        Get ReelVault on the App Store
-      </a>
+      <a class="appstore-btn" id="ios-cta" href="#" target="_blank">Join the TestFlight beta</a>
+      <div class="mobile-secondary" id="ios-secondary"></div>
     </div>
     <div style="text-align:center; font-size:13px; color:var(--text-muted); margin-top:8px;">
       <span data-i18n="needServer">Need to set up the server?</span>
@@ -432,9 +445,8 @@
         so you can browse and play your full video collection from anywhere in your home.
         It also supports an on-device local library.
       </p>
-      <a class="appstore-btn" href="PLAYSTORE_URL_PLACEHOLDER" target="_blank" data-i18n="playStoreBtn">
-        Get ReelVault on Google Play
-      </a>
+      <a class="appstore-btn" id="android-cta" href="#" target="_blank">Join the Play Store beta</a>
+      <div class="mobile-secondary" id="android-secondary"></div>
     </div>
     <div style="text-align:center; font-size:13px; color:var(--text-muted); margin-top:8px;">
       <span data-i18n="needServer">Need to set up the server?</span>
@@ -522,11 +534,40 @@
     // ── Config ──────────────────────────────────────────────────────────────
     const REPO         = 'brianm998/ReelVault';
     const API_URL      = `https://api.github.com/repos/${REPO}/releases/latest`;
-    // TODO: replace with real App Store URL when published
-    const APPSTORE_URL = 'https://apps.apple.com/app/reelvault/id0000000000';
 
-    // TODO: replace with real Play Store URL when published
-    const PLAYSTORE_URL = 'https://play.google.com/store/apps/details?id=com.reelvault.android';
+    // ── Mobile app distribution ───────────────────────────────────────────────
+    // Single source of truth for where iOS / Android users are sent.
+    //
+    //   channel:           'beta'  → primary button links to the beta program
+    //                      'store' → primary button links to the public store
+    //   showBetaWhenStore: when channel is 'store', also surface a small
+    //                      "join the beta" link beneath the store button.
+    //
+    // To go live once public builds ship: flip `channel` to 'store' (and drop in
+    // the real store URLs below). No other markup or logic changes required.
+    const MOBILE_DIST = {
+      ios: {
+        channel: 'beta',
+        showBetaWhenStore: true,
+        // TODO: replace with the real TestFlight public-link code.
+        beta:  { url: 'https://testflight.apple.com/join/REPLACE_ME' },
+        // TODO: replace with the real App Store id once published.
+        store: { url: 'https://apps.apple.com/app/reelvault/id0000000000' },
+      },
+      android: {
+        channel: 'beta',
+        showBetaWhenStore: true,
+        // Play Store closed-testing opt-in URL (testers must be on the tester list).
+        beta:  { url: 'https://play.google.com/apps/testing/com.reelvault.android' },
+        store: { url: 'https://play.google.com/store/apps/details?id=com.reelvault.android' },
+      },
+    };
+
+    // Resolve the active channel + url for a platform ('ios' | 'android').
+    function distFor(platform) {
+      const d = MOBILE_DIST[platform];
+      return { channel: d.channel, url: d[d.channel].url, betaUrl: d.beta.url, showBetaWhenStore: d.showBetaWhenStore };
+    }
 
     const OS_META = {
       mac:     { label: 'macOS',   icon: '🍎' },
@@ -569,6 +610,12 @@
         androidHeroTitle: "You're on Android",
         androidHeroDesc: "ReelVault for Android connects to your Mac, PC, or Linux library server over WiFi so you can browse and play your full video collection from anywhere in your home. It also supports an on-device local library.",
         playStoreBtn: "Get ReelVault on Google Play",
+        iosBetaBtn: "Join the TestFlight beta",
+        androidBetaBtn: "Join the Play Store beta",
+        iosBetaLink: "Join the TestFlight beta →",
+        androidBetaLink: "Join the Play Store beta →",
+        betaWhy: "Not on the App Store or Google Play yet — this is the free public beta. Public releases are coming soon.",
+        joinBetaLink: "Or join the beta →",
         needServer: "Need to set up the server?",
         getDesktop: "Get the desktop app →",
         iosCardTitle: "Also install the iOS app",
@@ -1477,6 +1524,7 @@
         footerReleases: "Všechna vydání",
         footerDocs: "Dokumentace",
         loading: "Načítání nejnovější verze…",
+      },
       ur: {
         pageTitle: "ReelVault ڈاؤن لوڈ کریں",
         tagline: "بڑی ویڈیو لائبریریاں تیزی سے براؤز کریں۔",
@@ -1617,8 +1665,42 @@
       // Persist preference
       try { localStorage.setItem('rv_lang', lang); } catch(e) {}
 
-      // Re-render dynamic download area
+      // Re-render dynamic areas (mobile CTAs + desktop download area)
+      renderMobileCTAs();
       render();
+    }
+
+    // ── i18n helper with English fallback ──────────────────────────────────────
+    function txt(key) {
+      const t = T[curLang] || T.en;
+      return t[key] !== undefined ? t[key] : T.en[key];
+    }
+
+    // ── Mobile call-to-action buttons (iOS / Android hero screens) ──────────────
+    // Driven entirely by MOBILE_DIST so switching from beta → store is config-only.
+    function renderMobileCTAs() {
+      [['ios', 'ios-cta', 'ios-secondary', 'iosBetaBtn', 'appStoreBtn', 'iosBetaLink'],
+       ['android', 'android-cta', 'android-secondary', 'androidBetaBtn', 'playStoreBtn', 'androidBetaLink']
+      ].forEach(([platform, ctaId, secId, betaKey, storeKey, betaLinkKey]) => {
+        const d   = distFor(platform);
+        const cta = document.getElementById(ctaId);
+        const sec = document.getElementById(secId);
+        if (cta) {
+          cta.href        = d.url;
+          cta.textContent = d.channel === 'beta' ? txt(betaKey) : txt(storeKey);
+        }
+        if (sec) {
+          if (d.channel === 'beta') {
+            // Beta is primary → explain why there's no store link yet.
+            sec.textContent = txt('betaWhy');
+          } else if (d.showBetaWhenStore && d.betaUrl) {
+            // Store is primary → still offer the beta as a secondary option.
+            sec.innerHTML = `<a href="${d.betaUrl}" target="_blank">${txt('joinBetaLink')}</a>`;
+          } else {
+            sec.textContent = '';
+          }
+        }
+      });
     }
 
     // ── Platform detection ────────────────────────────────────────────────────
@@ -1747,9 +1829,10 @@
             </a>
             <div class="download-meta">${asset.name}${mb}</div>`;
         } else {
+          const ad = distFor('android');
           html += `
-            <a class="download-btn" href="${PLAYSTORE_URL}" target="_blank">
-              🤖 ${t.playStoreBtn}
+            <a class="download-btn" href="${ad.url}" target="_blank">
+              🤖 ${ad.channel === 'beta' ? t.androidBetaBtn : t.playStoreBtn}
             </a>
             <div class="download-meta">${t.androidReq}</div>`;
         }
@@ -1783,6 +1866,8 @@
         const setupBody = t.setupNoteBody
           .replace('{cmd}',     '<code>sudo install-service.sh</code>')
           .replace('{logPath}', `<code>${logPath}</code>`);
+        const iosD = distFor('ios');
+        const andD = distFor('android');
         html += `
           <div class="ios-card">
             <div class="ios-card-icon">📱</div>
@@ -1790,8 +1875,8 @@
               <strong>${t.iosCardTitle}</strong><br>
               ${t.iosCardDesc}
               <br>
-              <a class="ios-store-link" href="${APPSTORE_URL}" target="_blank">
-                ${t.appStoreLink}
+              <a class="ios-store-link" href="${iosD.url}" target="_blank">
+                ${iosD.channel === 'beta' ? t.iosBetaLink : t.appStoreLink}
               </a>
             </div>
           </div>
@@ -1801,8 +1886,8 @@
               <strong>${t.androidCardTitle}</strong><br>
               ${t.androidCardDesc}
               <br>
-              <a class="ios-store-link" href="${PLAYSTORE_URL}" target="_blank">
-                ${t.playStoreLink}
+              <a class="ios-store-link" href="${andD.url}" target="_blank">
+                ${andD.channel === 'beta' ? t.androidBetaLink : t.playStoreLink}
               </a>
             </div>
           </div>
@@ -1833,14 +1918,6 @@
     // ── Init ──────────────────────────────────────────────────────────────────
     // Apply language (also updates data-i18n elements and calls render())
     setLang(detectLang());
-
-    // Replace mobile store URL placeholders
-    document.querySelectorAll('a[href="APPSTORE_URL_PLACEHOLDER"]').forEach(a => {
-      a.href = APPSTORE_URL;
-    });
-    document.querySelectorAll('a[href="PLAYSTORE_URL_PLACEHOLDER"]').forEach(a => {
-      a.href = PLAYSTORE_URL;
-    });
 
     const detected = detect();
 
