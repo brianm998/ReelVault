@@ -38,6 +38,7 @@ jobs:
           mkdir -p _site
           cp docs/index.html _site/index.html
           cp docs/pitch.html _site/pitch.html
+          cp docs/mobile-beta.html _site/mobile-beta.html
 
       - uses: actions/upload-pages-artifact@v3
         with:

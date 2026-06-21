@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReelVault Mobile Beta</title>
+  <meta name="description" content="Join the ReelVault mobile beta for iOS and Android.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:             #0d0d0d;
+      --surface:        #181818;
+      --surface-2:      #202020;
+      --border:         #2c2c2c;
+      --border-hover:   #3a3a3a;
+      --text:           #ebebeb;
+      --text-muted:     #888;
+      --text-dim:       #484848;
+      --accent:         #f09020;
+      --accent-hover:   #f4a035;
+      --accent-bg:      rgba(240,144,32,0.08);
+      --accent-border:  rgba(240,144,32,0.25);
+      --radius:         14px;
+      --radius-sm:      8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 20px 80px;
+      line-height: 1.4;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 700px;
+      margin-bottom: 10px;
+    }
+
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 42px;
+      height: 42px;
+      flex-shrink: 0;
+    }
+
+    .logo-text {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+
+    .tagline {
+      color: var(--text-muted);
+      font-size: 15px;
+      margin-bottom: 44px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      max-width: 700px;
+      width: 100%;
+    }
+
+    .hero {
+      text-align: center;
+      padding: 20px 0 28px;
+    }
+
+    .hero-icon {
+      font-size: 48px;
+      margin-bottom: 14px;
+    }
+
+    .hero h2 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .hero p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      line-height: 1.55;
+    }
+
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 28px;
+      background: var(--accent);
+      color: #0d0d0d;
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      border-radius: var(--radius);
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.13s, transform 0.1s;
+    }
+    .cta-btn:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+    .cta-btn:active {
+      transform: translateY(0);
+    }
+
+    .secondary-link {
+      margin-top: 14px;
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .secondary-link a {
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .secondary-link a:hover {
+      text-decoration: underline;
+    }
+
+    .desktop-redirect {
+      background: var(--surface-2);
+      border: 1px solid var(--accent-border);
+      border-radius: var(--radius-sm);
+      padding: 28px;
+      text-align: center;
+    }
+
+    .desktop-redirect .icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .desktop-redirect h2 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .desktop-redirect p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      line-height: 1.55;
+    }
+
+    .desktop-redirect-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: var(--accent);
+      color: #0d0d0d;
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.13s;
+    }
+    .desktop-redirect-btn:hover {
+      background: var(--accent-hover);
+    }
+
+    .footer {
+      margin-top: 44px;
+      font-size: 12px;
+      color: var(--text-dim);
+      text-align: center;
+    }
+    .footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Hidden by default, shown by JS */
+    #ios-screen,
+    #android-screen,
+    #desktop-screen {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-header">
+    <div class="logo-wrap">
+      <svg class="logo-icon" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="21" cy="21" r="19" stroke="#f09020" stroke-width="2"/>
+        <circle cx="21" cy="21" r="6.5" stroke="#f09020" stroke-width="2"/>
+        <circle cx="21" cy="7"  r="3" fill="#f09020"/>
+        <circle cx="21" cy="35" r="3" fill="#f09020"/>
+        <circle cx="7"  cy="21" r="3" fill="#f09020"/>
+        <circle cx="35" cy="21" r="3" fill="#f09020"/>
+        <circle cx="11.3" cy="11.3" r="3" fill="#f09020"/>
+        <circle cx="30.7" cy="30.7" r="3" fill="#f09020"/>
+      </svg>
+      <span class="logo-text">ReelVault</span>
+    </div>
+  </div>
+
+  <div class="tagline">Mobile beta access</div>
+
+  <!-- iOS screen -->
+  <div class="card" id="ios-screen">
+    <div class="hero">
+      <div class="hero-icon">📱</div>
+      <h2>Join the iOS Beta</h2>
+      <p>ReelVault for iOS is in a private TestFlight beta. Send us your Apple ID and we'll send you an invite.</p>
+      <a id="ios-cta" class="cta-btn" href="#">Request TestFlight Access</a>
+      <div class="secondary-link">
+        <a href="https://reelvault.app/">Back to downloads →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Android screen -->
+  <div class="card" id="android-screen">
+    <div class="hero">
+      <div class="hero-icon">🤖</div>
+      <h2>Join the Android Beta</h2>
+      <p>ReelVault for Android is in closed testing on Google Play. Send us your Google account email and we'll add you to the testers list.</p>
+      <a id="android-cta" class="cta-btn" href="#">Request Beta Access</a>
+      <div class="secondary-link">
+        <a href="https://reelvault.app/">Back to downloads →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Desktop screen (also request beta access) -->
+  <div class="card" id="desktop-screen">
+    <div class="hero">
+      <div class="hero-icon">📱</div>
+      <h2>Request Mobile Beta Access</h2>
+      <p>Join the beta for iOS and Android. We'll send you invites so you can test ReelVault on your mobile devices.</p>
+      <div style="display: flex; gap: 12px; justify-content: center; margin-top: 20px;">
+        <a id="desktop-ios-cta" class="cta-btn" href="#">Request iOS Beta</a>
+        <a id="desktop-android-cta" class="cta-btn" href="#">Request Android Beta</a>
+      </div>
+      <div class="secondary-link" style="margin-top: 24px;">
+        Need a server? <a href="https://reelvault.app/">Download the desktop app →</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="https://github.com/brianm998/ReelVault" target="_blank">GitHub</a>
+    <span style="margin: 0 6px;">·</span>
+    <a href="https://github.com/brianm998/ReelVault/releases" target="_blank">Releases</a>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // Email configuration (single source of truth)
+      const BETA_EMAIL = 'brian.beholden@gmail.com';
+
+      // Detect platform
+      function detectPlatform() {
+        const ua = navigator.userAgent.toLowerCase();
+
+        // iOS detection
+        if (/iphone|ipad|ipod/.test(ua)) {
+          return 'ios';
+        }
+
+        // Android detection
+        if (/android/.test(ua)) {
+          return 'android';
+        }
+
+        // Default to desktop
+        return 'desktop';
+      }
+
+      // Show appropriate screen based on platform
+      function showScreen() {
+        const platform = detectPlatform();
+        const screens = {
+          'ios': 'ios-screen',
+          'android': 'android-screen',
+          'desktop': 'desktop-screen'
+        };
+
+        const screenId = screens[platform] || 'desktop-screen';
+        const screen = document.getElementById(screenId);
+        if (screen) {
+          screen.style.display = 'block';
+        }
+
+        // Wire up email CTAs
+        if (platform === 'ios') {
+          const iosCTA = document.getElementById('ios-cta');
+          if (iosCTA) {
+            iosCTA.href = buildMailto('ios');
+          }
+        } else if (platform === 'android') {
+          const androidCTA = document.getElementById('android-cta');
+          if (androidCTA) {
+            androidCTA.href = buildMailto('android');
+          }
+        } else {
+          // Desktop: wire up both CTAs
+          const iosDesktopCTA = document.getElementById('desktop-ios-cta');
+          const androidDesktopCTA = document.getElementById('desktop-android-cta');
+          if (iosDesktopCTA) {
+            iosDesktopCTA.href = buildMailto('ios');
+          }
+          if (androidDesktopCTA) {
+            androidDesktopCTA.href = buildMailto('android');
+          }
+        }
+      }
+
+      // Build mailto: link
+      function buildMailto(platform) {
+        const isIos = platform === 'ios';
+        const subject = encodeURIComponent(
+          isIos
+            ? 'ReelVault iOS — TestFlight access request'
+            : 'ReelVault Android — beta access request'
+        );
+        const body = encodeURIComponent(
+          isIos
+            ? "Hi! I'd like to test ReelVault on iOS.\n\nMy Apple ID email (the one I use for the App Store):\n\nThanks!"
+            : "Hi! I'd like to test ReelVault on Android.\n\nMy Google account email (the one signed in on my device):\n\nThanks!"
+        );
+        return `mailto:${BETA_EMAIL}?subject=${subject}&body=${body}`;
+      }
+
+      // Initialize on page load
+      showScreen();
+    })();
+  </script>
+
+</body>
+</html>
