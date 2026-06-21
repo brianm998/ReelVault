@@ -996,6 +996,35 @@ class GridViewModel(
     }
 
     /**
+     * Delete a keyword (tag) from the entire catalog — removes it from every
+     * video that carries it (the backend cascade-deletes the `video_tags`
+     * rows). If the deleted tag is the active filter, falls back to all videos.
+     * Mirrors desktop GridViewModel.deleteTag.
+     */
+    fun deleteTag(id: String) {
+        if (id.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                val tagName = _tags.value.firstOrNull { it.id == id }?.name
+                if (!repository.deleteTag(id)) {
+                    _error.value = appContext.getString(R.string.err_delete_keyword)
+                    return@launch
+                }
+                // Optimistically strip the keyword badge from any loaded cards.
+                if (tagName != null) {
+                    _videos.value = _videos.value.map { v ->
+                        if (tagName in v.tags) v.copy(tags = v.tags - tagName) else v
+                    }
+                }
+                if (_filterTagId.value == id) setTagFilter("")
+                loadTags()
+            } catch (e: Exception) {
+                _error.value = appContext.getString(R.string.err_delete_keyword_detail, e.message ?: "")
+            }
+        }
+    }
+
+    /**
      * Add [videoIds] to the manual collection identified by [collectionId].
      * Mirrors desktop GridViewModel.addToCollection.
      */

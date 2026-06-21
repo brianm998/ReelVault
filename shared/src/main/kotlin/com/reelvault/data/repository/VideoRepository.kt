@@ -1200,6 +1200,21 @@ class VideoRepository(private val channelFactory: ChannelFactory) {
         }
     }
 
+    /** Delete a tag (keyword) from the catalog entirely. The backend cascade
+     *  removes its `video_tags` rows, so every video loses the keyword. */
+    suspend fun deleteTag(tagId: String): Boolean = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext false
+        try {
+            val request = Reelvault.DeleteTagRequest.newBuilder()
+                .setTagId(tagId)
+                .build()
+            s.deleteTag(request).success
+        } catch (e: Exception) {
+            logger.error("Failed to delete tag: ${e.message}", e)
+            false
+        }
+    }
+
     suspend fun createCollection(name: String, isSmart: Boolean = false, filterJson: String = ""): VideoCollection? = withContext(Dispatchers.IO) {
         val s = stub ?: return@withContext null
         try {

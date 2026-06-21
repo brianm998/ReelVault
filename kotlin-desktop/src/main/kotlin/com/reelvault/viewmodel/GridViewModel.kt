@@ -2416,6 +2416,35 @@ class GridViewModel(
         }
     }
 
+    /** Delete a keyword (tag) from the entire catalog — removes it from every
+     *  video that carries it (the backend cascade-deletes the `video_tags`
+     *  rows). If the deleted tag is the active filter, falls back to all videos. */
+    fun deleteTag(id: String) {
+        if (id.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                val tagName = _tags.value.firstOrNull { it.id == id }?.name
+                if (!repository.deleteTag(id)) {
+                    _error.value = "Failed to delete keyword"
+                    return@launch
+                }
+                // Optimistically strip the keyword badge from any loaded cards
+                // (and cached stack members) so they update without a reload.
+                if (tagName != null) {
+                    _videos.value = _videos.value.map { v -> v.copy(tags = v.tags - tagName) }
+                    _expandedGroupMembers.value = _expandedGroupMembers.value.mapValues { (_, members) ->
+                        members.map { v -> v.copy(tags = v.tags - tagName) }
+                    }
+                }
+                if (_filterTagId.value == id) setTagFilter("")
+                loadTags()
+            } catch (e: Exception) {
+                _error.value = "Delete keyword failed: ${e.message}"
+                logger.error("deleteTag failed", e)
+            }
+        }
+    }
+
     fun setFilterTags(tags: List<String>) {
         filterTags = tags
         reloadForFilterChange()

@@ -39,6 +39,9 @@ struct LibrarySidebar: View {
     @State private var collectionToDelete: Collection? = nil
     /// Smart collection whose rules the user wants to view/edit (shown as a sheet).
     @State private var criteriaCollection: Collection? = nil
+    /// Keyword (tag) pending deletion — only set when it's applied to ≥1 video,
+    /// so we confirm first. Unused keywords are deleted without prompting.
+    @State private var tagToDelete: Tag? = nil
 
     var body: some View {
         List(selection: Binding<LibrarySection?>(
@@ -87,6 +90,24 @@ struct LibrarySidebar: View {
             Button("Cancel", role: .cancel) { collectionToDelete = nil }
         } message: { col in
             Text("\"\(col.name)\" will be permanently deleted. The videos in it will not be affected.")
+        }
+        // Delete keyword — confirmation (only when it's applied to videos).
+        .confirmationDialog(
+            "Delete Keyword?",
+            isPresented: Binding(
+                get: { tagToDelete != nil },
+                set: { if !$0 { tagToDelete = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: tagToDelete
+        ) { tag in
+            Button("Delete \"\(tag.name)\"", role: .destructive) {
+                grid.deleteTag(id: tag.id)
+                tagToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { tagToDelete = nil }
+        } message: { tag in
+            Text("\"\(tag.name)\" will be removed from \(tag.videoCount) video\(tag.videoCount == 1 ? "" : "s"). This cannot be undone.")
         }
         // Smart collection — name sheet.
         .sheet(isPresented: $showSmartCollectionSheet) {
@@ -348,6 +369,19 @@ struct LibrarySidebar: View {
                         .foregroundStyle(tagColor(tag.color))
                 }
                 .tag(LibrarySection.tag(tag.id))
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button(role: .destructive) {
+                        // Confirm only when videos would lose the keyword;
+                        // an unused keyword just goes away.
+                        if tag.videoCount > 0 {
+                            tagToDelete = tag
+                        } else {
+                            grid.deleteTag(id: tag.id)
+                        }
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
             }
         }
     }

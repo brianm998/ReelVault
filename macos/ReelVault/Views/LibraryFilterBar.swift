@@ -381,9 +381,18 @@ private func locationFacetToken(_ latitude: Double, _ longitude: Double) -> Stri
 /// "Location" (`locationMetadataKey`): a client-side virtual column whose values
 /// are the catalog's known places and whose selection drives the geographic
 /// proximity filter rather than a metadata filter.
+private struct PendingKeywordDelete: Identifiable {
+    let id: String      // tag id
+    let name: String
+    let count: Int64    // videos that carry it (catalog-wide)
+}
+
 private struct LibraryFilterMetadataEditor: View {
     @ObservedObject var vm: GridViewModel
     let height: CGFloat
+    /// Keyword pending deletion — set only when it's applied to ≥1 video, so we
+    /// confirm first. Unused keywords are deleted without prompting.
+    @State private var keywordToDelete: PendingKeywordDelete?
 
     var body: some View {
         // The client-side "Location" field: its facet is the known places, a
@@ -451,7 +460,20 @@ private struct LibraryFilterMetadataEditor: View {
                                     vm.onMetadataValueClicked(at: index, token: token, shift: shift, toggle: toggle)
                                 }
                             },
-                            onRemove: { vm.removeMetadataColumn(at: index) }
+                            onRemove: { vm.removeMetadataColumn(at: index) },
+                            // Only the tag-backed keyword column can delete its
+                            // values; the catalog-wide count comes from vm.tags
+                            // (the facet count is scoped to the current filter).
+                            onDeleteValue: column.key == "keyword" ? { token, label, facetCount in
+                                let tag = vm.tags.first { $0.id == token }
+                                let name = tag?.name ?? label
+                                let total = tag?.videoCount ?? facetCount
+                                if total > 0 {
+                                    keywordToDelete = PendingKeywordDelete(id: token, name: name, count: total)
+                                } else {
+                                    vm.deleteTag(id: token)
+                                }
+                            } : nil
                         )
                         Divider()
                     }
@@ -462,6 +484,22 @@ private struct LibraryFilterMetadataEditor: View {
         }
         .frame(height: height)
         .task { vm.loadFilterLocations() }
+        .alert(
+            "Delete Keyword",
+            isPresented: Binding(
+                get: { keywordToDelete != nil },
+                set: { if !$0 { keywordToDelete = nil } }
+            ),
+            presenting: keywordToDelete
+        ) { kw in
+            Button("Delete", role: .destructive) {
+                vm.deleteTag(id: kw.id)
+                keywordToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { keywordToDelete = nil }
+        } message: { kw in
+            Text("\"\(kw.name)\" will be removed from \(kw.count) video\(kw.count == 1 ? "" : "s"). This cannot be undone.")
+        }
     }
 
     private func addButton(_ action: @escaping () -> Void) -> some View {
@@ -485,6 +523,9 @@ private struct MetadataColumnView: View {
     let onSetNegate: (Bool) -> Void
     let onValueClick: (_ token: String, _ shift: Bool, _ toggle: Bool) -> Void
     let onRemove: () -> Void
+    /// Catalog-level delete for a facet value (wired for the keyword column
+    /// only). nil hides the affordance.
+    var onDeleteValue: ((_ token: String, _ label: String, _ count: Int64) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -564,7 +605,7 @@ private struct MetadataColumnView: View {
     private func valueRow(token: String, label: String, count: Int64?) -> some View {
         // The "All" row (token == "") is selected when no values are chosen.
         let isSelected = token.isEmpty ? column.values.isEmpty : column.values.contains(token)
-        HStack {
+        let row = HStack {
             Text(label)
                 .font(.system(size: 11))
                 .fontWeight(isSelected ? .semibold : .regular)
@@ -588,6 +629,18 @@ private struct MetadataColumnView: View {
             let shift = mods.contains(.shift)
             let toggle = mods.contains(.command) || mods.contains(.control)
             onValueClick(token, shift, toggle)
+        }
+
+        // Keyword column: right-click a value to delete the keyword catalog-wide
+        // (the "All" row has no token, so it's exempt).
+        if let onDeleteValue, !token.isEmpty {
+            row.contextMenu {
+                Button("Delete Keyword…", role: .destructive) {
+                    onDeleteValue(token, label, count ?? 0)
+                }
+            }
+        } else {
+            row
         }
     }
 }

@@ -687,6 +687,16 @@ public class VideoRepository: ObservableObject {
         return response.success
     }
 
+    /// Delete a tag (keyword) from the catalog entirely. The backend cascade
+    /// removes its `video_tags` rows, so every video loses the keyword.
+    public func deleteTag(id: String) async throws -> Bool {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        var request = Reelvault_DeleteTagRequest()
+        request.tagID = id
+        let response = try await client.deleteTag(request)
+        return response.success
+    }
+
     // MARK: - Collections
 
     public func listCollections() async throws -> [Collection] {

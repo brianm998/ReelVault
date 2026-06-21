@@ -1844,6 +1844,31 @@ public class GridViewModel: ObservableObject {
         }
     }
 
+    /// Delete a keyword (tag) from the entire catalog — removes it from every
+    /// video that carries it (the backend cascade-deletes the `video_tags`
+    /// rows). If the deleted tag is the active filter, falls back to all videos.
+    public func deleteTag(id: String) {
+        guard !id.isEmpty else { return }
+        Task {
+            do {
+                let tagName = tags.first(where: { $0.id == id })?.name
+                _ = try await repository.deleteTag(id: id)
+                // Optimistically strip the keyword badge from any loaded cards
+                // (and cached stack members) so they update without a reload.
+                if let tagName {
+                    videos = videos.map { v in v.withTags(v.tags.filter { $0 != tagName }) }
+                    expandedGroupMembers = expandedGroupMembers.mapValues { members in
+                        members.map { v in v.withTags(v.tags.filter { $0 != tagName }) }
+                    }
+                }
+                if filterTagId == id { setTagFilter("") }
+                loadTags()
+            } catch {
+                self.error = String(format: String(localized: "Delete keyword failed: %@", bundle: .module), error.localizedDescription)
+            }
+        }
+    }
+
     // MARK: - Library locations
 
     public func loadLibraryLocations() {

@@ -240,6 +240,33 @@ fun LibraryGridScreen(
         )
     }
 
+    // ── Delete-keyword confirmation (only when it's applied to videos) ───
+    var keywordPendingDelete by remember { mutableStateOf<Tag?>(null) }
+    keywordPendingDelete?.let { tag ->
+        val count = tag.videoCount.toInt()
+        AlertDialog(
+            onDismissRequest = { keywordPendingDelete = null },
+            icon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text(stringResource(R.string.grid_delete_keyword_title)) },
+            text = {
+                Text(pluralStringResource(R.plurals.grid_delete_keyword_message, count, tag.name, count))
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.deleteTag(tag.id)
+                    keywordPendingDelete = null
+                }) {
+                    Text(stringResource(R.string.grid_delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { keywordPendingDelete = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
+
     // ── Error snackbar ───────────────────────────────────────────────────
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(error) {
@@ -264,6 +291,15 @@ fun LibraryGridScreen(
                 onSelectTag = { tagId ->
                     vm.setTagFilter(tagId)
                     scope.launch { drawerState.close() }
+                },
+                onDeleteTag = { tag ->
+                    // Confirm only when videos would lose the keyword; an unused
+                    // keyword just goes away.
+                    if (tag.videoCount > 0) {
+                        keywordPendingDelete = tag
+                    } else {
+                        vm.deleteTag(tag.id)
+                    }
                 },
                 onSelectCollection = { id ->
                     vm.setCollectionFilter(id)
@@ -1030,6 +1066,7 @@ private fun LibrarySidebarContent(
     activeCollectionId: String?,
     onSelectLocation: (String) -> Unit,
     onSelectTag: (String) -> Unit,
+    onDeleteTag: (Tag) -> Unit,
     onSelectCollection: (String) -> Unit,
     onClearFilters: () -> Unit,
     onClose: () -> Unit,
@@ -1180,23 +1217,47 @@ private fun LibrarySidebarContent(
                             )
                         },
                         label = {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    tag.name,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f),
-                                )
+                            Text(
+                                tag.name,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                        badge = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 if (tag.videoCount > 0) {
                                     Text(
                                         "${tag.videoCount}",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
+                                }
+                                // Overflow menu → delete the keyword catalog-wide.
+                                Box {
+                                    var menuOpen by remember { mutableStateOf(false) }
+                                    IconButton(
+                                        onClick = { menuOpen = true },
+                                        modifier = Modifier.size(32.dp),
+                                    ) {
+                                        Icon(
+                                            Icons.Default.MoreVert,
+                                            contentDescription = stringResource(R.string.grid_keyword_actions),
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                    }
+                                    DropdownMenu(
+                                        expanded = menuOpen,
+                                        onDismissRequest = { menuOpen = false },
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.grid_delete_keyword)) },
+                                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                                            onClick = {
+                                                menuOpen = false
+                                                onDeleteTag(tag)
+                                            },
+                                        )
+                                    }
                                 }
                             }
                         },

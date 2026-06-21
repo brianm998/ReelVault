@@ -3,6 +3,8 @@
 
 package com.reelvault.ui.components
 
+import androidx.compose.foundation.ContextMenuArea
+import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,8 +37,12 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -654,6 +660,40 @@ private fun LibraryMetadataEditor(viewModel: GridViewModel, height: Dp) {
     }
     val activeLocationToken = activeLocation?.let { locationFacetToken(it.first, it.second) }
 
+    // Keyword pending deletion — set only when it's applied to ≥1 video, so we
+    // confirm first. Unused keywords are deleted without prompting.
+    val tags by viewModel.tags.collectAsState()
+    var keywordPendingDelete by remember { mutableStateOf<Pair<String, String>?>(null) } // (tagId, name)
+
+    keywordPendingDelete?.let { (tagId, name) ->
+        val count = tags.firstOrNull { it.id == tagId }?.videoCount ?: 0L
+        AlertDialog(
+            onDismissRequest = { keywordPendingDelete = null },
+            icon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("Delete Keyword?") },
+            text = {
+                Text(
+                    "\"$name\" will be removed from $count " +
+                        (if (count == 1L) "video" else "videos") +
+                        ". This cannot be undone.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteTag(tagId)
+                        keywordPendingDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                ) { Text(Strings["ui_delete"]) }
+            },
+            dismissButton = {
+                TextButton(onClick = { keywordPendingDelete = null }) { Text(Strings["ui_cancel"]) }
+            },
+        )
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -701,6 +741,20 @@ private fun LibraryMetadataEditor(viewModel: GridViewModel, height: Dp) {
                 onSetNegate = { viewModel.setMetadataColumnNegate(i, it) },
                 onValueClick = onValueClick,
                 onRemove = { viewModel.removeMetadataColumn(i) },
+                // Only the tag-backed keyword column can delete its values; the
+                // catalog-wide count comes from `tags` (the facet count is
+                // scoped to the current filter).
+                onDeleteValue = if (col.key == "keyword") {
+                    { token, label, facetCount ->
+                        val tag = tags.firstOrNull { it.id == token }
+                        val total = tag?.videoCount ?: facetCount
+                        if (total > 0L) {
+                            keywordPendingDelete = token to (tag?.name ?: label)
+                        } else {
+                            viewModel.deleteTag(token)
+                        }
+                    }
+                } else null,
             )
         }
         AddColumnButton { viewModel.addMetadataColumn(atFront = false) }
@@ -732,6 +786,7 @@ private fun MetadataColumnView(
     onSetNegate: (Boolean) -> Unit,
     onValueClick: (token: String, shift: Boolean, toggle: Boolean) -> Unit,
     onRemove: () -> Unit,
+    onDeleteValue: ((token: String, label: String, count: Long) -> Unit)? = null,
 ) {
     Column(modifier = Modifier.width(168.dp).fillMaxHeight()) {
         // Header: clickable title (key picker) + optional remove.
@@ -864,10 +919,12 @@ private fun MetadataColumnView(
                         ) { _, _ -> onValueClick("", false, false) }
                     }
                     items(facet.values) { v ->
+                        val label = v.display.ifEmpty { v.token }
                         FacetValueRow(
-                            label = v.display.ifEmpty { v.token },
+                            label = label,
                             count = v.count,
                             selected = v.token in column.values,
+                            onDelete = onDeleteValue?.let { f -> { f(v.token, label, v.count) } },
                         ) { shift, toggle -> onValueClick(v.token, shift, toggle) }
                     }
                 }
@@ -878,6 +935,24 @@ private fun MetadataColumnView(
 
 @Composable
 private fun FacetValueRow(
+    label: String,
+    count: Long?,
+    selected: Boolean,
+    onDelete: (() -> Unit)? = null,
+    onClick: (shift: Boolean, toggle: Boolean) -> Unit,
+) {
+    // Keyword rows offer a right-click "Delete Keyword…"; other rows render plain.
+    if (onDelete != null) {
+        ContextMenuArea(items = { listOf(ContextMenuItem("Delete Keyword…", onDelete)) }) {
+            FacetValueRowBody(label, count, selected, onClick)
+        }
+    } else {
+        FacetValueRowBody(label, count, selected, onClick)
+    }
+}
+
+@Composable
+private fun FacetValueRowBody(
     label: String,
     count: Long?,
     selected: Boolean,
