@@ -221,6 +221,12 @@ CREATE VIRTUAL TABLE video_search USING fts5(
 
 ## Development Guidelines
 
+### Git Workflow
+
+**We don't use pull requests on this project yet.** Work is committed directly to
+the relevant branch (typically `develop`) — don't open PRs or assume a PR-based
+review flow. This may change later; until this note is updated, commit directly.
+
 ### Code Organization
 
 ```
