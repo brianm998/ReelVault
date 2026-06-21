@@ -560,16 +560,34 @@ private fun VideoPlayerSection(
     proxies: List<VideoRepository.ProxyInfo>,
 ) {
     val remoteEndpoint = RemoteConnection.endpoint
+    val offlineEntries by OfflineLibrary.entries.collectAsStateWithLifecycle()
+    val offlineVideo = offlineEntries.firstOrNull { it.id == videoId }
+
     val hlsUrl: String? = remoteEndpoint?.let { ep ->
+        // If this video is downloaded for offline, prefer playing the cached copy
+        // instead of streaming. Mirrors iOS fallback-to-download behavior.
+        if (offlineVideo != null) return@let null
         // Server route: /hls/:id/:height/*file — height must be a separate path segment.
         // Cap at 1080 for mobile; server clamps to [144,2160] and picks the nearest proxy.
         val h = if (metadata.height > 0) metadata.height.coerceAtMost(1080) else 1080
         "https://${ep.host}:${ep.mediaPort}/hls/$videoId/$h/index.m3u8"
     }
-    // Local (on-device) mode: no media server — play the original MediaStore video
-    // directly via its content:// URI (reconstructed from the `photos://<id>` row).
-    // Mirrors iOS StreamPlayer.prepareLocal.
-    val localUri: String? = if (remoteEndpoint == null) localPlaybackUri(metadata.path) else null
+
+    // Local playback: either on-device Local Library mode (photos:// URI), a
+    // downloaded offline copy, or a file:// path. Mirrors iOS StreamPlayer.
+    val localUri: String? = when {
+        offlineVideo != null -> {
+            // Play the offline-cached video file directly.
+            val cachedFile = OfflineLibrary.videoFile(videoId)
+            cachedFile?.absolutePath?.let { "file://$it" }
+        }
+        remoteEndpoint == null -> {
+            // Local (on-device) mode: play the original MediaStore video directly
+            // via its content:// URI (reconstructed from the `photos://<id>` row).
+            localPlaybackUri(metadata.path)
+        }
+        else -> null
+    }
 
     VideoPlayer(
         streamUrl = hlsUrl,
