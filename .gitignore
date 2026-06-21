@@ -64,3 +64,8 @@ __pycache__/
 /prompt
 /prompts
 /releases/v0.1.0.md
+
+# analytics-ingest secrets — never commit these
+*.p8
+tools/analytics-ingest/*.sqlite
+tools/analytics-ingest/analytics.toml

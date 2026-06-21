@@ -1,0 +1,29 @@
+# analytics-ingest configuration
+# Copy to e.g. ~/.reelvault/analytics.toml and set $RV_ANALYTICS_CONFIG.
+# Secrets are never inlined here — use file paths or env var references.
+
+[db]
+path = "~/.reelvault/analytics.sqlite"
+
+[appstore]
+enabled       = true
+issuer_id     = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"  # App Store Connect → Keys → Issuer ID
+key_id        = "XXXXXXXXXX"                             # Key ID shown next to the .p8 download
+vendor_number = "12345678"                               # Payments and Financial Reports → Vendor ID
+# Path to the downloaded .p8 private key — keep outside the repo.
+private_key_path = "${APPSTORE_P8_PATH}"
+
+[play]
+enabled = true
+package = "com.reelvault.android"
+# Find the bucket name in Play Console → Download reports → Statistics → "gs://" URI.
+bucket  = "pubsite_prod_rev_0123456789"
+# Path to service-account JSON with Storage Object Viewer on the bucket.
+service_account_json_path = "${PLAY_SA_JSON_PATH}"
+
+[github]
+enabled   = true
+owner     = "reelvault"
+repo      = "reelvault"
+# Name of an env var whose value is a fine-grained PAT (optional; omit for 60 req/h).
+token_env = "GITHUB_TOKEN"
