@@ -282,27 +282,6 @@
     }
     .ios-store-link:hover { text-decoration: underline; }
 
-    /* ── Server setup note ─────────────────────────────────────────────── */
-    .setup-note {
-      margin-top: 14px;
-      padding: 15px 18px;
-      background: var(--accent-bg);
-      border: 1px solid var(--accent-border);
-      border-radius: var(--radius-sm);
-      font-size: 13px;
-      color: var(--text-muted);
-      line-height: 1.6;
-    }
-    .setup-note strong { color: var(--text); }
-    .setup-note code {
-      font-family: 'SF Mono', Consolas, 'Courier New', monospace;
-      font-size: 12px;
-      background: rgba(0,0,0,0.3);
-      padding: 1px 5px;
-      border-radius: 4px;
-      color: var(--text);
-    }
-
     /* ── Standalone sysreq note ────────────────────────────────────────── */
     .sysreq {
       text-align: center;
@@ -773,8 +752,6 @@
         androidCardTitle: "Also install the Android app",
         androidCardDesc: "The server you're downloading above advertises itself on your local WiFi via mDNS. Open the ReelVault Android app on the same network and it will find your library automatically — no IP addresses to type.",
         playStoreLink: "Get ReelVault on Google Play →",
-        setupNoteTitle: "Setup takes about 2 minutes:",
-        setupNoteBody: "After installing this package, open a Terminal and run {cmd} — the daemon starts on boot and logs a 6-digit pairing code to {logPath}. Enter that code in the iOS or Android app to pair.",
         footerGH: "GitHub",
         footerReleases: "All releases",
         footerDocs: "Documentation",
@@ -841,8 +818,6 @@
         androidCardTitle: "同时安装 Android 应用",
         androidCardDesc: "您正在下载的服务器会通过 mDNS 在本地 WiFi 上广播自身。在同一网络上打开 ReelVault Android 应用，它将自动发现您的媒体库——无需手动输入 IP 地址。",
         playStoreLink: "在 Google Play 获取 ReelVault →",
-        setupNoteTitle: "设置大约需要 2 分钟：",
-        setupNoteBody: "安装此软件包后，打开终端并运行 {cmd}——守护进程将在启动时自动运行，并将 6 位配对码记录到 {logPath}。在 iOS 应用中输入该码即可完成配对。",
         footerGH: "GitHub",
         footerReleases: "所有版本",
         footerDocs: "文档",
@@ -908,8 +883,6 @@
         androidCardTitle: "También instale la aplicación Android",
         androidCardDesc: "El servidor que está descargando arriba se anuncia en su red WiFi local mediante mDNS. Abra la aplicación ReelVault para Android en la misma red y encontrará su biblioteca automáticamente — sin necesidad de escribir direcciones IP.",
         playStoreLink: "Obtener ReelVault en Google Play →",
-        setupNoteTitle: "La configuración tarda unos 2 minutos:",
-        setupNoteBody: "Después de instalar este paquete, abre una Terminal y ejecuta {cmd} — el daemon se inicia al arrancar y registra un código de emparejamiento de 6 dígitos en {logPath}. Introduce ese código en la app de iOS para emparejar.",
         footerGH: "GitHub",
         footerReleases: "Todas las versiones",
         footerDocs: "Documentación",
@@ -975,8 +948,6 @@
         androidCardTitle: "Auch die Android-App installieren",
         androidCardDesc: "Der Server, den Sie oben herunterladen, kündigt sich über mDNS in Ihrem lokalen WLAN an. Öffnen Sie die ReelVault-Android-App im selben Netzwerk, und sie findet Ihre Bibliothek automatisch — keine IP-Adressen erforderlich.",
         playStoreLink: "ReelVault bei Google Play holen →",
-        setupNoteTitle: "Die Einrichtung dauert etwa 2 Minuten:",
-        setupNoteBody: "Nach der Installation dieses Pakets öffne ein Terminal und führe {cmd} aus — der Daemon startet beim Hochfahren und protokolliert einen 6-stelligen Kopplungscode in {logPath}. Gib diesen Code in der iOS-App ein, um zu koppeln.",
         footerGH: "GitHub",
         footerReleases: "Alle Releases",
         footerDocs: "Dokumentation",
@@ -1042,8 +1013,6 @@
         androidCardTitle: "Androidアプリもインストール",
         androidCardDesc: "上でダウンロードするサーバーは、mDNS経由でローカルWiFiに自身を広告します。同じネットワーク上でReelVault Androidアプリを開くと、IPアドレスを入力しなくてもライブラリが自動的に見つかります。",
         playStoreLink: "Google PlayでReelVaultを入手 →",
-        setupNoteTitle: "セットアップは約 2 分で完了します：",
-        setupNoteBody: "このパッケージをインストールしたら、ターミナルを開いて {cmd} を実行してください — デーモンが起動時に開始し、6 桁のペアリングコードを {logPath} に記録します。iOS アプリにそのコードを入力してペアリングします。",
         footerGH: "GitHub",
         footerReleases: "全リリース",
         footerDocs: "ドキュメント",
@@ -1109,8 +1078,6 @@
         androidCardTitle: "Installez également l'application Android",
         androidCardDesc: "Le serveur que vous téléchargez ci-dessus s'annonce sur votre WiFi local via mDNS. Ouvrez l'application ReelVault Android sur le même réseau et elle trouvera votre bibliothèque automatiquement — sans adresse IP à saisir.",
         playStoreLink: "Obtenir ReelVault sur Google Play →",
-        setupNoteTitle: "La configuration prend environ 2 minutes :",
-        setupNoteBody: "Après avoir installé ce package, ouvrez un Terminal et exécutez {cmd} — le daemon démarre au démarrage et enregistre un code d'association à 6 chiffres dans {logPath}. Saisissez ce code dans l'application iOS pour associer.",
         footerGH: "GitHub",
         footerReleases: "Toutes les versions",
         footerDocs: "Documentation",
@@ -1176,8 +1143,6 @@
         androidCardTitle: "Instale também o aplicativo Android",
         androidCardDesc: "O servidor que você está baixando acima se anuncia na sua rede WiFi local via mDNS. Abra o aplicativo ReelVault para Android na mesma rede e ele encontrará sua biblioteca automaticamente — sem precisar digitar endereços IP.",
         playStoreLink: "Baixar ReelVault no Google Play →",
-        setupNoteTitle: "A configuração leva cerca de 2 minutos:",
-        setupNoteBody: "Após instalar este pacote, abra um Terminal e execute {cmd} — o daemon inicia na inicialização e registra um código de pareamento de 6 dígitos em {logPath}. Digite esse código no aplicativo iOS para parear.",
         footerGH: "GitHub",
         footerReleases: "Todas as versões",
         footerDocs: "Documentação",
@@ -1243,8 +1208,6 @@
         androidCardTitle: "Android 앱도 설치하세요",
         androidCardDesc: "위에서 다운로드하는 서버는 mDNS를 통해 로컬 WiFi에 자신을 알립니다. 동일한 네트워크에서 ReelVault Android 앱을 열면 IP 주소를 입력하지 않아도 라이브러리를 자동으로 찾습니다.",
         playStoreLink: "Google Play에서 ReelVault 받기 →",
-        setupNoteTitle: "설정은 약 2분 정도 걸립니다:",
-        setupNoteBody: "이 패키지를 설치한 후 터미널을 열고 {cmd}를 실행하세요 — 데몬이 부팅 시 시작되고 6자리 페어링 코드를 {logPath}에 기록합니다. iOS 앱에 해당 코드를 입력하여 페어링하세요.",
         footerGH: "GitHub",
         footerReleases: "모든 릴리스",
         footerDocs: "문서",
@@ -1310,8 +1273,6 @@
         androidCardTitle: "Installa anche l'app Android",
         androidCardDesc: "Il server che stai scaricando qui sopra si annuncia sulla tua rete WiFi locale tramite mDNS. Apri l'app ReelVault Android sulla stessa rete e troverà automaticamente la tua libreria — nessun indirizzo IP da digitare.",
         playStoreLink: "Scarica ReelVault su Google Play →",
-        setupNoteTitle: "La configurazione richiede circa 2 minuti:",
-        setupNoteBody: "Dopo aver installato questo pacchetto, apri un Terminale ed esegui {cmd} — il daemon si avvia all'avvio e registra un codice di associazione a 6 cifre in {logPath}. Inserisci quel codice nell'app iOS per associare.",
         footerGH: "GitHub",
         footerReleases: "Tutte le versioni",
         footerDocs: "Documentazione",
@@ -1377,8 +1338,6 @@
         androidCardTitle: "Также установите приложение для Android",
         androidCardDesc: "Сервер, который вы скачиваете выше, объявляет себя в локальной сети WiFi через mDNS. Откройте приложение ReelVault для Android в той же сети — оно автоматически обнаружит вашу медиатеку, вводить IP-адреса не нужно.",
         playStoreLink: "Скачать ReelVault в Google Play →",
-        setupNoteTitle: "Настройка займёт около 2 минут:",
-        setupNoteBody: "После установки этого пакета откройте терминал и выполните {cmd} — демон запустится при загрузке системы и запишет 6-значный код сопряжения в {logPath}. Введите этот код в iOS-приложении для сопряжения.",
         footerGH: "GitHub",
         footerReleases: "Все релизы",
         footerDocs: "Документация",
@@ -1444,8 +1403,6 @@
         androidCardTitle: "Zainstaluj też aplikację Android",
         androidCardDesc: "Serwer, który pobierasz powyżej, rozgłasza się w lokalnej sieci WiFi przez mDNS. Otwórz aplikację ReelVault na Androida w tej samej sieci, a automatycznie znajdzie Twoją bibliotekę — bez wpisywania adresów IP.",
         playStoreLink: "Pobierz ReelVault na Google Play →",
-        setupNoteTitle: "Konfiguracja zajmuje około 2 minut:",
-        setupNoteBody: "Po zainstalowaniu tego pakietu otwórz terminal i uruchom {cmd} — demon uruchamia się podczas startu systemu i zapisuje 6-cyfrowy kod parowania do {logPath}. Wpisz ten kod w aplikacji iOS, aby sparować.",
         footerGH: "GitHub",
         footerReleases: "Wszystkie wydania",
         footerDocs: "Dokumentacja",
@@ -1511,8 +1468,6 @@
         androidCardTitle: "Installeer ook de Android-app",
         androidCardDesc: "De server die u hierboven downloadt, kondigt zichzelf aan op uw lokale WiFi-netwerk via mDNS. Open de ReelVault Android-app op hetzelfde netwerk en deze vindt uw bibliotheek automatisch — u hoeft geen IP-adressen in te voeren.",
         playStoreLink: "Haal ReelVault in de Google Play Store →",
-        setupNoteTitle: "Installatie duurt ongeveer 2 minuten:",
-        setupNoteBody: "Na het installeren van dit pakket, open een Terminal en voer {cmd} uit — de daemon start bij het opstarten en registreert een 6-cijferige koppelcode naar {logPath}. Voer die code in de iOS-app in om te koppelen.",
         footerGH: "GitHub",
         footerReleases: "Alle releases",
         footerDocs: "Documentatie",
@@ -1578,8 +1533,6 @@
         androidCardTitle: "Android uygulamasını da yükleyin",
         androidCardDesc: "Yukarıda indirdiğiniz sunucu, kendisini yerel WiFi ağınızda mDNS aracılığıyla duyurur. Aynı ağdaki ReelVault Android uygulamasını açın; kütüphanenizi otomatik olarak bulacaktır — IP adresi girmenize gerek yok.",
         playStoreLink: "ReelVault'u Google Play'den edinin →",
-        setupNoteTitle: "Kurulum yaklaşık 2 dakika sürer:",
-        setupNoteBody: "Bu paketi yükledikten sonra Terminal'i açın ve {cmd} komutunu çalıştırın — daemon başlangıçta başlar ve {logPath} konumuna 6 haneli bir eşleşme kodu kaydeder. Eşleştirmek için iOS uygulamasına o kodu girin.",
         footerGH: "GitHub",
         footerReleases: "Tüm sürümler",
         footerDocs: "Belgeler",
@@ -1645,8 +1598,6 @@
         androidCardTitle: "ثبِّت تطبيق Android أيضاً",
         androidCardDesc: "يُعلن الخادم الذي تنزِّله أعلاه عن نفسه على شبكة WiFi المحلية عبر mDNS. افتح تطبيق ReelVault Android على نفس الشبكة وسيعثر على مكتبتك تلقائياً — دون الحاجة إلى كتابة أي عناوين IP.",
         playStoreLink: "احصل على ReelVault من Google Play ←",
-        setupNoteTitle: "يستغرق الإعداد حوالي دقيقتين:",
-        setupNoteBody: "بعد تثبيت هذه الحزمة، افتح الطرفية ونفِّذ {cmd} — يبدأ الخادم الخلفي عند التشغيل ويسجّل رمز اقتران مكوّنًا من 6 أرقام في {logPath}. أدخل هذا الرمز في تطبيق iOS للإقران.",
         footerGH: "GitHub",
         footerReleases: "جميع الإصدارات",
         footerDocs: "التوثيق",
@@ -1712,8 +1663,6 @@
         androidCardTitle: "Android ऐप भी इंस्टॉल करें",
         androidCardDesc: "ऊपर जो सर्वर आप डाउनलोड कर रहे हैं वह mDNS के माध्यम से आपके लोकल WiFi पर खुद को advertise करता है। उसी नेटवर्क पर ReelVault Android ऐप खोलें और यह आपकी लाइब्रेरी को स्वचालित रूप से ढूंढ लेगा — कोई IP पता टाइप करने की ज़रूरत नहीं।",
         playStoreLink: "Google Play पर ReelVault पाएं →",
-        setupNoteTitle: "सेटअप में लगभग 2 मिनट लगते हैं:",
-        setupNoteBody: "यह पैकेज इंस्टॉल करने के बाद, Terminal खोलें और {cmd} चलाएं — डेमन बूट पर शुरू होता है और {logPath} पर 6 अंकों का पेयरिंग कोड लॉग करता है। पेयर करने के लिए iOS ऐप में वह कोड दर्ज करें।",
         footerGH: "GitHub",
         footerReleases: "सभी रिलीज़",
         footerDocs: "प्रलेखन",
@@ -1779,8 +1728,6 @@
         androidCardTitle: "Pasang juga aplikasi Android",
         androidCardDesc: "Server yang Anda unduh di atas mengumumkan dirinya di WiFi lokal Anda melalui mDNS. Buka aplikasi ReelVault Android di jaringan yang sama dan aplikasi akan menemukan pustaka Anda secara otomatis — tidak perlu mengetikkan alamat IP.",
         playStoreLink: "Dapatkan ReelVault di Google Play →",
-        setupNoteTitle: "Pengaturan membutuhkan sekitar 2 menit:",
-        setupNoteBody: "Setelah menginstal paket ini, buka Terminal dan jalankan {cmd} — daemon akan mulai saat boot dan mencatat kode pasangan 6 digit ke {logPath}. Masukkan kode tersebut di aplikasi iOS untuk memasangkan.",
         footerGH: "GitHub",
         footerReleases: "Semua rilis",
         footerDocs: "Dokumentasi",
@@ -1846,8 +1793,6 @@
         androidCardTitle: "Cũng cài đặt ứng dụng Android",
         androidCardDesc: "Máy chủ bạn đang tải xuống ở trên tự quảng bá trên mạng WiFi nội bộ qua mDNS. Mở ứng dụng ReelVault Android trên cùng mạng và ứng dụng sẽ tự động tìm thấy thư viện của bạn — không cần nhập địa chỉ IP.",
         playStoreLink: "Tải ReelVault trên Google Play →",
-        setupNoteTitle: "Cài đặt mất khoảng 2 phút:",
-        setupNoteBody: "Sau khi cài đặt gói này, mở Terminal và chạy {cmd} — daemon khởi động khi boot và ghi mã ghép đôi 6 chữ số vào {logPath}. Nhập mã đó vào ứng dụng iOS để ghép đôi.",
         footerGH: "GitHub",
         footerReleases: "Tất cả bản phát hành",
         footerDocs: "Tài liệu",
@@ -1913,8 +1858,6 @@
         androidCardTitle: "ติดตั้งแอป Android ด้วย",
         androidCardDesc: "เซิร์ฟเวอร์ที่คุณกำลังดาวน์โหลดด้านบนจะประกาศตัวเองบน WiFi ท้องถิ่นของคุณผ่าน mDNS เปิดแอป ReelVault บน Android ในเครือข่ายเดียวกัน แล้วแอปจะค้นหาคลังสื่อของคุณโดยอัตโนมัติ — ไม่ต้องพิมพ์ที่อยู่ IP",
         playStoreLink: "รับ ReelVault บน Google Play →",
-        setupNoteTitle: "การตั้งค่าใช้เวลาประมาณ 2 นาที:",
-        setupNoteBody: "หลังจากติดตั้งแพ็กเกจนี้ เปิด Terminal แล้วรัน {cmd} — daemon จะเริ่มต้นเมื่อบูตและบันทึกรหัสจับคู่ 6 หลักไปยัง {logPath} ป้อนรหัสนั้นในแอป iOS เพื่อจับคู่",
         footerGH: "GitHub",
         footerReleases: "ทุกเวอร์ชัน",
         footerDocs: "เอกสาร",
@@ -1980,8 +1923,6 @@
         androidCardTitle: "Також встановіть Android-застосунок",
         androidCardDesc: "Сервер, який ви завантажуєте вище, оголошує себе у вашій локальній WiFi-мережі через mDNS. Відкрийте застосунок ReelVault для Android у тій самій мережі, і він автоматично знайде вашу бібліотеку — без введення IP-адрес.",
         playStoreLink: "Отримати ReelVault у Google Play →",
-        setupNoteTitle: "Налаштування займає близько 2 хвилин:",
-        setupNoteBody: "Після встановлення цього пакета відкрийте термінал і виконайте {cmd} — демон запускається під час завантаження системи та записує 6-значний код сполучення у {logPath}. Введіть цей код у iOS-застосунку для сполучення.",
         footerGH: "GitHub",
         footerReleases: "Усі релізи",
         footerDocs: "Документація",
@@ -2047,8 +1988,6 @@
         androidCardTitle: "Nainstalujte také aplikaci pro Android",
         androidCardDesc: "Server, který stahujete výše, se ohlašuje ve vaší místní WiFi síti přes mDNS. Otevřete aplikaci ReelVault pro Android ve stejné síti a automaticky najde vaši knihovnu — žádné zadávání IP adres.",
         playStoreLink: "Získejte ReelVault na Google Play →",
-        setupNoteTitle: "Nastavení trvá přibližně 2 minuty:",
-        setupNoteBody: "Po instalaci tohoto balíčku otevřete Terminál a spusťte {cmd} — démon se spustí při startu a zapíše 6místný párovací kód do {logPath}. Zadejte tento kód v aplikaci iOS pro spárování.",
         footerGH: "GitHub",
         footerReleases: "Všechna vydání",
         footerDocs: "Dokumentace",
@@ -2114,8 +2053,6 @@
         androidCardTitle: "Android ایپ بھی نصب کریں",
         androidCardDesc: "The server you're downloading above advertises itself on your local WiFi via mDNS. Open the ReelVault Android app on the same network and it will find your library automatically — no IP addresses to type.",
         playStoreLink: "Google Play پر ReelVault حاصل کریں ←",
-        setupNoteTitle: "ترتیب میں تقریباً 2 منٹ لگتے ہیں:",
-        setupNoteBody: "After installing this package, open a Terminal and run {cmd} — the daemon starts on boot and logs a 6-digit pairing code to {logPath}. Enter that code in the iOS or Android app to pair.",
         footerGH: "GitHub",
         footerReleases: "تمام ریلیزز",
         footerDocs: "دستاویزات",
@@ -2181,8 +2118,6 @@
         androidCardTitle: "Also install the Android app",
         androidCardDesc: "The server you're downloading above advertises itself on your local WiFi via mDNS. Open the ReelVault Android app on the same network and it will find your library automatically — no IP addresses to type.",
         playStoreLink: "Get ReelVault on Google Play →",
-        setupNoteTitle: "Setup takes about 2 minutes:",
-        setupNoteBody: "After installing this package, open a Terminal and run {cmd} — the daemon starts on boot and logs a 6-digit pairing code to {logPath}. Enter that code in the iOS or Android app to pair.",
         footerGH: "GitHub",
         footerReleases: "All releases",
         footerDocs: "Documentation",
@@ -2431,9 +2366,6 @@
       }
 
       if (mode === 'wifi') {
-        const setupBody = t.setupNoteBody
-          .replace('{cmd}',     '<code>sudo install-service.sh</code>')
-          .replace('{logPath}', `<code>${logPath}</code>`);
         const iosD = mobileCTA('ios');
         const andD = mobileCTA('android');
         html += `
@@ -2458,9 +2390,6 @@
                 ${andD.linkLabel}
               </a>
             </div>
-          </div>
-          <div class="setup-note">
-            <strong>${t.setupNoteTitle}</strong> ${setupBody}
           </div>`;
       } else {
         html += `<div class="sysreq">${sysreq}</div>`;
