@@ -524,7 +524,7 @@ impl MetadataExtractor {
               description, creator, rights, keywords, headline, chapter_count, chapters_json, subtitle_tracks, dolby_vision_profile,
               production_scene, production_take, nd_filter, iris_f_number, lut_name,
               spatial_initial_heading, spatial_initial_pitch, spatial_initial_roll, stereo_mode, ambisonics_channel_order, metadata_json)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(video_id) DO UPDATE SET
              duration_ms=excluded.duration_ms,
              frame_count=excluded.frame_count,
@@ -1948,5 +1948,59 @@ mod tests {
                 crate::xmp::white_balance_label),
             Some("Auto".to_string())
         );
+    }
+
+    /// Guard against the metadata INSERT drifting out of sync. The column
+    /// list, the `VALUES (?, ?, …)` placeholder count, and the `params!`
+    /// arity must all match. When they don't — e.g. a column is added
+    /// without a matching `?` — SQLite rejects *every* insert at runtime
+    /// ("N values for M columns"), which silently strands every newly
+    /// indexed video with no metadata row and (because thumbnail generation
+    /// runs later in `index_video`) no thumbnails. Running the real
+    /// `store_metadata` against a fresh DB exercises both rusqlite's
+    /// param↔placeholder check and SQLite's placeholder↔column check, so any
+    /// of the three counts going out of line trips this test.
+    #[test]
+    fn store_metadata_insert_columns_and_values_match() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = crate::db::Database::new_empty();
+        db.set_path(&tmp.path().join("catalog.db"))
+            .expect("init schema");
+
+        let video_id = db
+            .add_video("/l/guard.mov", "guard.mov", None, None, Some(1000))
+            .expect("add_video");
+
+        // Minimal video-only probe (the audio-less ProRes clip that first
+        // surfaced this bug). All other fields default to None.
+        let probe: FFProbeOutput = serde_json::from_str(
+            r#"{
+                "streams": [
+                    {"codec_type": "video", "codec_name": "prores",
+                     "width": 6048, "height": 4032, "r_frame_rate": "30/1"}
+                ],
+                "format": {"duration": "0.933", "bit_rate": "828549000"}
+            }"#,
+        )
+        .expect("probe json");
+
+        MetadataExtractor::store_metadata(
+            &db,
+            &video_id,
+            Path::new("/l/guard.mov"),
+            &probe,
+            1000,
+        )
+        .expect("store_metadata must succeed — INSERT column/placeholder/param counts must match");
+
+        let conn = db.get_connection().expect("conn");
+        let (w, h, codec): (i64, i64, String) = conn
+            .query_row(
+                "SELECT width, height, codec_video FROM metadata WHERE video_id = ?1",
+                [&video_id],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .expect("metadata row must exist after store_metadata");
+        assert_eq!((w, h, codec.as_str()), (6048, 4032, "prores"));
     }
 }
