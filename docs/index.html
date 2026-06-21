@@ -426,7 +426,7 @@
         ReelVault for iOS connects to your Mac, PC, or Linux library server over WiFi
         so you can browse and play your full video collection from anywhere in your home.
       </p>
-      <a class="appstore-btn" id="ios-cta" href="#" target="_blank">Join the TestFlight beta</a>
+      <a class="appstore-btn" id="ios-cta" href="#" target="_blank">Request TestFlight access</a>
       <div class="mobile-secondary" id="ios-secondary"></div>
     </div>
     <div style="text-align:center; font-size:13px; color:var(--text-muted); margin-top:8px;">
@@ -445,7 +445,7 @@
         so you can browse and play your full video collection from anywhere in your home.
         It also supports an on-device local library.
       </p>
-      <a class="appstore-btn" id="android-cta" href="#" target="_blank">Join the Play Store beta</a>
+      <a class="appstore-btn" id="android-cta" href="#" target="_blank">Request beta access</a>
       <div class="mobile-secondary" id="android-secondary"></div>
     </div>
     <div style="text-align:center; font-size:13px; color:var(--text-muted); margin-top:8px;">
@@ -536,37 +536,105 @@
     const API_URL      = `https://api.github.com/repos/${REPO}/releases/latest`;
 
     // ── Mobile app distribution ───────────────────────────────────────────────
-    // Single source of truth for where iOS / Android users are sent.
+    // Single source of truth for where iOS / Android users are sent. Everything
+    // the page shows for mobile (hero buttons, desktop "also install" cards,
+    // Android download fallback) is derived from this — change it here only.
     //
-    //   channel:           'beta'  → primary button links to the beta program
-    //                      'store' → primary button links to the public store
-    //   showBetaWhenStore: when channel is 'store', also surface a small
+    //   channel:           'beta'  → primary CTA points at the beta program
+    //                      'store' → primary CTA points at the public store
+    //   showBetaWhenStore: when channel is 'store', still surface a small
     //                      "join the beta" link beneath the store button.
+    //   beta.method:       'email' → no public join link yet; the CTA opens a
+    //                                 pre-filled email requesting tester access
+    //                                 (used while testing is invite-only).
+    //                      'link'  → the CTA links straight to beta.url
+    //                                 (a TestFlight public link / Play opt-in URL).
     //
-    // To go live once public builds ship: flip `channel` to 'store' (and drop in
-    // the real store URLs below). No other markup or logic changes required.
+    // Roadmap:
+    //   • Got a TestFlight public link / Play opt-in URL? set beta.method 'link'
+    //     and fill beta.url — the page switches from "request access" to a
+    //     one-tap join with no other changes.
+    //   • Public store builds live? flip channel to 'store' and fill store.url.
     const MOBILE_DIST = {
       ios: {
         channel: 'beta',
         showBetaWhenStore: true,
-        // TODO: replace with the real TestFlight public-link code.
-        beta:  { url: 'https://testflight.apple.com/join/REPLACE_ME' },
+        beta: {
+          method: 'email',                      // invite-only internal TestFlight
+          email:  'brian.beholden@gmail.com',
+          // url: 'https://testflight.apple.com/join/XXXXXXXX',  // once a public link exists
+        },
         // TODO: replace with the real App Store id once published.
         store: { url: 'https://apps.apple.com/app/reelvault/id0000000000' },
       },
       android: {
         channel: 'beta',
         showBetaWhenStore: true,
-        // Play Store closed-testing opt-in URL (testers must be on the tester list).
-        beta:  { url: 'https://play.google.com/apps/testing/com.reelvault.android' },
+        beta: {
+          method: 'email',                      // closed testing — testers added by email first
+          email:  'brian.beholden@gmail.com',
+          // url: 'https://play.google.com/apps/testing/com.reelvault.android',  // opt-in link
+        },
         store: { url: 'https://play.google.com/store/apps/details?id=com.reelvault.android' },
       },
     };
 
-    // Resolve the active channel + url for a platform ('ios' | 'android').
-    function distFor(platform) {
-      const d = MOBILE_DIST[platform];
-      return { channel: d.channel, url: d[d.channel].url, betaUrl: d.beta.url, showBetaWhenStore: d.showBetaWhenStore };
+    // Build a pre-filled "request beta access" mailto: for a platform.
+    function betaMailto(platform) {
+      const b      = MOBILE_DIST[platform].beta;
+      const isIos  = platform === 'ios';
+      const subject = encodeURIComponent(txt(isIos ? 'iosMailSubject' : 'androidMailSubject'));
+      const body    = encodeURIComponent(txt(isIos ? 'iosMailBody'    : 'androidMailBody'));
+      return `mailto:${b.email}?subject=${subject}&body=${body}`;
+    }
+
+    // The beta href for a platform: a mailto request, or a direct join link.
+    function betaHref(platform) {
+      const b = MOBILE_DIST[platform].beta;
+      return (b.method || 'link') === 'email' ? betaMailto(platform) : b.url;
+    }
+
+    // Resolve everything the UI needs for a platform's mobile CTA.
+    function mobileCTA(platform) {
+      const d     = MOBILE_DIST[platform];
+      const isIos = platform === 'ios';
+      const r     = { channel: d.channel };
+
+      if (d.channel === 'store') {
+        r.href      = d.store.url;
+        r.btnLabel  = txt(isIos ? 'appStoreBtn'  : 'playStoreBtn');
+        r.linkLabel = txt(isIos ? 'appStoreLink' : 'playStoreLink');
+        r.note      = '';
+        if (d.showBetaWhenStore) {            // keep beta reachable after store launch
+          r.secondaryHref  = betaHref(platform);
+          r.secondaryLabel = betaLinkLabel(platform);
+        }
+      } else if ((d.beta.method || 'link') === 'email') {
+        r.href      = betaMailto(platform);
+        r.btnLabel  = txt(isIos ? 'iosRequestBtn'  : 'androidRequestBtn');
+        r.linkLabel = txt(isIos ? 'iosRequestLink' : 'androidRequestLink');
+        r.note      = txt(isIos ? 'iosEmailWhy'    : 'androidEmailWhy');
+      } else {
+        r.href      = d.beta.url;
+        r.btnLabel  = txt(isIos ? 'iosBetaBtn'  : 'androidBetaBtn');
+        r.linkLabel = txt(isIos ? 'iosBetaLink' : 'androidBetaLink');
+        r.note      = txt('betaWhy');
+      }
+      return r;
+    }
+
+    // Label for a "join the beta" secondary link (request-access vs direct join).
+    function betaLinkLabel(platform) {
+      const b     = MOBILE_DIST[platform].beta;
+      const isIos = platform === 'ios';
+      return (b.method || 'link') === 'email'
+        ? txt(isIos ? 'iosRequestLink' : 'androidRequestLink')
+        : txt(isIos ? 'iosBetaLink'    : 'androidBetaLink');
+    }
+
+    // mailto: links shouldn't open a blank tab — only force _blank for http(s).
+    function targetAttr(href) {
+      return href.indexOf('mailto:') === 0 ? '' : ' target="_blank"';
     }
 
     const OS_META = {
@@ -616,6 +684,16 @@
         androidBetaLink: "Join the Play Store beta →",
         betaWhy: "Not on the App Store or Google Play yet — this is the free public beta. Public releases are coming soon.",
         joinBetaLink: "Or join the beta →",
+        iosRequestBtn: "Request TestFlight access",
+        androidRequestBtn: "Request beta access",
+        iosRequestLink: "Request TestFlight access →",
+        androidRequestLink: "Request beta access →",
+        iosEmailWhy: "ReelVault for iOS is in a private TestFlight beta. Tap above to email me the Apple ID you use for the App Store, and I'll send you a TestFlight invite.",
+        androidEmailWhy: "ReelVault for Android is in closed testing on Google Play. Tap above to email me the Google account on your device, and I'll add you to the testers list.",
+        iosMailSubject: "ReelVault iOS — TestFlight access request",
+        iosMailBody: "Hi! I'd like to test ReelVault on iOS.\n\nMy Apple ID email (the one I use for the App Store):\n\nThanks!",
+        androidMailSubject: "ReelVault Android — beta access request",
+        androidMailBody: "Hi! I'd like to test ReelVault on Android.\n\nMy Google account email (the one signed in on my device):\n\nThanks!",
         needServer: "Need to set up the server?",
         getDesktop: "Get the desktop app →",
         iosCardTitle: "Also install the iOS app",
@@ -1677,27 +1755,26 @@
     }
 
     // ── Mobile call-to-action buttons (iOS / Android hero screens) ──────────────
-    // Driven entirely by MOBILE_DIST so switching from beta → store is config-only.
+    // Driven entirely by MOBILE_DIST via mobileCTA() so the whole flow (request
+    // access → join link → store) is config-only.
     function renderMobileCTAs() {
-      [['ios', 'ios-cta', 'ios-secondary', 'iosBetaBtn', 'appStoreBtn', 'iosBetaLink'],
-       ['android', 'android-cta', 'android-secondary', 'androidBetaBtn', 'playStoreBtn', 'androidBetaLink']
-      ].forEach(([platform, ctaId, secId, betaKey, storeKey, betaLinkKey]) => {
-        const d   = distFor(platform);
-        const cta = document.getElementById(ctaId);
-        const sec = document.getElementById(secId);
+      ['ios', 'android'].forEach(platform => {
+        const c   = mobileCTA(platform);
+        const cta = document.getElementById(platform + '-cta');
+        const sec = document.getElementById(platform + '-secondary');
         if (cta) {
-          cta.href        = d.url;
-          cta.textContent = d.channel === 'beta' ? txt(betaKey) : txt(storeKey);
+          cta.href        = c.href;
+          cta.textContent = c.btnLabel;
+          if (c.href.indexOf('mailto:') === 0) cta.removeAttribute('target');
+          else cta.setAttribute('target', '_blank');
         }
         if (sec) {
-          if (d.channel === 'beta') {
-            // Beta is primary → explain why there's no store link yet.
-            sec.textContent = txt('betaWhy');
-          } else if (d.showBetaWhenStore && d.betaUrl) {
-            // Store is primary → still offer the beta as a secondary option.
-            sec.innerHTML = `<a href="${d.betaUrl}" target="_blank">${txt('joinBetaLink')}</a>`;
+          if (c.channel === 'store' && c.secondaryHref) {
+            // Store is primary → still offer the beta as a secondary link.
+            sec.innerHTML = `<a href="${c.secondaryHref}"${targetAttr(c.secondaryHref)}>${c.secondaryLabel}</a>`;
           } else {
-            sec.textContent = '';
+            // Beta is primary → explain how to get access.
+            sec.textContent = c.note || '';
           }
         }
       });
@@ -1829,10 +1906,10 @@
             </a>
             <div class="download-meta">${asset.name}${mb}</div>`;
         } else {
-          const ad = distFor('android');
+          const ad = mobileCTA('android');
           html += `
-            <a class="download-btn" href="${ad.url}" target="_blank">
-              🤖 ${ad.channel === 'beta' ? t.androidBetaBtn : t.playStoreBtn}
+            <a class="download-btn" href="${ad.href}"${targetAttr(ad.href)}>
+              🤖 ${ad.btnLabel}
             </a>
             <div class="download-meta">${t.androidReq}</div>`;
         }
@@ -1866,8 +1943,8 @@
         const setupBody = t.setupNoteBody
           .replace('{cmd}',     '<code>sudo install-service.sh</code>')
           .replace('{logPath}', `<code>${logPath}</code>`);
-        const iosD = distFor('ios');
-        const andD = distFor('android');
+        const iosD = mobileCTA('ios');
+        const andD = mobileCTA('android');
         html += `
           <div class="ios-card">
             <div class="ios-card-icon">📱</div>
@@ -1875,8 +1952,8 @@
               <strong>${t.iosCardTitle}</strong><br>
               ${t.iosCardDesc}
               <br>
-              <a class="ios-store-link" href="${iosD.url}" target="_blank">
-                ${iosD.channel === 'beta' ? t.iosBetaLink : t.appStoreLink}
+              <a class="ios-store-link" href="${iosD.href}"${targetAttr(iosD.href)}>
+                ${iosD.linkLabel}
               </a>
             </div>
           </div>
@@ -1886,8 +1963,8 @@
               <strong>${t.androidCardTitle}</strong><br>
               ${t.androidCardDesc}
               <br>
-              <a class="ios-store-link" href="${andD.url}" target="_blank">
-                ${andD.channel === 'beta' ? t.androidBetaLink : t.playStoreLink}
+              <a class="ios-store-link" href="${andD.href}"${targetAttr(andD.href)}>
+                ${andD.linkLabel}
               </a>
             </div>
           </div>
