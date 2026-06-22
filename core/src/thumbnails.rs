@@ -477,10 +477,14 @@ pub(crate) fn probe_color_info(video_path: &Path) -> ColorInfo {
 /// True `tonemap` is used for ProRes RAW since its decoder emits linear
 /// scene-referred floats that the filter can consume directly.
 fn build_thumbnail_vf(ci: &ColorInfo, scale_filter: &str) -> String {
-    match tonemap_prefix(ci) {
+    let vf = match tonemap_prefix(ci) {
         Some(prefix) => format!("{},{}", prefix, scale_filter),
         None => scale_filter.to_string(),
-    }
+    };
+    // ffmpeg 8.x MJPEG encoder rejects limited-range YUV with
+    // "ff_frame_thread_encoder_init failed". JPEG is inherently full-range, so
+    // expand any limited-range signal to yuvj420p before the encoder.
+    format!("{},format=yuvj420p", vf)
 }
 
 /// The shared ffmpeg frame-extraction leaf behind every thumbnail call site
@@ -820,7 +824,7 @@ mod color_tests {
     fn sdr_rec709_passes_through_unchanged() {
         let info = ci("h264", "yuv420p", "bt709", "bt709", "bt709");
         let vf = build_thumbnail_vf(&info, "scale=400:-1");
-        assert_eq!(vf, "scale=400:-1");
+        assert_eq!(vf, "scale=400:-1,format=yuvj420p");
     }
 
     #[test]
@@ -829,7 +833,7 @@ mod color_tests {
         // smpte170m/bt709 tags — they must NOT be tone-mapped.
         let info = ci("prores", "yuv422p10le", "smpte170m", "bt709", "smpte170m");
         let vf = build_thumbnail_vf(&info, "scale=400:-1");
-        assert_eq!(vf, "scale=400:-1");
+        assert_eq!(vf, "scale=400:-1,format=yuvj420p");
     }
 
     #[test]
@@ -837,7 +841,8 @@ mod color_tests {
         let info = ci("prores_raw", "gbrpf32le", "", "", "");
         let vf = build_thumbnail_vf(&info, "scale=400:-1");
         assert!(vf.starts_with("format=gbrpf32le,tonemap="));
-        assert!(vf.ends_with("scale=400:-1"));
+        assert!(vf.contains("scale=400:-1"));
+        assert!(vf.ends_with(",format=yuvj420p"));
     }
 
     #[test]
@@ -845,7 +850,8 @@ mod color_tests {
         let info = ci("hevc", "yuv420p10le", "bt2020nc", "smpte2084", "bt2020");
         let vf = build_thumbnail_vf(&info, "scale=400:-1");
         assert!(vf.contains("colorspace=all=bt709:iall=bt2020"));
-        assert!(vf.ends_with("scale=400:-1"));
+        assert!(vf.contains("scale=400:-1"));
+        assert!(vf.ends_with(",format=yuvj420p"));
     }
 
     #[test]
@@ -853,5 +859,6 @@ mod color_tests {
         let info = ci("hevc", "yuv420p10le", "bt2020nc", "bt2020-10", "bt2020");
         let vf = build_thumbnail_vf(&info, "scale=400:-1");
         assert!(vf.contains("itrc=bt2020-10"));
+        assert!(vf.ends_with(",format=yuvj420p"));
     }
 }
