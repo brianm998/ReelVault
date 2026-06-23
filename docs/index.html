@@ -604,15 +604,14 @@
     //   • Public store builds live? flip channel to 'store' and fill store.url.
     const MOBILE_DIST = {
       ios: {
-        channel: 'beta',
-        showBetaWhenStore: true,
+        channel: 'store',                       // live on the App Store
+        showBetaWhenStore: true,                // keep the TestFlight beta as a 2nd option
         beta: {
           method: 'email',                      // invite-only internal TestFlight
           email:  'brian.beholden@gmail.com',
           // url: 'https://testflight.apple.com/join/XXXXXXXX',  // once a public link exists
         },
-        // TODO: replace with the real App Store id once published.
-        store: { url: 'https://apps.apple.com/app/reelvault/id0000000000' },
+        store: { url: 'https://apps.apple.com/app/id6781445679' },
       },
       android: {
         channel: 'beta',

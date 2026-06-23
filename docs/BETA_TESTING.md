@@ -75,7 +75,7 @@ available everywhere without depending on any single machine being online.
 | **Native desktop app** | macOS 15+ (Apple Silicon & Intel) | GitHub release — `.pkg` |
 | **Cross-platform desktop app** | Windows 10/11, Linux (x64 & arm64), macOS (Apple Silicon) | GitHub release — `.exe` / `.deb` / `.pkg` |
 | **ReelVault Server** (core daemon) | macOS, Linux (x64 & arm64), Windows | GitHub release — "Server" installers |
-| **iOS app** | iPhone & iPad, **iOS 18+** | TestFlight |
+| **iOS app** | iPhone & iPad, **iOS 18+** | App Store (TestFlight for early builds) |
 | **Android app** | Android **8.0+** (phone & tablet) | Google Play testing |
 
 All four clients share the same look and workflows where the platform allows:
@@ -107,7 +107,12 @@ You'll see two kinds of installer per platform:
 
 ---
 
-## iOS app (TestFlight)
+## iOS app (App Store + TestFlight)
+
+> **ReelVault for iOS is now on the App Store:**
+> <https://apps.apple.com/app/id6781445679>
+> Most people should just install it from there. The TestFlight steps below are
+> only for testers who want early access to in-development builds.
 
 **Requirements:** iPhone or iPad on **iOS 18 or later**.
 
