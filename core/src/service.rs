@@ -3043,6 +3043,23 @@ impl ReelVaultTrait for ReelVaultService {
             *g = opened;
         }
 
+        // Watch settings are per-catalog, and the desktop clients start the
+        // daemon with `--no-catalog` — so the settings we booted with are the
+        // all-defaults set (watching on, 30 s poll), not this catalog's. Adopt
+        // the real ones before (re)starting the watcher, or a user who turned
+        // watching off gets it silently switched back on at every launch.
+        match crate::config::Config::load_watch_settings(self.db.as_ref()) {
+            Ok((enabled, settle, poll)) => {
+                let mut guard = self.watch_settings.write().await;
+                guard.enabled = enabled;
+                guard.write_settle_ms = settle;
+                guard.poll_interval_ms = poll;
+            }
+            Err(e) => {
+                tracing::warn!("Could not read watch settings from catalog: {}", e);
+            }
+        }
+
         // A different catalog means a different set of library locations.
         // Restart the watcher so it observes those instead of the old set.
         let handle = self.clone_for_watcher();

@@ -1325,20 +1325,31 @@ impl Database {
         .unwrap_or(0)
     }
 
-    /// Snapshot of every video's `path → stored file size`. Used by the
-    /// watcher's poll fallback so each cycle costs one query instead of a
-    /// per-file lookup across the whole library walk. `None` = the row has
-    /// no recorded size.
-    pub fn list_video_path_sizes(
+    /// Snapshot of every known filesystem path → `(stored file size, is_online)`.
+    /// Used by the watcher's poll fallback so each cycle costs one query instead
+    /// of a per-file lookup across the whole library walk. A `None` size means
+    /// the row has no recorded size.
+    ///
+    /// Sourced from `video_locations`, *not* `videos`: one logical video can live
+    /// at several paths (copies detected by filename+size), and only one of them
+    /// is mirrored into `videos.path`. Snapshotting `videos` alone made every
+    /// secondary location look like a brand-new file on every poll cycle, so the
+    /// watcher re-indexed — and re-post-indexed — them forever. `video_locations`
+    /// holds a row for every path including the canonical one, so it is a strict
+    /// superset.
+    pub fn list_location_path_sizes(
         &self,
-    ) -> Result<std::collections::HashMap<String, Option<i64>>> {
+    ) -> Result<std::collections::HashMap<String, (Option<i64>, bool)>> {
         let conn = self.get_connection()?;
         let mut stmt = conn
-            .prepare("SELECT path, file_size_bytes FROM videos")
+            .prepare("SELECT path, file_size_bytes, is_online FROM video_locations")
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let map = stmt
             .query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, Option<i64>>(1)?))
+                Ok((
+                    row.get::<_, String>(0)?,
+                    (row.get::<_, Option<i64>>(1)?, row.get::<_, i64>(2)? != 0),
+                ))
             })
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<std::collections::HashMap<_, _>, _>>()
@@ -4748,6 +4759,55 @@ mod tests {
             after.file_size_bytes,
             Some(2048),
             "re-index must converge videos.file_size_bytes to the on-disk size"
+        );
+    }
+
+    /// Second regression guard for the same loop, from the other direction:
+    /// the poll-fallback's snapshot must cover *every* path on disk, not just
+    /// the canonical `videos.path`. A copy of a video in a second watched
+    /// directory only gets a `video_locations` row, so a `videos`-based
+    /// snapshot never contained it — the poll treated it as new every cycle
+    /// and re-indexed (and re-post-indexed) it forever.
+    #[test]
+    fn location_path_sizes_snapshot_covers_secondary_copies() {
+        let tmp = tempfile::tempdir().expect("tmpdir");
+        let db = Database::new_empty();
+        db.set_path(&tmp.path().join("catalog.db"))
+            .expect("init schema");
+
+        let id = db
+            .add_video("/lib/clip.mov", "clip.mov", None, None, Some(1000))
+            .expect("add_video");
+        db.add_video_location(&id, "/lib/clip.mov", "clip.mov", Some(1000))
+            .expect("canonical location");
+        // Same content copied into another watched root: a second location on
+        // the *same* video, so `videos.path` still points at /lib/clip.mov.
+        db.add_video_location(&id, "/scratch/clip.mov", "clip.mov", Some(1000))
+            .expect("copy location");
+
+        let snapshot = db.list_location_path_sizes().expect("snapshot");
+        assert_eq!(
+            snapshot.get("/lib/clip.mov"),
+            Some(&(Some(1000), true)),
+            "canonical path must be in the poll snapshot"
+        );
+        assert_eq!(
+            snapshot.get("/scratch/clip.mov"),
+            Some(&(Some(1000), true)),
+            "a secondary copy must be in the poll snapshot too, or the watcher \
+             re-indexes it on every poll cycle forever"
+        );
+
+        // Losing a copy marks that location offline; the poll uses the flag to
+        // re-queue the file if it comes back at the same size.
+        db.mark_location_offline("/scratch/clip.mov")
+            .expect("mark offline");
+        let snapshot = db.list_location_path_sizes().expect("snapshot");
+        assert_eq!(snapshot.get("/scratch/clip.mov"), Some(&(Some(1000), false)));
+        assert_eq!(
+            snapshot.get("/lib/clip.mov"),
+            Some(&(Some(1000), true)),
+            "the surviving location stays online"
         );
     }
 

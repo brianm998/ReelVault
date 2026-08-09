@@ -570,7 +570,13 @@ fn poll_paths(
     // thousands of queries every cycle, racing the interactive RPCs. On a
     // failed snapshot, skip the cycle (the next one retries) rather than
     // treating every file on disk as new and mass-queueing rescans.
-    let known_sizes = match db.list_video_path_sizes() {
+    //
+    // Keyed by *location* path, not `videos.path`: a video with copies in more
+    // than one watched directory has one row per copy in `video_locations` but
+    // only one of them in `videos`. Snapshotting `videos` left every secondary
+    // copy permanently absent from the map, so it looked new on every cycle and
+    // was re-indexed (and re-post-indexed) forever.
+    let known_sizes = match db.list_location_path_sizes() {
         Ok(m) => m,
         Err(e) => {
             tracing::warn!("Poll fallback: could not snapshot catalog sizes: {}", e);
@@ -599,12 +605,16 @@ fn poll_paths(
                 None => continue,
             };
 
-            // Only enqueue if either we haven't seen this file (new on
-            // disk → not in catalog) OR its size differs from the catalog's
-            // record (file was overwritten / appended off-FSEvents path).
+            // Only enqueue if we haven't seen this file (new on disk → not in
+            // catalog), its size differs from the catalog's record (file was
+            // overwritten / appended off-FSEvents path), or the location is
+            // recorded offline and the file is back (re-indexing flips
+            // `is_online` to 1, so this can't re-trigger once it succeeds).
             let interesting = match known_sizes.get(p.to_str().unwrap_or("")) {
                 None => true, // new file
-                Some(stored) => stored.unwrap_or(-1) as u64 != size_now,
+                Some((stored, online)) => {
+                    !online || stored.unwrap_or(-1) as u64 != size_now
+                }
             };
             if !interesting {
                 continue;

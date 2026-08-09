@@ -134,17 +134,8 @@ impl Config {
             .unwrap_or(720)
             .max(144);
 
-        let watch_enabled = Self::get_config_value(&conn, "watch_enabled", "true")?
-            .parse::<bool>()
-            .unwrap_or(true);
-        let watch_write_settle_ms = Self::get_config_value(&conn, "watch_write_settle_ms", "5000")?
-            .parse::<i64>()
-            .unwrap_or(5000)
-            .max(0);
-        let watch_poll_interval_ms = Self::get_config_value(&conn, "watch_poll_interval_ms", "30000")?
-            .parse::<i64>()
-            .unwrap_or(30000)
-            .max(0);
+        let (watch_enabled, watch_write_settle_ms, watch_poll_interval_ms) =
+            Self::read_watch_settings(&conn)?;
 
         let auto_tag_timelapses = Self::get_config_value(&conn, "auto_tag_timelapses", "true")?
             .parse::<bool>()
@@ -195,6 +186,36 @@ impl Config {
         )?;
 
         Ok(())
+    }
+
+    /// The three watcher knobs — `(enabled, write_settle_ms, poll_interval_ms)`
+    /// — read from an open catalog's `config` table.
+    ///
+    /// Split out of [`Config::load`] because the desktop clients start the
+    /// daemon with `--no-catalog`: `load` then returns all-defaults (watching
+    /// *on*, 30 s poll), and the catalog's real values only become readable
+    /// once the client's `OpenCatalog` lands. `open_catalog` re-reads them
+    /// through here so a user who turned watching off doesn't silently get it
+    /// back on every launch. Both paths must apply the same defaults and
+    /// clamps, hence the one shared function.
+    pub fn load_watch_settings(db: &Database) -> Result<(bool, i64, i64)> {
+        let conn = db.get_connection()?;
+        Self::read_watch_settings(&conn)
+    }
+
+    fn read_watch_settings(conn: &rusqlite::Connection) -> Result<(bool, i64, i64)> {
+        let enabled = Self::get_config_value(conn, "watch_enabled", "true")?
+            .parse::<bool>()
+            .unwrap_or(true);
+        let write_settle_ms = Self::get_config_value(conn, "watch_write_settle_ms", "5000")?
+            .parse::<i64>()
+            .unwrap_or(5000)
+            .max(0);
+        let poll_interval_ms = Self::get_config_value(conn, "watch_poll_interval_ms", "30000")?
+            .parse::<i64>()
+            .unwrap_or(30000)
+            .max(0);
+        Ok((enabled, write_settle_ms, poll_interval_ms))
     }
 
     fn get_config_value(conn: &rusqlite::Connection, key: &str, default: &str) -> Result<String> {
