@@ -50,7 +50,7 @@ use crate::grouping::{self, AutoGroupOptions};
 use crate::proxies::{self, PROXY_SIMILARITY_THRESHOLD};
 use crate::watcher::CatalogChange;
 use rusqlite::OptionalExtension;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::mpsc::{self, SyncSender};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -587,6 +587,10 @@ pub fn spawn_with_workers(
     let (tx, rx) = mpsc::sync_channel::<String>(CHANNEL_CAPACITY);
     let rx = Arc::new(Mutex::new(rx));
     let decision_mutex: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
+    // One bounded decoded-thumbnail cache shared by the whole pool. Workers
+    // sweep a directory together, so the same master's JPEGs would otherwise
+    // be decoded once per worker per proxy that references it.
+    let thumb_cache = Arc::new(proxies::ThumbCache::new(thumbnail_cache));
 
     // Register with the process-wide reporter only when a bus was supplied.
     // Overlapping passes coalesce into one session there; the CLI/tests pass
@@ -602,7 +606,7 @@ pub fn spawn_with_workers(
     for worker_idx in 0..num_workers {
         let rx = Arc::clone(&rx);
         let db = Arc::clone(&db);
-        let cache = thumbnail_cache.clone();
+        let cache = Arc::clone(&thumb_cache);
         let dec = Arc::clone(&decision_mutex);
         let tok = token.clone();
         workers.push(
@@ -624,7 +628,7 @@ pub fn spawn_with_workers(
 fn worker_loop(
     rx: Arc<Mutex<mpsc::Receiver<String>>>,
     db: Arc<Database>,
-    thumbnail_cache: PathBuf,
+    thumb_cache: Arc<proxies::ThumbCache>,
     decision_mutex: Arc<Mutex<()>>,
     options: Options,
     token: PassToken,
@@ -646,7 +650,7 @@ fn worker_loop(
 
         if let Err(e) = process_one(
             &db,
-            &thumbnail_cache,
+            &thumb_cache,
             &decision_mutex,
             &options,
             &video_id,
@@ -662,7 +666,7 @@ fn worker_loop(
 
 fn process_one(
     db: &Database,
-    thumbnail_cache: &Path,
+    thumb_cache: &proxies::ThumbCache,
     decision_mutex: &Mutex<()>,
     options: &Options,
     video_id: &str,
@@ -677,7 +681,7 @@ fn process_one(
     }
     if options.detect_proxies {
         token.set_phase(PHASE_PROXIES);
-        detect_proxy_for(db, thumbnail_cache, decision_mutex, video_id, token)?;
+        detect_proxy_for(db, thumb_cache, decision_mutex, video_id, token)?;
     }
     if options.sensor_fetch {
         token.set_phase(PHASE_SENSORS);
@@ -939,7 +943,7 @@ fn join_or_create_group(
 
 fn detect_proxy_for(
     db: &Database,
-    thumbnail_cache: &Path,
+    thumb_cache: &proxies::ThumbCache,
     decision_mutex: &Mutex<()>,
     video_id: &str,
     token: &PassToken,
@@ -965,35 +969,54 @@ fn detect_proxy_for(
         return Ok(());
     }
 
-    // Load the new video's thumbnails once — the expensive part of
-    // every comparison. Done outside the decision lock so multiple
-    // workers can decode JPEGs in parallel.
-    let cand_imgs = proxies::thumb_images_for(thumbnail_cache, &cand.id);
-
     // Examine every bucket-mate as a potential opposite end of a
     // proxy link. The new video might be a proxy of `other` (other
     // has more pixels / heavier file) or `other` might be a proxy of
     // the new video. With many-to-many semantics we don't pick "the
     // anchor"; we just attempt to link wherever the gates + threshold
     // agree.
+    //
+    // Order matters enormously here. Decoding one video's thumbnails is
+    // up to eleven JPEG opens (~90 ms against a large cache directory) —
+    // several thousand times the cost of the metadata gates, which are
+    // pure arithmetic and byte comparisons on rows we already hold. So
+    // every gate runs first and only survivors touch the disk. A flat
+    // directory of same-fps clips (this library has one with 1030) means
+    // the bucket is the whole directory, and `name_part` equality alone
+    // rejects better than 99% of it.
+    let mut cand_imgs = None;
+
     for other in &bucket {
         // Determine direction. Skip if neither qualifies as master.
-        let (master, proxy_cand, master_imgs, proxy_imgs) =
-            if proxies::is_master_of(other, &cand) {
-                let m_imgs = proxies::thumb_images_for(thumbnail_cache, &other.id);
-                (other.clone(), cand.clone(), m_imgs, cand_imgs.clone())
-            } else if proxies::is_master_of(&cand, other) {
-                let p_imgs = proxies::thumb_images_for(thumbnail_cache, &other.id);
-                (cand.clone(), other.clone(), cand_imgs.clone(), p_imgs)
-            } else {
-                continue;
-            };
+        let cand_is_master = if proxies::is_master_of(other, &cand) {
+            false
+        } else if proxies::is_master_of(&cand, other) {
+            true
+        } else {
+            continue;
+        };
+        let (master, proxy_cand) = if cand_is_master {
+            (&cand, other)
+        } else {
+            (other, &cand)
+        };
 
-        if !proxies::proxy_pair_gates_pass(&master, &proxy_cand) {
+        if !proxies::proxy_pair_gates_pass(master, proxy_cand) {
             continue;
         }
 
-        let confidence = proxies::compare_thumb_sets(&master_imgs, &proxy_imgs);
+        // Gates passed — now it's worth paying for pixels. Both sides come
+        // from the shared bounded cache, so a master compared against
+        // several of its proxies is decoded once, not once per pair.
+        let cand_imgs = cand_imgs.get_or_insert_with(|| thumb_cache.get(&cand.id));
+        let other_imgs = thumb_cache.get(&other.id);
+        let (master_imgs, proxy_imgs) = if cand_is_master {
+            (&*cand_imgs, &other_imgs)
+        } else {
+            (&other_imgs, &*cand_imgs)
+        };
+
+        let confidence = proxies::compare_thumb_sets(master_imgs, proxy_imgs);
         tracing::debug!(
             master = %master.filename,
             proxy = %proxy_cand.filename,
