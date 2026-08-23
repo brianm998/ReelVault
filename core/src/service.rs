@@ -1994,10 +1994,13 @@ impl ReelVaultTrait for ReelVaultService {
                 Ok(s) => {
                     // Always log so operators can tell "nothing new to detect"
                     // from "detection didn't run at all". The pairs_compared
-                    // count is especially useful for debugging false-negatives.
+                    // count is especially useful for debugging false-negatives,
+                    // and thumbnails_loaded is the pass's cost driver — it
+                    // should track pairs_compared, not the catalog size.
                     tracing::info!(
                         pairs_compared = s.pairs_compared,
                         proxies_marked = s.proxies_marked,
+                        thumbnails_loaded = s.thumbnails_loaded,
                         "Proxy detection complete",
                     );
                     if s.proxies_marked > 0 {

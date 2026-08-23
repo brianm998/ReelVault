@@ -36,6 +36,16 @@
 //!    dimensions match exactly, which is the codec-proxy signature
 //!    (UHQ vs MQ at the same crop and resolution) and gets through.
 //!
+//!    Gate order is load-bearing for performance, not just correctness.
+//!    The gates above are arithmetic and byte comparisons on rows already
+//!    in memory; a thumbnail comparison first has to decode up to eleven
+//!    JPEGs per side (~90 ms against a large cache directory). Buckets are
+//!    whole directories, and this library has a flat one with 1030
+//!    same-fps clips, so gating first is the difference between ~5,800
+//!    comparisons and ~1.6 million wasted decodes. Every path here —
+//!    batch and incremental — must reject on metadata before it touches
+//!    the thumbnail cache.
+//!
 //!    A separate relaxation handles **editor-generated proxies** (Adobe
 //!    Premiere, DaVinci Resolve) that land in a dedicated `Proxies/`
 //!    subfolder and are re-rated to a different fps — either of which
@@ -61,7 +71,10 @@
 use crate::db::{Database, ProxyDetectCandidate};
 use crate::error::Result;
 use crate::imagehash;
+use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 
 /// Threshold below which we refuse to call two videos "the same shot".
 ///
@@ -87,6 +100,12 @@ const MIN_SCRUB_FRAMES_FOR_AVG: usize = 5;
 pub struct DetectSummary {
     pub pairs_compared: usize,
     pub proxies_marked: usize,
+    /// Thumbnail sets actually decoded off disk. This is the pass's real
+    /// cost driver — one load is up to eleven JPEG opens — so it belongs in
+    /// the completion log next to `pairs_compared`. It should stay in the
+    /// same ballpark as `pairs_compared`; a number orders of magnitude
+    /// larger means something is decoding before the metadata gates again.
+    pub thumbnails_loaded: usize,
 }
 
 /// Scan the catalog for proxy relationships and mark them in the DB.
@@ -119,6 +138,17 @@ fn run_detection(
     thumbnail_cache: &Path,
     candidates: Vec<ProxyDetectCandidate>,
 ) -> Result<DetectSummary> {
+    // One bounded thumbnail cache for the whole pass. Both passes below
+    // revisit the same masters repeatedly, and the cache is what keeps that
+    // from meaning a fresh eleven-JPEG decode every time.
+    run_detection_with_cache(db, &ThumbCache::new(thumbnail_cache), candidates)
+}
+
+fn run_detection_with_cache(
+    db: &Database,
+    img_cache: &ThumbCache,
+    candidates: Vec<ProxyDetectCandidate>,
+) -> Result<DetectSummary> {
     if candidates.len() < 2 {
         return Ok(DetectSummary::default());
     }
@@ -134,7 +164,7 @@ fn run_detection(
     // under a strict set of gates that substitute for the relaxed fps
     // requirement — see [`proxies_folder_pair_gates_pass`]. Run before
     // bucketing so it can borrow `candidates` by reference.
-    detect_proxies_folder_pairs(db, thumbnail_cache, &candidates, &mut summary);
+    detect_proxies_folder_pairs(db, img_cache, &candidates, &mut summary);
 
     // Pass 2 — directory/fps- and group-bucketed detection.
     //
@@ -157,7 +187,6 @@ fn run_detection(
     // camera_model and frame_count are intentionally excluded from both
     // bucket keys for the same reasons as before (EXIF stripping, codec
     // container rounding differences).
-    use std::collections::HashMap;
     let mut buckets: HashMap<(String, i64), Vec<ProxyDetectCandidate>> = HashMap::new();
     for c in candidates {
         if c.width == 0 || c.height == 0 {
@@ -213,10 +242,6 @@ fn run_detection(
             "proxy detection: processing bucket",
         );
 
-        // Cache thumbnail loads per video so the inner O(b²) loop
-        // doesn't re-decode the same JPEG for every pairwise pass.
-        let mut img_cache: HashMap<String, ThumbImages> = HashMap::with_capacity(members.len());
-
         // For each (master, candidate) pair where the master is
         // earlier in the sorted bucket and qualifies as a master of
         // the candidate (strictly more pixels OR same-pixels + ≥ 2.5×
@@ -225,29 +250,28 @@ fn run_detection(
         // proxy can attach to multiple visually-equivalent masters
         // (e.g. three slightly-different aurora/topaz/star_v variants
         // that all share the same low-res preview).
+        //
+        // The candidate's own thumbnails are loaded lazily, on the first
+        // pair that survives the metadata gates: in a directory bucket of
+        // any size the overwhelming majority of members never clear
+        // `name_part` equality, and decoding eleven JPEGs for them is
+        // ~90 ms thrown away each time.
         for j in 1..members.len() {
-            let candidate = members[j].clone();
-            // Gather this candidate's thumbnails once.
-            let cand_imgs = img_cache
-                .entry(candidate.id.clone())
-                .or_insert_with(|| thumb_images_for(thumbnail_cache, &candidate.id))
-                .clone();
+            let candidate = &members[j];
+            let mut cand_imgs: Option<Arc<ThumbImages>> = None;
 
             for master in members.iter().take(j) {
-                let master = master.clone();
-                if !is_master_of(&master, &candidate) {
+                if !is_master_of(master, candidate) {
                     continue;
                 }
-                if !proxy_pair_gates_pass(&master, &candidate) {
+                if !proxy_pair_gates_pass(master, candidate) {
                     continue;
                 }
-                let master_imgs = img_cache
-                    .entry(master.id.clone())
-                    .or_insert_with(|| thumb_images_for(thumbnail_cache, &master.id))
-                    .clone();
+                let cand_imgs = cand_imgs.get_or_insert_with(|| img_cache.get(&candidate.id));
+                let master_imgs = img_cache.get(&master.id);
 
                 summary.pairs_compared += 1;
-                let conf = compare_thumb_sets(&master_imgs, &cand_imgs);
+                let conf = compare_thumb_sets(&master_imgs, cand_imgs);
                 tracing::debug!(
                     master = %master.filename,
                     candidate = %candidate.filename,
@@ -289,6 +313,7 @@ fn run_detection(
         }
     }
 
+    summary.thumbnails_loaded = img_cache.loads();
     Ok(summary)
 }
 
@@ -310,22 +335,16 @@ fn run_detection(
 /// (e.g. an OriRes master plus a same-name codec proxy of it).
 fn detect_proxies_folder_pairs(
     db: &Database,
-    thumbnail_cache: &Path,
+    img_cache: &ThumbCache,
     candidates: &[ProxyDetectCandidate],
     summary: &mut DetectSummary,
 ) {
-    use std::collections::HashMap;
-
     // Index every candidate by its parent directory so each proxy can find
     // the originals one level up in O(1).
     let mut by_dir: HashMap<&str, Vec<&ProxyDetectCandidate>> = HashMap::new();
     for c in candidates {
         by_dir.entry(c.parent_dir.as_str()).or_default().push(c);
     }
-
-    // Cache thumbnail loads so a directory full of proxies sharing one
-    // original doesn't re-decode the original's JPEGs for every pair.
-    let mut img_cache: HashMap<String, ThumbImages> = HashMap::new();
 
     for proxy in candidates {
         // Cheap pre-filter: only no-audio files in a `Proxies`-like folder
@@ -355,14 +374,8 @@ fn detect_proxies_folder_pairs(
                 continue;
             }
 
-            let master_imgs = img_cache
-                .entry(original.id.clone())
-                .or_insert_with(|| thumb_images_for(thumbnail_cache, &original.id))
-                .clone();
-            let proxy_imgs = img_cache
-                .entry(proxy.id.clone())
-                .or_insert_with(|| thumb_images_for(thumbnail_cache, &proxy.id))
-                .clone();
+            let master_imgs = img_cache.get(&original.id);
+            let proxy_imgs = img_cache.get(&proxy.id);
 
             summary.pairs_compared += 1;
             let conf = compare_thumb_sets(&master_imgs, &proxy_imgs);
@@ -639,6 +652,145 @@ pub(crate) fn thumb_images_for(thumbnail_cache: &Path, video_id: &str) -> ThumbI
     ThumbImages { medium, scrubs }
 }
 
+/// Approximate resident size of one decoded thumbnail set, used to keep
+/// [`ThumbCache`] inside a byte budget. A typical video contributes a
+/// 400×N medium plus ten 320×N scrubs ≈ 2.4 MB of RGB8.
+fn thumb_images_bytes(t: &ThumbImages) -> usize {
+    use image::GenericImageView;
+    let one = |img: &image::DynamicImage| {
+        let (w, h) = img.dimensions();
+        (w as usize) * (h as usize) * (img.color().bytes_per_pixel() as usize)
+    };
+    t.medium.as_ref().map_or(0, one) + t.scrubs.iter().map(one).sum::<usize>()
+}
+
+/// Byte budget for [`ThumbCache`]. At ~2.4 MB per video this holds ~40
+/// decoded sets — plenty for the locality the detectors actually have
+/// (a handful of same-`name_part` siblings inside one directory), while
+/// staying small enough that a 1000-file directory can't balloon the
+/// daemon's RSS. The pre-cache code kept one unbounded `HashMap` per
+/// bucket, which on this library's 1030-file directory would have held
+/// ~2.4 GB of decoded JPEG.
+const THUMB_CACHE_BUDGET_BYTES: usize = 96 * 1024 * 1024;
+
+/// Bounded, shareable cache of decoded thumbnail sets keyed by video id.
+///
+/// Decoding one video's thumbnails means opening and decoding up to
+/// eleven JPEGs — on a large cache directory that measures ~90 ms, which
+/// dwarfs every other step of proxy detection. Both detection paths
+/// revisit the same videos repeatedly (a master is compared against each
+/// of its proxies; the incremental worker re-examines a directory once
+/// per newly-indexed file), so a cache turns most of those loads into a
+/// pointer copy.
+///
+/// Eviction is FIFO on insertion order rather than true LRU — the access
+/// pattern is a sliding window over one directory, so recency and
+/// insertion order agree closely enough and FIFO costs nothing to
+/// maintain.
+///
+/// Thread-safe and cheap to share: `Arc<ThumbCache>` is handed to every
+/// post-index worker. Decoding happens *outside* the lock, so two workers
+/// racing on the same cold id may both decode it — harmless (the loads
+/// are pure) and much cheaper than serialising every decode.
+///
+/// Entries are never invalidated, so an instance is scoped to one pass (a
+/// scan's worker pool, or one batch detection run). That is safe because
+/// `index_video` finishes writing a video's medium and scrub frames before
+/// it hands the id to the post-index queue — thumbnails don't change under
+/// a running pass. The one exception is a client `GetThumbnail` lazily
+/// generating scrub frames mid-scan for a video that had none, where a
+/// cached set could miss them; the comparison then falls back to the
+/// medium thumbnail, exactly as it would have without the cache had the
+/// read landed a moment earlier.
+pub(crate) struct ThumbCache {
+    cache_dir: PathBuf,
+    budget_bytes: usize,
+    loads: AtomicUsize,
+    inner: Mutex<ThumbCacheInner>,
+}
+
+#[derive(Default)]
+struct ThumbCacheInner {
+    /// video id → (decoded set, its `thumb_images_bytes`).
+    map: HashMap<String, (Arc<ThumbImages>, usize)>,
+    /// Insertion order, for FIFO eviction.
+    order: VecDeque<String>,
+    bytes: usize,
+}
+
+impl ThumbCache {
+    pub(crate) fn new(cache_dir: impl Into<PathBuf>) -> Self {
+        Self::with_budget(cache_dir, THUMB_CACHE_BUDGET_BYTES)
+    }
+
+    pub(crate) fn with_budget(cache_dir: impl Into<PathBuf>, budget_bytes: usize) -> Self {
+        ThumbCache {
+            cache_dir: cache_dir.into(),
+            budget_bytes,
+            loads: AtomicUsize::new(0),
+            inner: Mutex::new(ThumbCacheInner::default()),
+        }
+    }
+
+    /// How many sets this cache has decoded off disk (misses, not calls).
+    pub(crate) fn loads(&self) -> usize {
+        self.loads.load(Ordering::Relaxed)
+    }
+
+    /// Decoded thumbnails for `video_id`, loading them on a miss.
+    ///
+    /// A video with no thumbnails on disk yields an empty set, which is
+    /// cached too — re-statting eleven absent files for every pair is the
+    /// exact cost this type exists to avoid.
+    pub(crate) fn get(&self, video_id: &str) -> Arc<ThumbImages> {
+        {
+            let inner = self.lock();
+            if let Some((hit, _)) = inner.map.get(video_id) {
+                return Arc::clone(hit);
+            }
+        }
+
+        // Decode with the lock released: the loads are pure, so at worst two
+        // workers racing on the same cold id duplicate one decode — far
+        // cheaper than serialising every decode behind the cache.
+        self.loads.fetch_add(1, Ordering::Relaxed);
+        let loaded = Arc::new(thumb_images_for(&self.cache_dir, video_id));
+        let size = thumb_images_bytes(&loaded);
+
+        let mut inner = self.lock();
+        // Another worker may have won the race while we decoded; prefer the
+        // entry that is already published so callers share one allocation.
+        if let Some((hit, _)) = inner.map.get(video_id) {
+            return Arc::clone(hit);
+        }
+        inner
+            .map
+            .insert(video_id.to_string(), (Arc::clone(&loaded), size));
+        inner.order.push_back(video_id.to_string());
+        inner.bytes += size;
+
+        // Evict oldest-first until we are back inside the budget, never the
+        // entry just added (`order.len() > 1`).
+        while inner.bytes > self.budget_bytes && inner.order.len() > 1 {
+            let Some(oldest) = inner.order.pop_front() else {
+                break;
+            };
+            if let Some((_, dropped_size)) = inner.map.remove(&oldest) {
+                inner.bytes = inner.bytes.saturating_sub(dropped_size);
+            }
+        }
+
+        loaded
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, ThumbCacheInner> {
+        // A panic inside a cache operation can't leave the map inconsistent
+        // (every mutation is a complete insert or remove), so recovering from
+        // poisoning is safe and keeps a stray panic from wedging the pool.
+        self.inner.lock().unwrap_or_else(|p| p.into_inner())
+    }
+}
+
 /// Average pixel-MAD similarity across two videos' thumbnail sets.
 /// Returns 0.0 when neither side has any thumbnail to compare.
 ///
@@ -858,6 +1010,139 @@ pub fn create_proxy(
 mod tests {
     use super::*;
     use crate::db::ProxyDetectCandidate;
+
+    /// Write a tiny valid JPEG so `thumb_images_for` finds something to
+    /// decode. Content is irrelevant here — these tests are about how often
+    /// we hit the disk, not what the pixels say.
+    fn write_thumb(dir: &std::path::Path, video_id: &str, suffix: &str) {
+        let img = image::DynamicImage::ImageRgb8(image::ImageBuffer::from_pixel(
+            32,
+            18,
+            image::Rgb([128u8, 128, 128]),
+        ));
+        img.save(dir.join(format!("{}_{}.jpg", video_id, suffix)))
+            .expect("write test thumbnail");
+    }
+
+    // A cache miss decodes; every later hit for the same id must not.
+    #[test]
+    fn thumb_cache_decodes_each_video_once() {
+        let dir = tempfile::tempdir().unwrap();
+        write_thumb(dir.path(), "vid-a", "medium");
+        write_thumb(dir.path(), "vid-b", "medium");
+
+        let cache = ThumbCache::new(dir.path());
+        let first = cache.get("vid-a");
+        let second = cache.get("vid-a");
+        cache.get("vid-b");
+
+        assert_eq!(cache.loads(), 2, "one decode per distinct video");
+        assert!(Arc::ptr_eq(&first, &second), "hits share one allocation");
+        assert!(first.medium.is_some());
+    }
+
+    // A missing video caches its empty result rather than re-statting the
+    // eleven absent files on every pair.
+    #[test]
+    fn thumb_cache_caches_absent_thumbnails() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache = ThumbCache::new(dir.path());
+        assert!(cache.get("nope").medium.is_none());
+        cache.get("nope");
+        assert_eq!(cache.loads(), 1);
+    }
+
+    // The budget bounds resident memory: a bucket far bigger than the cache
+    // must evict rather than hold every decoded set at once. (Before the
+    // cache existed, one unbounded map per bucket meant a 1030-file
+    // directory held ~2.4 GB of decoded JPEG.)
+    #[test]
+    fn thumb_cache_evicts_to_stay_within_budget() {
+        let dir = tempfile::tempdir().unwrap();
+        for i in 0..8 {
+            write_thumb(dir.path(), &format!("vid-{}", i), "medium");
+        }
+        // One 32×18 RGB8 medium is 1728 bytes; a 4 KB budget holds two.
+        let cache = ThumbCache::with_budget(dir.path(), 4096);
+        for i in 0..8 {
+            cache.get(&format!("vid-{}", i));
+        }
+        let inner = cache.lock();
+        assert!(inner.bytes <= 4096, "over budget: {} bytes", inner.bytes);
+        assert!(inner.map.len() <= 2, "held {} sets", inner.map.len());
+        assert_eq!(inner.map.len(), inner.order.len(), "map/order out of sync");
+    }
+
+    // The load-bearing performance invariant: the metadata gates decide
+    // whether a pair is worth comparing, and they must decide it *before*
+    // anyone touches the disk. Decoding a thumbnail set is ~90 ms against a
+    // real cache directory, and a flat directory of same-fps clips puts
+    // every file in one bucket — this library has a 1030-file one, where
+    // loading first meant ~1.6 M decodes and many hours per re-index.
+    #[test]
+    fn detection_loads_no_thumbnails_when_gates_reject_every_pair() {
+        let dir = tempfile::tempdir().unwrap();
+        // Ten distinct lineages at descending resolutions: `is_master_of`
+        // says yes to most orderings, but no two share a `name_part`, so no
+        // pair should ever reach a comparison.
+        let candidates: Vec<_> = (0..10)
+            .map(|i| {
+                let c = mk(
+                    &format!("05_16_2026-a7sii-{}_ProRes-444_OriRes_30_UHQ.mov", i),
+                    4240 - i * 100,
+                    2832 - i * 100,
+                    900,
+                    4000,
+                );
+                write_thumb(dir.path(), &c.id, "medium");
+                c
+            })
+            .collect();
+
+        let cache = ThumbCache::new(dir.path());
+        let summary = run_detection_with_cache(&Database::new_empty(), &cache, candidates).unwrap();
+
+        assert_eq!(summary.pairs_compared, 0);
+        assert_eq!(
+            cache.loads(),
+            0,
+            "gates must reject before any thumbnail is decoded",
+        );
+        assert_eq!(summary.thumbnails_loaded, 0);
+    }
+
+    // The converse: a pair that clears the gates does get compared, and each
+    // side is decoded exactly once even though it appears in several pairs.
+    #[test]
+    fn detection_loads_each_side_once_for_gated_pairs() {
+        let dir = tempfile::tempdir().unwrap();
+        // One lineage, three resolutions — three ordered master/proxy pairs
+        // over three distinct videos.
+        let candidates = vec![
+            mk(
+                "05_16_2026-a7sii-1_ProRes-444_OriRes_30_UHQ.mov",
+                4240, 2832, 900, 4000,
+            ),
+            mk(
+                "05_16_2026-a7sii-1_ProRes-422_1080p_30_HQ.mov",
+                1920, 1080, 900, 400,
+            ),
+            mk(
+                "05_16_2026-a7sii-1_ProRes-422_720p_30_MQ.mov",
+                1280, 720, 900, 80,
+            ),
+        ];
+        for c in &candidates {
+            write_thumb(dir.path(), &c.id, "medium");
+        }
+
+        let cache = ThumbCache::new(dir.path());
+        let summary = run_detection_with_cache(&Database::new_empty(), &cache, candidates).unwrap();
+
+        assert_eq!(summary.pairs_compared, 3, "every ordered pair compared");
+        assert_eq!(cache.loads(), 3, "three videos, three decodes");
+        assert_eq!(summary.thumbnails_loaded, 3);
+    }
 
     fn mk(filename: &str, w: i32, h: i32, fc: i64, size_mb: i64) -> ProxyDetectCandidate {
         ProxyDetectCandidate {
