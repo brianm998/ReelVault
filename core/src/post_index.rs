@@ -42,7 +42,8 @@
 //! end-of-scan batch calls in [`crate::service`] act as a catch-up
 //! pass on the next successful scan — both `auto_group` and
 //! `detect_proxies` are idempotent by construction (they filter on
-//! `group_id IS NULL` / `proxy_of IS NULL`).
+//! `group_id IS NULL` / `proxy_of IS NULL`), which is also what keeps
+//! a re-scan of an unchanged library from re-deciding the whole catalog.
 
 use crate::db::{AutoGroupCandidate, Database};
 use crate::error::Result;
@@ -955,6 +956,18 @@ fn detect_proxy_for(
     if cand.width == 0 || cand.height == 0 {
         return Ok(()); // Metadata not ready; let the next pass try.
     }
+    if cand.already_proxy {
+        // This video is already attached to a master, and a proxy of a proxy
+        // makes no sense — there is nothing left to decide. Re-scans re-probe
+        // and re-submit every file, so without this a settled proxy would
+        // re-run its whole bucket sweep on every scan.
+        tracing::debug!(
+            video_id = %video_id,
+            filename = %cand.filename,
+            "post-index: skipping proxy detection, already linked as a proxy",
+        );
+        return Ok(());
+    }
 
     // Bucket-mates use group_id when set, else (parent_dir, fps_rounded).
     let bucket = if let Some(gid) = &cand.group_id {
@@ -985,6 +998,13 @@ fn detect_proxy_for(
     // the bucket is the whole directory, and `name_part` equality alone
     // rejects better than 99% of it.
     let mut cand_imgs = None;
+    // Masters that a re-scan re-submits still have their existing proxies in
+    // the bucket, and those pairs clear every gate — they *are* proxy pairs.
+    // Comparing them again would re-decode both sides to re-assert a link the
+    // catalog already holds, so skip any pair already in `proxy_links`.
+    // Loaded lazily (two index probes) so videos whose bucket-mates all fail
+    // the gates never pay for it.
+    let mut linked: Option<std::collections::HashSet<String>> = None;
 
     for other in &bucket {
         // Determine direction. Skip if neither qualifies as master.
@@ -1002,6 +1022,20 @@ fn detect_proxy_for(
         };
 
         if !proxies::proxy_pair_gates_pass(master, proxy_cand) {
+            continue;
+        }
+
+        // Gates passed, so this pair looks real — but if we already recorded
+        // it, re-deriving the same confidence buys nothing.
+        if linked.is_none() {
+            linked = Some(db.proxy_link_partners(&cand.id)?);
+        }
+        if linked.as_ref().is_some_and(|l| l.contains(&other.id)) {
+            tracing::debug!(
+                master = %master.filename,
+                proxy = %proxy_cand.filename,
+                "post-index: proxy pair already linked, skipping comparison",
+            );
             continue;
         }
 

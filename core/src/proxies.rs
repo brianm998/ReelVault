@@ -36,6 +36,16 @@
 //!    dimensions match exactly, which is the codec-proxy signature
 //!    (UHQ vs MQ at the same crop and resolution) and gets through.
 //!
+//!    Videos that are *already* attached to another video as a proxy
+//!    (`videos.proxy_of` set) are dropped from the batch pass before any
+//!    of this runs — a settled proxy is a decided question, and re-asking
+//!    it is what made re-scanning an unchanged library cost as much as
+//!    scanning it the first time. New arrivals still get the full
+//!    treatment, so "a few files were added" costs a few files' worth of
+//!    work. The many-to-many case this gives up in the batch pass — an
+//!    existing proxy gaining an *additional* master — is handled by
+//!    [`crate::post_index`] when that master is indexed.
+//!
 //!    Gate order is load-bearing for performance, not just correctness.
 //!    The gates above are arithmetic and byte comparisons on rows already
 //!    in memory; a thumbnail comparison first has to decode up to eleven
@@ -106,14 +116,20 @@ pub struct DetectSummary {
     /// same ballpark as `pairs_compared`; a number orders of magnitude
     /// larger means something is decoding before the metadata gates again.
     pub thumbnails_loaded: usize,
+    /// Candidates dropped up front because they're already attached to some
+    /// other video as a proxy. On a re-scan of an unchanged library this is
+    /// where nearly all of the old cost went — every settled proxy got its
+    /// thumbnails decoded again to re-confirm a link the catalog already
+    /// held.
+    pub already_linked_skipped: usize,
 }
 
 /// Scan the catalog for proxy relationships and mark them in the DB.
 ///
-/// Runs once after a scan completes. Idempotent: re-running on an
-/// already-tagged catalog yields a [`DetectSummary`] of zero
-/// `proxies_marked` because the candidates query excludes rows whose
-/// `proxy_of` is already set.
+/// Runs once after a scan completes. Idempotent *and cheap* on an
+/// already-tagged catalog: rows whose `proxy_of` is already set are dropped
+/// before bucketing, so a re-scan compares only videos whose proxy status is
+/// still open (see the module docs for what that trades away).
 pub fn detect_proxies(db: &Database, thumbnail_cache: &Path) -> Result<DetectSummary> {
     let candidates = db.list_for_proxy_detection()?;
     run_detection(db, thumbnail_cache, candidates)
@@ -147,13 +163,32 @@ fn run_detection(
 fn run_detection_with_cache(
     db: &Database,
     img_cache: &ThumbCache,
-    candidates: Vec<ProxyDetectCandidate>,
+    mut candidates: Vec<ProxyDetectCandidate>,
 ) -> Result<DetectSummary> {
-    if candidates.len() < 2 {
-        return Ok(DetectSummary::default());
-    }
-
     let mut summary = DetectSummary::default();
+
+    // Drop videos that are already attached to something as a proxy. A
+    // settled proxy has nothing left to learn from this pass, and re-testing
+    // it is what made a re-scan cost the same as a first scan: the pairs that
+    // clear the metadata gates are overwhelmingly the ones that already
+    // linked, and each one re-decodes up to eleven JPEGs per side. Dropping
+    // them before bucketing also shrinks the buckets, so the O(b²) gate
+    // sweep gets cheaper too.
+    //
+    // What this gives up is the batch pass re-visiting a settled proxy to
+    // attach it to an *additional* master (links are many-to-many). That case
+    // is still covered where it actually arises — when the new master is
+    // indexed, [`crate::post_index`] compares it against every bucket-mate,
+    // settled proxies included. So the capability lives in the incremental
+    // path, and the batch pass stays proportional to what changed.
+    let loaded = candidates.len();
+    candidates.retain(|c| !c.already_proxy);
+    summary.already_linked_skipped = loaded - candidates.len();
+
+    if candidates.len() < 2 {
+        summary.thumbnails_loaded = img_cache.loads();
+        return Ok(summary);
+    }
 
     // Pass 1 — Proxies-folder pairs. Editor-generated proxies (Adobe
     // Premiere, DaVinci Resolve, …) land in a dedicated `Proxies/`
@@ -1144,6 +1179,112 @@ mod tests {
         assert_eq!(summary.thumbnails_loaded, 3);
     }
 
+    // Re-scan invariant: a video already attached to another video as a proxy
+    // is a settled question, so the pass must not decode its thumbnails to
+    // re-derive a link the catalog already holds. This is what makes
+    // re-scanning an unchanged location nearly free.
+    #[test]
+    fn detection_skips_candidates_already_linked_as_proxies() {
+        let dir = tempfile::tempdir().unwrap();
+        // The same lineage as `detection_loads_each_side_once_for_gated_pairs`
+        // — three ordered pairs there — but with both lower-res members
+        // already linked, as they would be on a second scan.
+        let mut candidates = vec![
+            mk(
+                "05_16_2026-a7sii-1_ProRes-444_OriRes_30_UHQ.mov",
+                4240, 2832, 900, 4000,
+            ),
+            mk(
+                "05_16_2026-a7sii-1_ProRes-422_1080p_30_HQ.mov",
+                1920, 1080, 900, 400,
+            ),
+            mk(
+                "05_16_2026-a7sii-1_ProRes-422_720p_30_MQ.mov",
+                1280, 720, 900, 80,
+            ),
+        ];
+        candidates[1].already_proxy = true;
+        candidates[2].already_proxy = true;
+        for c in &candidates {
+            write_thumb(dir.path(), &c.id, "medium");
+        }
+
+        let cache = ThumbCache::new(dir.path());
+        let summary = run_detection_with_cache(&Database::new_empty(), &cache, candidates).unwrap();
+
+        assert_eq!(summary.already_linked_skipped, 2);
+        assert_eq!(summary.pairs_compared, 0, "settled proxies aren't re-tested");
+        assert_eq!(cache.loads(), 0, "and nothing is decoded off disk");
+        assert_eq!(summary.thumbnails_loaded, 0);
+    }
+
+    // The point of the skip is to leave *new* work untouched: dropping the
+    // settled proxy must not stop a freshly-added one from being detected.
+    #[test]
+    fn detection_still_compares_new_candidates_beside_settled_ones() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut candidates = vec![
+            mk(
+                "05_16_2026-a7sii-1_ProRes-444_OriRes_30_UHQ.mov",
+                4240, 2832, 900, 4000,
+            ),
+            // Already linked on a previous scan.
+            mk(
+                "05_16_2026-a7sii-1_ProRes-422_1080p_30_HQ.mov",
+                1920, 1080, 900, 400,
+            ),
+            // Copied in since — still an open question.
+            mk(
+                "05_16_2026-a7sii-1_ProRes-422_720p_30_MQ.mov",
+                1280, 720, 900, 80,
+            ),
+        ];
+        candidates[1].already_proxy = true;
+        for c in &candidates {
+            write_thumb(dir.path(), &c.id, "medium");
+        }
+
+        let cache = ThumbCache::new(dir.path());
+        let summary = run_detection_with_cache(&Database::new_empty(), &cache, candidates).unwrap();
+
+        assert_eq!(summary.already_linked_skipped, 1);
+        assert_eq!(
+            summary.pairs_compared, 1,
+            "only the new 720p against the surviving master",
+        );
+        assert_eq!(cache.loads(), 2, "master + newcomer, not the settled proxy");
+    }
+
+    // The Proxies-folder pass shares the candidate list, so it has to honor
+    // the same skip — it was the other path that re-decoded settled pairs.
+    #[test]
+    fn proxies_folder_pass_skips_settled_proxies() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut original = mk_at(
+            "/lib/shoot/05_16_2026-a7sii-1_ProRes-444_OriRes_30_UHQ.mov",
+            4240, 2832, 900, 4000, 30.0, 2,
+        );
+        let mut proxy = mk_at(
+            "/lib/shoot/Proxies/05_16_2026-a7sii-1_proxy_720p.mov",
+            1280, 720, 900, 80, 24.0, 0,
+        );
+        // mk_at ids are paths; the thumbnail cache keys on the id as a bare
+        // filename, so give these two slug ids it can actually write.
+        original.id = "orig".into();
+        proxy.id = "prox".into();
+        proxy.already_proxy = true;
+        write_thumb(dir.path(), &original.id, "medium");
+        write_thumb(dir.path(), &proxy.id, "medium");
+
+        let cache = ThumbCache::new(dir.path());
+        let summary =
+            run_detection_with_cache(&Database::new_empty(), &cache, vec![original, proxy]).unwrap();
+
+        assert_eq!(summary.already_linked_skipped, 1);
+        assert_eq!(summary.pairs_compared, 0);
+        assert_eq!(cache.loads(), 0);
+    }
+
     fn mk(filename: &str, w: i32, h: i32, fc: i64, size_mb: i64) -> ProxyDetectCandidate {
         ProxyDetectCandidate {
             id: filename.to_string(),
@@ -1158,6 +1299,7 @@ mod tests {
             camera_model: String::new(),
             file_size_bytes: size_mb * 1_048_576,
             audio_channels: 2,
+            already_proxy: false,
         }
     }
 
@@ -1189,6 +1331,7 @@ mod tests {
             camera_model: String::new(),
             file_size_bytes: size_mb * 1_048_576,
             audio_channels,
+            already_proxy: false,
         }
     }
 

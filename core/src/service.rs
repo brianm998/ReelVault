@@ -1972,9 +1972,10 @@ impl ReelVaultTrait for ReelVaultService {
             // Auto-detect proxies. Runs after every scan because new
             // files may have unlocked previously-untestable proxy
             // candidates (a low-res clip in the catalog has nothing to
-            // pair with until its high-res sibling shows up). Cheap:
-            // O(n) thumbnail hashes + O(b²) within each frame-count
-            // bucket, where b is typically 1–3.
+            // pair with until its high-res sibling shows up). Videos
+            // already attached as somebody's proxy are skipped, so a
+            // re-scan that added a handful of files costs a handful of
+            // files' worth of comparisons rather than the whole catalog's.
             //
             // Scope detection to just the refreshed location when the
             // caller asked for a single path — re-running pairwise
@@ -2001,6 +2002,7 @@ impl ReelVaultTrait for ReelVaultService {
                         pairs_compared = s.pairs_compared,
                         proxies_marked = s.proxies_marked,
                         thumbnails_loaded = s.thumbnails_loaded,
+                        already_linked_skipped = s.already_linked_skipped,
                         "Proxy detection complete",
                     );
                     if s.proxies_marked > 0 {
@@ -2706,9 +2708,12 @@ impl ReelVaultTrait for ReelVaultService {
         Ok(Response::new(DetectProxiesResponse {
             pairs_compared: summary.pairs_compared as i32,
             proxies_marked: summary.proxies_marked as i32,
+            // Name the skip explicitly: on a settled catalog the honest
+            // answer is "nothing left to test", and "compared 0 pairs" on its
+            // own reads like the pass failed to run.
             message: format!(
-                "Compared {} pairs; marked {} proxies",
-                summary.pairs_compared, summary.proxies_marked,
+                "Compared {} pairs; marked {} proxies; skipped {} already attached as proxies",
+                summary.pairs_compared, summary.proxies_marked, summary.already_linked_skipped,
             ),
         }))
     }

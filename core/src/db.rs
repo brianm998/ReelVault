@@ -5,7 +5,7 @@ use crate::error::{Result, ReelVaultError};
 use crate::metadata_keys::{self, SqlVal};
 use chrono::Utc;
 use rusqlite::{params, Connection, OptionalExtension};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashSet};
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
@@ -3591,6 +3591,32 @@ impl Database {
         Ok(rows)
     }
 
+    /// Ids of every video already joined to `video_id` by a proxy edge, in
+    /// either direction — its masters *and* its proxies.
+    ///
+    /// The incremental detector uses this to skip pairs it has already
+    /// decided: on a re-scan every file is re-probed and re-submitted, so a
+    /// master with five attached proxies would otherwise re-decode eleven
+    /// JPEGs per side to re-confirm five links that already exist. Both
+    /// columns are indexed (`idx_proxy_links_master` /
+    /// `idx_proxy_links_proxy`), so this is two index probes.
+    pub fn proxy_link_partners(&self, video_id: &str) -> Result<HashSet<String>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT proxy_id FROM proxy_links WHERE master_id = ?1
+                 UNION
+                 SELECT master_id FROM proxy_links WHERE proxy_id = ?1",
+            )
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let ids = stmt
+            .query_map([video_id], |row| row.get::<_, String>(0))
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
+            .collect::<std::result::Result<HashSet<_>, _>>()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(ids)
+    }
+
     /// What is this video a proxy for, if anything?
     pub fn get_proxy_target(&self, video_id: &str) -> Result<Option<String>> {
         let conn = self.get_connection()?;
@@ -3643,7 +3669,8 @@ impl Database {
                         COALESCE(m.fps, 0), COALESCE(m.frame_count, 0),
                         COALESCE(m.camera_model, ''),
                         COALESCE(v.file_size_bytes, 0),
-                        COALESCE(m.audio_channels, 0)
+                        COALESCE(m.audio_channels, 0),
+                        v.proxy_of IS NOT NULL
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id",
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
@@ -3668,6 +3695,7 @@ impl Database {
                     camera_model: row.get(8)?,
                     file_size_bytes: row.get(9)?,
                     audio_channels: row.get(10)?,
+                    already_proxy: row.get(11)?,
                 })
             })
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
@@ -3701,7 +3729,8 @@ impl Database {
                         COALESCE(m.fps, 0), COALESCE(m.frame_count, 0),
                         COALESCE(m.camera_model, ''),
                         COALESCE(v.file_size_bytes, 0),
-                        COALESCE(m.audio_channels, 0)
+                        COALESCE(m.audio_channels, 0),
+                        v.proxy_of IS NOT NULL
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
                  WHERE (v.path >= ?1 AND v.path < ?2)
                     OR (v.group_id IS NOT NULL
@@ -3734,6 +3763,7 @@ impl Database {
                     camera_model: row.get(8)?,
                     file_size_bytes: row.get(9)?,
                     audio_channels: row.get(10)?,
+                    already_proxy: row.get(11)?,
                 })
             })
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
@@ -3756,7 +3786,8 @@ impl Database {
                         COALESCE(m.fps, 0), COALESCE(m.frame_count, 0),
                         COALESCE(m.camera_model, ''),
                         COALESCE(v.file_size_bytes, 0),
-                        COALESCE(m.audio_channels, 0)
+                        COALESCE(m.audio_channels, 0),
+                        v.proxy_of IS NOT NULL
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
                  WHERE v.id = ?",
                 [video_id],
@@ -3780,6 +3811,7 @@ impl Database {
                         camera_model: row.get(8)?,
                         file_size_bytes: row.get(9)?,
                         audio_channels: row.get(10)?,
+                        already_proxy: row.get(11)?,
                     })
                 },
             )
@@ -3814,7 +3846,8 @@ impl Database {
                         COALESCE(m.fps, 0), COALESCE(m.frame_count, 0),
                         COALESCE(m.camera_model, ''),
                         COALESCE(v.file_size_bytes, 0),
-                        COALESCE(m.audio_channels, 0)
+                        COALESCE(m.audio_channels, 0),
+                        v.proxy_of IS NOT NULL
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
                  WHERE v.id != ?
                    AND v.path >= ? AND v.path < ?",
@@ -3841,6 +3874,7 @@ impl Database {
                     camera_model: row.get(8)?,
                     file_size_bytes: row.get(9)?,
                     audio_channels: row.get(10)?,
+                    already_proxy: row.get(11)?,
                 })
             })
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
@@ -3871,7 +3905,8 @@ impl Database {
                         COALESCE(m.fps, 0), COALESCE(m.frame_count, 0),
                         COALESCE(m.camera_model, ''),
                         COALESCE(v.file_size_bytes, 0),
-                        COALESCE(m.audio_channels, 0)
+                        COALESCE(m.audio_channels, 0),
+                        v.proxy_of IS NOT NULL
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
                  WHERE v.group_id = ?
                    AND v.id != ?",
@@ -3898,6 +3933,7 @@ impl Database {
                     camera_model: row.get(8)?,
                     file_size_bytes: row.get(9)?,
                     audio_channels: row.get(10)?,
+                    already_proxy: row.get(11)?,
                 })
             })
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
@@ -4670,10 +4706,11 @@ pub struct ProxyRecord {
     pub auto_detected: bool,
 }
 
-/// Candidate row used by the proxy auto-detector. Only videos that
-/// aren't *already* marked as proxies appear here, because a proxy of a
-/// proxy makes no sense (the auto-detector instead pivots through the
-/// original).
+/// Candidate row used by the proxy auto-detector. Rows already linked as
+/// somebody's proxy still come back — flagged by `already_proxy` — because
+/// the incremental worker needs them to attach a freshly-indexed *master*
+/// to proxies that already exist. The batch pass drops them; see
+/// [`crate::proxies::detect_proxies`].
 #[derive(Debug, Clone)]
 pub struct ProxyDetectCandidate {
     pub id: String,
@@ -4699,6 +4736,12 @@ pub struct ProxyDetectCandidate {
     /// (e.g. Premiere) of silent timelapse footage carry no audio, which is
     /// one of the gates that lets us relax the usual same-fps requirement.
     pub audio_channels: i32,
+    /// True when this video is *already* attached to some other video as a
+    /// proxy (`videos.proxy_of IS NOT NULL`). The detector treats those as
+    /// settled and skips them, which is what makes a re-scan of an
+    /// unchanged library cost almost nothing — see
+    /// [`crate::proxies::detect_proxies`].
+    pub already_proxy: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -5036,6 +5079,60 @@ mod tests {
         assert!(proxies
             .iter()
             .all(|p| !p.auto_detected && (p.proxy_confidence - 1.0).abs() < 1e-9));
+    }
+
+    // The two facts the detector leans on to keep a re-scan cheap: candidate
+    // rows report whether they're already somebody's proxy, and the link set
+    // for a video is queryable in both directions.
+    #[test]
+    fn candidates_report_existing_proxy_links() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let master = seed_res(&db, "/l/uhd.mov", "uhd.mov", 3840, 2160, 4000);
+        let proxy = seed_res(&db, "/l/hd.mov", "hd.mov", 1920, 1080, 800);
+        let unrelated = seed_res(&db, "/l/other.mov", "other.mov", 1920, 1080, 700);
+
+        // Before linking, nothing is settled and no partners exist.
+        assert!(!db.get_proxy_candidate(&proxy).unwrap().unwrap().already_proxy);
+        assert!(db.proxy_link_partners(&proxy).unwrap().is_empty());
+
+        db.set_proxy_of(&proxy, &master, 0.99, true).unwrap();
+
+        // The proxy side reads as settled; the master side does not — a
+        // re-scanned master still has to be testable against new arrivals.
+        assert!(db.get_proxy_candidate(&proxy).unwrap().unwrap().already_proxy);
+        assert!(!db.get_proxy_candidate(&master).unwrap().unwrap().already_proxy);
+        assert!(!db.get_proxy_candidate(&unrelated).unwrap().unwrap().already_proxy);
+
+        // Partners resolve from either end, and only for the linked pair.
+        assert_eq!(
+            db.proxy_link_partners(&proxy).unwrap(),
+            HashSet::from([master.clone()]),
+        );
+        assert_eq!(
+            db.proxy_link_partners(&master).unwrap(),
+            HashSet::from([proxy.clone()]),
+        );
+        assert!(db.proxy_link_partners(&unrelated).unwrap().is_empty());
+
+        // The batch pass loads the same flag through the bulk queries.
+        let by_flag: std::collections::HashMap<String, bool> = db
+            .list_for_proxy_detection()
+            .unwrap()
+            .into_iter()
+            .map(|c| (c.id, c.already_proxy))
+            .collect();
+        assert_eq!(by_flag.get(&proxy), Some(&true));
+        assert_eq!(by_flag.get(&master), Some(&false));
+
+        let under: std::collections::HashMap<String, bool> = db
+            .list_for_proxy_detection_under_path("/l")
+            .unwrap()
+            .into_iter()
+            .map(|c| (c.id, c.already_proxy))
+            .collect();
+        assert_eq!(under.get(&proxy), Some(&true));
+        assert_eq!(under.get(&master), Some(&false));
     }
 
     #[test]
