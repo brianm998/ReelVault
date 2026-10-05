@@ -747,7 +747,7 @@ struct ContentView: View {
         let name = accentScheme == "purple"
             ? "AppIcon-titlebar-purple"
             : "AppIcon-titlebar-blue"
-        if let url = Bundle.module.url(forResource: name, withExtension: "png"),
+        if let url = ResourceBundle.url(forResource: name, withExtension: "png"),
            let nsImage = NSImage(contentsOf: url) {
             return Image(nsImage: nsImage)
         }

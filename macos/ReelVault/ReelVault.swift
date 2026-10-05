@@ -167,7 +167,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // the process even starts — but `swift run` and a raw .build
         // binary have no bundle metadata, so the Dock shows the generic
         // green "exec" tile until we override it here.
-        if let url = Bundle.module.url(forResource: "AppIcon", withExtension: "icns"),
+        if let url = ResourceBundle.url(forResource: "AppIcon", withExtension: "icns"),
            let icon = NSImage(contentsOf: url) {
             NSApp.applicationIconImage = icon
         }
