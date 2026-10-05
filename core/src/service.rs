@@ -20,6 +20,8 @@ use tonic::{Request, Response, Status};
 // Import generated protobuf code
 pub mod reelvault {
     #![allow(clippy::doc_lazy_continuation)]
+    // Generated tonic handlers return Status by value; boxing is not possible.
+    #![allow(clippy::result_large_err)]
     tonic::include_proto!("reelvault");
 }
 
@@ -636,6 +638,7 @@ impl ReelVaultService {
     /// per-frame `generate_frame_at_width` is idempotent (skips if the file
     /// exists) and parallel-safe, so concurrent requests for sibling frames run
     /// up to the global ffmpeg concurrency limit without a per-video lock.
+    #[allow(clippy::result_large_err)]
     async fn load_or_generate_hires(
         &self,
         video_id: &str,
@@ -1108,6 +1111,7 @@ fn sql_placeholders(n: usize) -> String {
 /// Read a cached thumbnail file on the blocking pool — file IO can stall on a
 /// cold or busy disk, and GetThumbnail arrives in bursts of dozens when a
 /// grid page mounts. `max_width > 0` selects the width-specific variant.
+#[allow(clippy::result_large_err)]
 async fn read_cached_thumbnail(
     cache: std::path::PathBuf,
     video_id: String,
