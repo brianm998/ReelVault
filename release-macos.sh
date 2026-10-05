@@ -184,27 +184,35 @@ for ICON in \
     fi
 done
 
-# Copy SPM's per-target resource bundle (ReelVault_ReelVault.bundle).
-# Swift's synthesized Bundle.module looks for it next to the executable
-# inside Contents/Resources of the .app — without it, any code that
-# touches Bundle.module fatalErrors at first access (AppDelegate
-# reads AppIcon.icns from there to stamp the Dock tile during dev runs).
-RES_BUNDLE_NAME="ReelVault_ReelVault.bundle"
-RES_BUNDLE_SRC=""
+# Copy every SPM per-target resource bundle (ReelVault_ReelVault.bundle,
+# ReelVaultKit_ReelVaultKit.bundle, and dependency bundles). Swift's synthesized
+# Bundle.module looks for its bundle in Contents/Resources of the .app and
+# fatalErrors at first access if it is missing — ReelVaultKit's localized
+# strings use Bundle.module on the main grid load path, so a missing kit bundle
+# crashes the app right after launch.
+RES_BUILD_DIR=""
 for candidate in \
-    "${MACOS_DIR}/.build/arm64-apple-macosx/release/${RES_BUNDLE_NAME}" \
-    "${MACOS_DIR}/.build/release/${RES_BUNDLE_NAME}"; do
-    if [[ -d "$candidate" ]]; then
-        RES_BUNDLE_SRC="$candidate"
+    "${MACOS_DIR}/.build/arm64-apple-macosx/release" \
+    "${MACOS_DIR}/.build/release"; do
+    if [[ -d "${candidate}/ReelVaultKit_ReelVaultKit.bundle" ]]; then
+        RES_BUILD_DIR="$candidate"
         break
     fi
 done
-if [[ -n "$RES_BUNDLE_SRC" ]]; then
-    cp -R "$RES_BUNDLE_SRC" "${APP_BUNDLE}/Contents/Resources/${RES_BUNDLE_NAME}"
-    echo "  Embedded SPM resources: Contents/Resources/${RES_BUNDLE_NAME}"
-else
-    echo "WARNING: ${RES_BUNDLE_NAME} not found — Bundle.module lookups will fail." >&2
+if [[ -z "$RES_BUILD_DIR" ]]; then
+    echo "Error: ReelVaultKit_ReelVaultKit.bundle not found in the release build output." >&2
+    exit 1
 fi
+for REQUIRED in ReelVault_ReelVault.bundle ReelVaultKit_ReelVaultKit.bundle; do
+    if [[ ! -d "${RES_BUILD_DIR}/${REQUIRED}" ]]; then
+        echo "Error: ${REQUIRED} not found in ${RES_BUILD_DIR}." >&2
+        exit 1
+    fi
+done
+for RES_BUNDLE in "${RES_BUILD_DIR}"/*.bundle; do
+    cp -R "$RES_BUNDLE" "${APP_BUNDLE}/Contents/Resources/"
+    echo "  Embedded SPM resources: Contents/Resources/$(basename "$RES_BUNDLE")"
+done
 
 # Info.plist
 BUNDLE_ID="com.reelvault.app"
