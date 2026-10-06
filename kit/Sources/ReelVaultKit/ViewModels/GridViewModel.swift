@@ -442,7 +442,7 @@ public class GridViewModel: ObservableObject {
             liveUpdatesEnabled = false
         case .scanStarted:
             let target = event.path.isEmpty ? "library" : (event.path as NSString).lastPathComponent
-            watcherBanner = String(format: String(localized: "Scanning %@…", bundle: .module), target)
+            watcherBanner = String(format: String(localized: "Scanning %@…", bundle: .reelVaultKit), target)
         case .scanCompleted:
             watcherBanner = nil
             scheduleWatcherRefresh()  // also bumps catalogChangeTick (coalesced)
@@ -473,7 +473,7 @@ public class GridViewModel: ObservableObject {
         case .pairingRequested:
             // An unpaired LAN device wants in. The macOS app shows an
             // allow/dismiss banner off this; iOS ignores it.
-            incomingPairingDevice = event.message.isEmpty ? String(localized: "A device", bundle: .module) : event.message
+            incomingPairingDevice = event.message.isEmpty ? String(localized: "A device", bundle: .reelVaultKit) : event.message
         case .unknown:
             break
         }
@@ -528,8 +528,8 @@ public class GridViewModel: ObservableObject {
             progressPercent: 0,
             status: "started",
             message: targetHeight > 0
-                ? String(format: String(localized: "Generating %ldp proxy…", bundle: .module), targetHeight)
-                : String(localized: "Generating proxy…", bundle: .module)
+                ? String(format: String(localized: "Generating %ldp proxy…", bundle: .reelVaultKit), targetHeight)
+                : String(localized: "Generating proxy…", bundle: .reelVaultKit)
         )
         Task {
             let stream = repository.generateProxy(
@@ -773,7 +773,7 @@ public class GridViewModel: ObservableObject {
         } catch {
             if Task.isCancelled { return }
             NSLog("[GridViewModel] listVideos FAILED: \(error)")
-            self.error = String(format: String(localized: "Failed to load videos: %@", bundle: .module), error.localizedDescription)
+            self.error = String(format: String(localized: "Failed to load videos: %@", bundle: .reelVaultKit), error.localizedDescription)
             isLoading = false
             hasLoadedOnce = true
         }
@@ -1335,58 +1335,58 @@ public class GridViewModel: ObservableObject {
         // for registry keys we don't special-case.
         func label(_ key: String) -> String {
             switch key {
-            case "camera": return String(localized: "Camera",       bundle: .module)
-            case "lens":   return String(localized: "Lens",         bundle: .module)
-            case "codec":  return String(localized: "Codec",        bundle: .module)
-            case "year":   return String(localized: "Year",         bundle: .module)
-            case "iso":    return String(localized: "ISO",          bundle: .module)
-            case "exposure": return String(localized: "Exposure",   bundle: .module)
-            case "fps":    return String(localized: "FPS",          bundle: .module)
-            case "resolution": return String(localized: "Resolution", bundle: .module)
-            case "colorspace": return String(localized: "Color space", bundle: .module)
-            case "aspect": return String(localized: "Aspect ratio", bundle: .module)
+            case "camera": return String(localized: "Camera",       bundle: .reelVaultKit)
+            case "lens":   return String(localized: "Lens",         bundle: .reelVaultKit)
+            case "codec":  return String(localized: "Codec",        bundle: .reelVaultKit)
+            case "year":   return String(localized: "Year",         bundle: .reelVaultKit)
+            case "iso":    return String(localized: "ISO",          bundle: .reelVaultKit)
+            case "exposure": return String(localized: "Exposure",   bundle: .reelVaultKit)
+            case "fps":    return String(localized: "FPS",          bundle: .reelVaultKit)
+            case "resolution": return String(localized: "Resolution", bundle: .reelVaultKit)
+            case "colorspace": return String(localized: "Color space", bundle: .reelVaultKit)
+            case "aspect": return String(localized: "Aspect ratio", bundle: .reelVaultKit)
             default: return key.prefix(1).uppercased() + key.dropFirst()
             }
         }
         var out: [SmartCriterionRow] = []
         for c in f.columns where !c.values.isEmpty {
             // "is not" columns read "not <values>" so the inversion is visible.
-            let prefix = c.negate ? String(localized: "not ", bundle: .module) : ""
+            let prefix = c.negate ? String(localized: "not ", bundle: .reelVaultKit) : ""
             // A "keyword" column holds tag ids; resolve them to names so the
             // panel reads "Keywords: astro", not the raw tag uuid.
             if c.key == "keyword" {
                 let names = c.values.map { id in tags.first(where: { $0.id == id })?.name ?? id }
-                out.append(SmartCriterionRow(label: String(localized: "Keywords", bundle: .module), value: prefix + names.joined(separator: ", "), criterion: .column("keyword")))
+                out.append(SmartCriterionRow(label: String(localized: "Keywords", bundle: .reelVaultKit), value: prefix + names.joined(separator: ", "), criterion: .column("keyword")))
             } else {
                 out.append(SmartCriterionRow(label: label(c.key), value: prefix + c.values.joined(separator: ", "), criterion: .column(c.key)))
             }
         }
-        if f.minRating > 0 { out.append(SmartCriterionRow(label: String(localized: "Rating", bundle: .module), value: String(format: String(localized: "%ld+ stars", bundle: .module), f.minRating), criterion: .minRating)) }
-        if !f.colorLabel.isEmpty { out.append(SmartCriterionRow(label: String(localized: "Color", bundle: .module), value: f.colorLabel.capitalized, criterion: .colorLabel)) }
+        if f.minRating > 0 { out.append(SmartCriterionRow(label: String(localized: "Rating", bundle: .reelVaultKit), value: String(format: String(localized: "%ld+ stars", bundle: .reelVaultKit), f.minRating), criterion: .minRating)) }
+        if !f.colorLabel.isEmpty { out.append(SmartCriterionRow(label: String(localized: "Color", bundle: .reelVaultKit), value: f.colorLabel.capitalized, criterion: .colorLabel)) }
         if !f.tagIds.isEmpty {
             let names = f.tagIds.map { id in tags.first(where: { $0.id == id })?.name ?? id }
-            out.append(SmartCriterionRow(label: String(localized: "Keywords", bundle: .module), value: names.joined(separator: ", "), criterion: .keywords))
+            out.append(SmartCriterionRow(label: String(localized: "Keywords", bundle: .reelVaultKit), value: names.joined(separator: ", "), criterion: .keywords))
         }
         if f.hasGeo {
-            out.append(SmartCriterionRow(label: String(localized: "Location", bundle: .module),
+            out.append(SmartCriterionRow(label: String(localized: "Location", bundle: .reelVaultKit),
                         value: String(format: "within %.1f km of %.4f, %.4f", f.geoRadiusKm, f.geoLat, f.geoLon),
                         criterion: .geo))
         }
         if !f.locationPaths.isEmpty {
             let names = f.locationPaths.map { ($0 as NSString).lastPathComponent }
-            out.append(SmartCriterionRow(label: String(localized: "Folder", bundle: .module), value: names.joined(separator: ", "), criterion: .folder))
+            out.append(SmartCriterionRow(label: String(localized: "Folder", bundle: .reelVaultKit), value: names.joined(separator: ", "), criterion: .folder))
         }
         // Tri-state attribute filters — shown only when constrained (Yes / No).
         func attrValue(_ s: AttributeFilterState) -> String? {
             switch s { case .yes: return "Yes"; case .no: return "No"; case .any: return nil }
         }
-        if let v = attrValue(f.hasLocation) { out.append(SmartCriterionRow(label: String(localized: "Has location",    bundle: .module), value: v, criterion: .hasLocation)) }
-        if let v = attrValue(f.hasKeywords) { out.append(SmartCriterionRow(label: String(localized: "Has keywords",    bundle: .module), value: v, criterion: .hasKeywords)) }
-        if let v = attrValue(f.hasProxies)  { out.append(SmartCriterionRow(label: String(localized: "Has proxies",     bundle: .module), value: v, criterion: .hasProxies)) }
-        if let v = attrValue(f.fullResolution) { out.append(SmartCriterionRow(label: String(localized: "Full resolution", bundle: .module), value: v, criterion: .fullResolution)) }
-        if let v = attrValue(f.hasAudio)    { out.append(SmartCriterionRow(label: String(localized: "Has audio",       bundle: .module), value: v, criterion: .hasAudio)) }
+        if let v = attrValue(f.hasLocation) { out.append(SmartCriterionRow(label: String(localized: "Has location",    bundle: .reelVaultKit), value: v, criterion: .hasLocation)) }
+        if let v = attrValue(f.hasKeywords) { out.append(SmartCriterionRow(label: String(localized: "Has keywords",    bundle: .reelVaultKit), value: v, criterion: .hasKeywords)) }
+        if let v = attrValue(f.hasProxies)  { out.append(SmartCriterionRow(label: String(localized: "Has proxies",     bundle: .reelVaultKit), value: v, criterion: .hasProxies)) }
+        if let v = attrValue(f.fullResolution) { out.append(SmartCriterionRow(label: String(localized: "Full resolution", bundle: .reelVaultKit), value: v, criterion: .fullResolution)) }
+        if let v = attrValue(f.hasAudio)    { out.append(SmartCriterionRow(label: String(localized: "Has audio",       bundle: .reelVaultKit), value: v, criterion: .hasAudio)) }
         if f.orientation != .any {
-            out.append(SmartCriterionRow(label: String(localized: "Orientation", bundle: .module), value: f.orientation.displayName, criterion: .orientation))
+            out.append(SmartCriterionRow(label: String(localized: "Orientation", bundle: .reelVaultKit), value: f.orientation.displayName, criterion: .orientation))
         }
         return out
     }
@@ -1397,22 +1397,22 @@ public class GridViewModel: ObservableObject {
     public func emptyStateMessage() -> (title: String, detail: String) {
         let col = selectedCollectionId.flatMap { id in collections.first(where: { $0.id == id }) }
         if let col = col, col.isSmart {
-            return (String(localized: "No videos match this smart collection", bundle: .module),
-                    String(localized: "Its selection rules are listed in the details panel. Edit the collection to change what it gathers.", bundle: .module))
+            return (String(localized: "No videos match this smart collection", bundle: .reelVaultKit),
+                    String(localized: "Its selection rules are listed in the details panel. Edit the collection to change what it gathers.", bundle: .reelVaultKit))
         }
         if col != nil {
-            return (String(localized: "This collection is empty", bundle: .module),
-                    String(localized: "Add videos by selecting them in the grid and choosing \u{201C}Add to Collection\u{201D}.", bundle: .module))
+            return (String(localized: "This collection is empty", bundle: .reelVaultKit),
+                    String(localized: "Add videos by selecting them in the grid and choosing \u{201C}Add to Collection\u{201D}.", bundle: .reelVaultKit))
         }
         if hasActiveLibraryFilter() {
-            return (String(localized: "No videos match the current filter", bundle: .module),
-                    String(localized: "Choose \u{201C}Clear\u{201D} in the filter bar to show all videos again.", bundle: .module))
+            return (String(localized: "No videos match the current filter", bundle: .reelVaultKit),
+                    String(localized: "Choose \u{201C}Clear\u{201D} in the filter bar to show all videos again.", bundle: .reelVaultKit))
         }
         if libraryLocations.isEmpty {
-            return (String(localized: "Your library is empty", bundle: .module),
-                    String(localized: "Click the + button at the top of the Library panel to add a folder.", bundle: .module))
+            return (String(localized: "Your library is empty", bundle: .reelVaultKit),
+                    String(localized: "Click the + button at the top of the Library panel to add a folder.", bundle: .reelVaultKit))
         }
-        return (String(localized: "No videos found", bundle: .module), "")
+        return (String(localized: "No videos found", bundle: .reelVaultKit), "")
     }
 
     /// Whether any Library Filter constraint (text / attribute / metadata /
@@ -1797,17 +1797,17 @@ public class GridViewModel: ObservableObject {
                     }
                 }
                 guard let tag = try await repository.createTag(name: name) else {
-                    error = String(format: String(localized: "Failed to create or find tag '%@'", bundle: .module), name)
+                    error = String(format: String(localized: "Failed to create or find tag '%@'", bundle: .reelVaultKit), name)
                     return
                 }
                 if !(try await repository.tagVideos(videoIds: finalIds, tagId: tag.id)) {
-                    error = String(format: String(localized: "Failed to apply '%@'", bundle: .module), name)
+                    error = String(format: String(localized: "Failed to apply '%@'", bundle: .reelVaultKit), name)
                     return
                 }
                 loadTags()
                 onComplete()
             } catch {
-                self.error = String(format: String(localized: "Apply keyword failed: %@", bundle: .module), error.localizedDescription)
+                self.error = String(format: String(localized: "Apply keyword failed: %@", bundle: .reelVaultKit), error.localizedDescription)
             }
         }
     }
@@ -1833,13 +1833,13 @@ public class GridViewModel: ObservableObject {
                     }
                 }
                 if !(try await repository.untagVideos(videoIds: finalIds, tagId: tagId)) {
-                    error = String(localized: "Failed to remove tag", bundle: .module)
+                    error = String(localized: "Failed to remove tag", bundle: .reelVaultKit)
                     return
                 }
                 loadTags()
                 onComplete()
             } catch {
-                self.error = String(format: String(localized: "Remove keyword failed: %@", bundle: .module), error.localizedDescription)
+                self.error = String(format: String(localized: "Remove keyword failed: %@", bundle: .reelVaultKit), error.localizedDescription)
             }
         }
     }
@@ -1864,7 +1864,7 @@ public class GridViewModel: ObservableObject {
                 if filterTagId == id { setTagFilter("") }
                 loadTags()
             } catch {
-                self.error = String(format: String(localized: "Delete keyword failed: %@", bundle: .module), error.localizedDescription)
+                self.error = String(format: String(localized: "Delete keyword failed: %@", bundle: .reelVaultKit), error.localizedDescription)
             }
         }
     }
@@ -2005,11 +2005,11 @@ public class GridViewModel: ObservableObject {
                     loadLibraryLocations()
                     loadVideos()
                 } else {
-                    await MainActor.run { self.error = String(localized: "Failed to remove library location", bundle: .module) }
+                    await MainActor.run { self.error = String(localized: "Failed to remove library location", bundle: .reelVaultKit) }
                 }
             } catch {
                 await MainActor.run {
-                    self.error = String(format: String(localized: "Failed to remove library location: %@", bundle: .module), error.localizedDescription)
+                    self.error = String(format: String(localized: "Failed to remove library location: %@", bundle: .reelVaultKit), error.localizedDescription)
                 }
             }
         }
@@ -2769,10 +2769,10 @@ public class GridViewModel: ObservableObject {
                 if try await repository.ungroupVideo(videoId: videoId) {
                     refreshAfterStackChange(groupId: groupId)
                 } else {
-                    error = String(localized: "Failed to remove video from stack", bundle: .module)
+                    error = String(localized: "Failed to remove video from stack", bundle: .reelVaultKit)
                 }
             } catch {
-                self.error = String(format: String(localized: "Failed to remove from stack: %@", bundle: .module), error.localizedDescription)
+                self.error = String(format: String(localized: "Failed to remove from stack: %@", bundle: .reelVaultKit), error.localizedDescription)
             }
         }
     }
@@ -2821,7 +2821,7 @@ public class GridViewModel: ObservableObject {
                 refreshAfterStackChange(groupId: groupId)
                 loadVideos()  // representative changed → grid order may shift; background refresh keeps rows visible
             } catch {
-                self.error = String(format: String(localized: "Failed to set stack master: %@", bundle: .module), error.localizedDescription)
+                self.error = String(format: String(localized: "Failed to set stack master: %@", bundle: .reelVaultKit), error.localizedDescription)
             }
         }
     }
@@ -2842,7 +2842,7 @@ public class GridViewModel: ObservableObject {
                 }
                 refreshAfterStackChange(groupId: groupId)
             } catch {
-                self.error = String(format: String(localized: "Failed to unstack: %@", bundle: .module), error.localizedDescription)
+                self.error = String(format: String(localized: "Failed to unstack: %@", bundle: .reelVaultKit), error.localizedDescription)
             }
         }
     }
@@ -2925,7 +2925,7 @@ public class GridViewModel: ObservableObject {
     public func groupSelectedVideos() {
         let ids = selectedVideoIds
         if ids.count < 2 {
-            error = String(localized: "Select at least 2 videos (Shift+click or Cmd+click) to create a group", bundle: .module)
+            error = String(localized: "Select at least 2 videos (Shift+click or Cmd+click) to create a group", bundle: .reelVaultKit)
             return
         }
 
@@ -2935,7 +2935,7 @@ public class GridViewModel: ObservableObject {
         let proxyCount = videos.filter { idSet.contains($0.id) && $0.isProxy }.count
         if proxyCount > 0 {
             let noun = proxyCount == 1 ? "proxy" : "\(proxyCount) proxies"
-            error = String(format: String(localized: "Proxy videos cannot be added to a stack. Deselect the %@ and try again.", bundle: .module), noun)
+            error = String(format: String(localized: "Proxy videos cannot be added to a stack. Deselect the %@ and try again.", bundle: .reelVaultKit), noun)
             return
         }
 
@@ -2969,7 +2969,7 @@ public class GridViewModel: ObservableObject {
                 }
             } catch {
                 NSLog("combine: createGroup RPC failed: \(error.localizedDescription)")
-                self.error = String(format: String(localized: "Group failed: %@", bundle: .module), error.localizedDescription)
+                self.error = String(format: String(localized: "Group failed: %@", bundle: .reelVaultKit), error.localizedDescription)
             }
             isLoading = false
         }
@@ -2983,7 +2983,7 @@ public class GridViewModel: ObservableObject {
     public func attachProxiesToSelection() {
         let ids = selectedVideoIds
         if ids.count < 2 {
-            error = String(localized: "Select at least 2 videos (Shift+click or Cmd+click) to attach proxies", bundle: .module)
+            error = String(localized: "Select at least 2 videos (Shift+click or Cmd+click) to attach proxies", bundle: .reelVaultKit)
             return
         }
         NSLog("attach: attachProxiesToSelection sending ids=\(ids)")
@@ -3003,7 +3003,7 @@ public class GridViewModel: ObservableObject {
                 loadLibraryLocations()
             } catch {
                 NSLog("attach: attachProxies RPC failed: \(error.localizedDescription)")
-                self.error = String(format: String(localized: "Attach proxies failed: %@", bundle: .module), error.localizedDescription)
+                self.error = String(format: String(localized: "Attach proxies failed: %@", bundle: .reelVaultKit), error.localizedDescription)
             }
             isLoading = false
         }
@@ -3017,7 +3017,7 @@ public class GridViewModel: ObservableObject {
         if FileManager.default.fileExists(atPath: url.path) {
             NSWorkspace.shared.open(url)
         } else {
-            error = String(format: String(localized: "File not found: %@", bundle: .module), path)
+            error = String(format: String(localized: "File not found: %@", bundle: .reelVaultKit), path)
         }
         #endif
     }
@@ -3233,7 +3233,7 @@ public class GridViewModel: ObservableObject {
             do {
                 try await repository.updateVideoRating(videoIds: Array(ids), rating: clamped)
             } catch {
-                self.error = String(format: String(localized: "Failed to set rating: %@", bundle: .module), error.localizedDescription)
+                self.error = String(format: String(localized: "Failed to set rating: %@", bundle: .reelVaultKit), error.localizedDescription)
                 // Don't roll back — server is the source of truth on next reload.
             }
         }
@@ -3252,7 +3252,7 @@ public class GridViewModel: ObservableObject {
             do {
                 try await repository.updateVideoColorLabel(videoIds: Array(ids), colorLabel: label)
             } catch {
-                self.error = String(format: String(localized: "Failed to set color label: %@", bundle: .module), error.localizedDescription)
+                self.error = String(format: String(localized: "Failed to set color label: %@", bundle: .reelVaultKit), error.localizedDescription)
             }
         }
     }
@@ -3325,7 +3325,7 @@ public class GridViewModel: ObservableObject {
             } catch is CancellationError {
                 // Superseded by a newer edit.
             } catch {
-                self?.error = String(format: String(localized: "Failed to save grid settings: %@", bundle: .module), error.localizedDescription)
+                self?.error = String(format: String(localized: "Failed to save grid settings: %@", bundle: .reelVaultKit), error.localizedDescription)
             }
         }
     }

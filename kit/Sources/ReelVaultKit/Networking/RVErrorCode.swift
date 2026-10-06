@@ -38,20 +38,20 @@ public enum RVErrorCode {
     /// Returns nil for `unknown` (0) and any unrecognised code.
     public static func localizedDescription(for code: Int32) -> String? {
         switch code {
-        case database:           return String(localized: "Database error.", bundle: .module)
-        case videoNotFound:      return String(localized: "Video not found.", bundle: .module)
-        case tagNotFound:        return String(localized: "Tag not found.", bundle: .module)
-        case collectionNotFound: return String(localized: "Collection not found.", bundle: .module)
-        case metadataFailed:     return String(localized: "Metadata extraction failed.", bundle: .module)
-        case thumbnailFailed:    return String(localized: "Thumbnail generation failed.", bundle: .module)
-        case fileNotFound:       return String(localized: "File not found.", bundle: .module)
-        case invalidPath:        return String(localized: "Invalid path.", bundle: .module)
-        case duplicateEntry:     return String(localized: "Duplicate entry.", bundle: .module)
-        case io:                 return String(localized: "I/O error.", bundle: .module)
-        case config:             return String(localized: "Configuration error.", bundle: .module)
-        case ffmpeg:             return String(localized: "FFmpeg error.", bundle: .module)
-        case invalidRequest:     return String(localized: "Invalid request.", bundle: .module)
-        case `internal`:         return String(localized: "Internal error.", bundle: .module)
+        case database:           return String(localized: "Database error.", bundle: .reelVaultKit)
+        case videoNotFound:      return String(localized: "Video not found.", bundle: .reelVaultKit)
+        case tagNotFound:        return String(localized: "Tag not found.", bundle: .reelVaultKit)
+        case collectionNotFound: return String(localized: "Collection not found.", bundle: .reelVaultKit)
+        case metadataFailed:     return String(localized: "Metadata extraction failed.", bundle: .reelVaultKit)
+        case thumbnailFailed:    return String(localized: "Thumbnail generation failed.", bundle: .reelVaultKit)
+        case fileNotFound:       return String(localized: "File not found.", bundle: .reelVaultKit)
+        case invalidPath:        return String(localized: "Invalid path.", bundle: .reelVaultKit)
+        case duplicateEntry:     return String(localized: "Duplicate entry.", bundle: .reelVaultKit)
+        case io:                 return String(localized: "I/O error.", bundle: .reelVaultKit)
+        case config:             return String(localized: "Configuration error.", bundle: .reelVaultKit)
+        case ffmpeg:             return String(localized: "FFmpeg error.", bundle: .reelVaultKit)
+        case invalidRequest:     return String(localized: "Invalid request.", bundle: .reelVaultKit)
+        case `internal`:         return String(localized: "Internal error.", bundle: .reelVaultKit)
         default:                 return nil
         }
     }

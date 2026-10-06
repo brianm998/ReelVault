@@ -152,7 +152,7 @@ public class DetailViewModel: ObservableObject {
                 // grid + left-panel counts catch up.
                 onChanged()
             } else {
-                error = String(localized: "Failed to remove proxy link", bundle: .module)
+                error = String(localized: "Failed to remove proxy link", bundle: .reelVaultKit)
             }
         }
     }
@@ -163,7 +163,7 @@ public class DetailViewModel: ObservableObject {
     public func forceProxyLink(proxyId: String, onChanged: @escaping () -> Void = {}) {
         guard let masterId = currentSummary?.id else { return }
         guard masterId != proxyId else {
-            error = String(localized: "A video can't be a proxy of itself", bundle: .module)
+            error = String(localized: "A video can't be a proxy of itself", bundle: .reelVaultKit)
             return
         }
         Task {
@@ -178,7 +178,7 @@ public class DetailViewModel: ObservableObject {
                 // refresh the grid + left-panel counts.
                 onChanged()
             } else {
-                error = String(localized: "Failed to add proxy link", bundle: .module)
+                error = String(localized: "Failed to add proxy link", bundle: .reelVaultKit)
             }
         }
     }
@@ -254,7 +254,7 @@ public class DetailViewModel: ObservableObject {
                 loadGroupMembers(groupId: gid)
                 onChanged?(gid)
             } catch {
-                self.error = String(format: String(localized: "Failed to reorder stack: %@", bundle: .module), error.localizedDescription)
+                self.error = String(format: String(localized: "Failed to reorder stack: %@", bundle: .reelVaultKit), error.localizedDescription)
             }
         }
     }
@@ -266,10 +266,10 @@ public class DetailViewModel: ObservableObject {
                 if try await repository.setGroupPreferred(groupId: groupId, videoId: videoId) {
                     groupPreferredId = videoId
                 } else {
-                    error = String(localized: "Failed to set preferred video", bundle: .module)
+                    error = String(localized: "Failed to set preferred video", bundle: .reelVaultKit)
                 }
             } catch {
-                self.error = String(format: String(localized: "Failed to set preferred video", bundle: .module))
+                self.error = String(format: String(localized: "Failed to set preferred video", bundle: .reelVaultKit))
             }
         }
     }
@@ -291,10 +291,10 @@ public class DetailViewModel: ObservableObject {
                     groupPreferredId = ""
                     onComplete?(oldGroupId)
                 } else {
-                    error = String(localized: "Failed to ungroup", bundle: .module)
+                    error = String(localized: "Failed to ungroup", bundle: .reelVaultKit)
                 }
             } catch {
-                self.error = String(format: String(localized: "Failed to ungroup", bundle: .module))
+                self.error = String(format: String(localized: "Failed to ungroup", bundle: .reelVaultKit))
             }
         }
     }
@@ -311,7 +311,7 @@ public class DetailViewModel: ObservableObject {
                 self.isLoading = false
                 await loadThumbnail(videoId: videoId)
             } catch {
-                self.error = String(format: String(localized: "Failed to load metadata: %@", bundle: .module), error.localizedDescription)
+                self.error = String(format: String(localized: "Failed to load metadata: %@", bundle: .reelVaultKit), error.localizedDescription)
                 self.isLoading = false
             }
         }
@@ -331,9 +331,9 @@ public class DetailViewModel: ObservableObject {
         Task {
             do {
                 let ok = try await repository.updateVideoNotes(videoId: videoId, notes: newNotes)
-                if !ok { error = String(localized: "Failed to update notes", bundle: .module) }
+                if !ok { error = String(localized: "Failed to update notes", bundle: .reelVaultKit) }
             } catch {
-                self.error = String(format: String(localized: "Failed to update notes", bundle: .module))
+                self.error = String(format: String(localized: "Failed to update notes", bundle: .reelVaultKit))
             }
         }
     }
