@@ -292,24 +292,47 @@ PKG_NAME="${APP_NAME}-v${VERSION}-macOS.pkg"
 PKG_PATH="${OUT_DIR}/${PKG_NAME}"
 
 echo "==> Creating ${PKG_NAME}…"
-# pkgbuild --component signs the installer component with the Developer ID
-# Installer identity (different cert from the app's Application identity).
+# The package must be NON-relocatable. With `pkgbuild --component` the bundle is
+# relocatable by default, and Installer then "updates" any other copy of
+# com.reelvault.app it finds on disk (e.g. dist/macos/ReelVault.app in a dev
+# checkout) instead of writing /Applications/ReelVault.app. Stage the app under
+# a root and pass a component plist with BundleIsRelocatable=false.
+PKG_STAGE="$(mktemp -d)"
+trap 'rm -rf "$PKG_STAGE"' EXIT
+ditto "$APP_BUNDLE" "${PKG_STAGE}/root/${APP_NAME}.app"
+cat > "${PKG_STAGE}/component.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+    <dict>
+        <key>RootRelativeBundlePath</key>
+        <string>${APP_NAME}.app</string>
+        <key>BundleIsRelocatable</key>
+        <false/>
+        <key>BundleIsVersionChecked</key>
+        <false/>
+        <key>BundleOverwriteAction</key>
+        <string>upgrade</string>
+        <key>BundleHasStrictIdentifier</key>
+        <true/>
+    </dict>
+</array>
+</plist>
+PLIST
+PKGBUILD_ARGS=(
+    --root             "${PKG_STAGE}/root"
+    --component-plist  "${PKG_STAGE}/component.plist"
+    --install-location /Applications
+    --identifier       "com.reelvault.app"
+    --version          "${VERSION}"
+)
+# Signing uses the Developer ID Installer identity (different cert from the
+# app's Application identity).
 if [[ -n "$SIGN_PKG" && "$SIGN_PKG" != "-" ]]; then
-    pkgbuild \
-        --component  "$APP_BUNDLE" \
-        --install-location /Applications \
-        --identifier "com.reelvault.app" \
-        --version    "${VERSION}" \
-        --sign       "$SIGN_PKG" \
-        "$PKG_PATH"
-else
-    pkgbuild \
-        --component  "$APP_BUNDLE" \
-        --install-location /Applications \
-        --identifier "com.reelvault.app" \
-        --version    "${VERSION}" \
-        "$PKG_PATH"
+    PKGBUILD_ARGS+=(--sign "$SIGN_PKG")
 fi
+pkgbuild "${PKGBUILD_ARGS[@]}" "$PKG_PATH"
 echo "  -> ${PKG_PATH}"
 
 # ---------------------------------------------------------------------------
