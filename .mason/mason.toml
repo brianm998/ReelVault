@@ -133,7 +133,7 @@ command = "./gradlew :shared:test --no-daemon 2>&1"
 parser = "regex"
 pass_regex = '^(.+) > (.+) PASSED$'
 fail_regex = '^(.+) > (.+) FAILED$|FAILURE: Build failed|^e: '
-min_tests = 54 # measured 54 on 2026-11-14
+min_tests = 54 # measured 54 via `./gradlew :shared:test` (XML report + 54 PASSED lines), 2026-11-14
 level = "t1"
 uses = { compile = 1 }
 

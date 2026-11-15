@@ -11,7 +11,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.reelvault.data.models.AttributeFilterState
 import com.reelvault.data.models.CatalogEvent
-import com.reelvault.data.models.toWireValue
 import com.reelvault.data.models.CatalogEventKind
 import com.reelvault.data.models.Collection
 import com.reelvault.data.models.LibraryLocation
@@ -20,11 +19,10 @@ import com.reelvault.data.models.OrientationFilterState
 import com.reelvault.data.models.PostIndexProgress
 import com.reelvault.data.models.SmartCollectionFilters
 import com.reelvault.data.models.Tag
+import com.reelvault.data.models.toWireValue
 import com.reelvault.data.models.VideoSummary
 import com.reelvault.data.models.defaultGridTopSlots
 import com.reelvault.data.models.derivedAttributeMetadataFilters
-import com.reelvault.data.models.METADATA_NEGATE_PREFIX
-import com.reelvault.data.models.METADATA_VALUE_SEPARATOR
 import com.reelvault.data.repository.VideoRepository
 import com.reelvault.data.models.VideoLocation
 import kotlinx.coroutines.CancellationException
