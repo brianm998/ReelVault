@@ -366,6 +366,26 @@ application — ReelVault does not launch external editors itself.
 
 ---
 
+## Filing work for the pipeline
+
+ReelVault is worked on by MASON (brianm998/mason). Its pipeline is `.mason/mason.toml`:
+explore, develop, test, review, then land directly on `develop` (no pull requests). MASON
+imports only GitHub issues labelled `mason`, and each import waits for the owner's
+`mason task approve`.
+
+If you file a task that already contains the plan (the files to change, the
+approach and the acceptance criteria), mark it explored so the pipeline skips
+its exploring step: pass `explored: true` to `file_proposal`, or `--explored` to
+`mason task add`, or put `explored: true` in the task's front matter. Only do
+this when the task body really is the plan. Run `mason help filing` for details.
+
+The test step runs the suites in `.mason/mason.toml`, chosen by its impact map
+(core clippy + tests, kit tests, macOS build, Kotlin desktop/Android compile). The iOS app
+build is not a MASON suite yet. Nothing automated may appear on this Mac's screen: no
+XCUITests, no `caffeinate -u`.
+
+---
+
 ## Release & Distribution
 
 - GitHub releases for version management

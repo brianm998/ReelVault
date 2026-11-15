@@ -1,0 +1,3 @@
+# direct: tests and review pass, then `develop` moves forward. No pull requests, per CLAUDE.md.
+mode = "direct"
+base = "develop"

@@ -1,0 +1,143 @@
+# MASON pipeline for ReelVault (brianm998/mason). Started from templates/solo-fast with a review
+# step added: explore, develop, test, review, land directly on `develop`. ReelVault does not use
+# pull requests (CLAUDE.md, "Git Workflow"), so landing is `direct` (see landing.toml).
+#
+# The project registration (tracker, label, timeouts) lives outside the repo, in
+# ~/.config/mason/projects/reelvault.toml.
+#
+# Suites mirror .github/workflows/ci.yml and android-ci.yml, minus the iOS app build: that needs
+# the gitignored embedded-core XCFramework (`make xcframework`) in every task worktree, which is
+# a follow-up (see the GitHub issue "MASON: iOS app build suite"). Kit tests cover the shared
+# Swift code both Apple clients use.
+#
+# Nothing here may put a window on this Mac's screen: no XCUITest, no `caffeinate -u`.
+schema = 1
+start = "explore"
+explored_entry = "develop"
+
+[step.explore]
+type = "agent"
+category = "exploring"
+agent = "light"
+next = "develop"
+
+[step.develop]
+type = "agent"
+category = "developing"
+agent = "deep"
+budget = "4h"
+next = "test"
+
+[step.test]
+type = "test"
+category = "testing"
+suites = [
+  "diff-check",
+  "core-clippy",
+  "core-test",
+  "kit-test",
+  "macos-build",
+  "kotlin-build",
+]
+max_rounds = 3
+on_red = "develop"
+next = "review"
+
+[step.review]
+type = "agent"
+category = "review"
+agent = "light"
+max_rounds = 2
+on_red = "develop"
+next = "land"
+
+[step.land]
+type = "landing"
+category = "landing"
+max_rounds = 3
+on_red = "develop"
+
+[resource.compile]
+count = 3
+
+[resource.test-suite]
+count = 1
+
+# ---------------------------------------------------------------------------------------------
+# Suites
+# ---------------------------------------------------------------------------------------------
+[suite.diff-check]
+command = "git diff --check $(git merge-base HEAD origin/develop) && echo DIFF-CHECK-OK"
+parser = "regex"
+pass_regex = "^DIFF-CHECK-OK$"
+level = "t0"
+
+# CI runs `cargo clippy -- -D warnings` on unpinned stable Rust, so a new lint can redden this
+# on a change that did not touch the flagged code; fix the lint rather than skipping the suite.
+[suite.core-clippy]
+command = "cd core && cargo clippy -- -D warnings 2>&1 && echo CORE-CLIPPY-OK"
+parser = "regex"
+pass_regex = "^CORE-CLIPPY-OK$"
+fail_regex = "^error"
+level = "t1"
+uses = { compile = 1 }
+
+[suite.core-test]
+command = "cd core && cargo test 2>&1"
+parser = "regex"
+pass_regex = '^test (.+) \.\.\. ok$'
+fail_regex = '^test (.+) \.\.\. FAILED$'
+min_tests = 175 # measured 178 on 2026-11-14
+level = "t1"
+uses = { compile = 1 }
+
+[suite.kit-test]
+command = "swift test --package-path kit 2>&1"
+parser = "xctest"
+min_tests = 5 # measured 5 on 2026-11-14
+level = "t1"
+uses = { compile = 1 }
+
+[suite.macos-build]
+command = "swift build --package-path macos 2>&1 && echo MACOS-BUILD-OK"
+parser = "regex"
+pass_regex = "^MACOS-BUILD-OK$"
+fail_regex = "error:|Compiling failed"
+level = "t1"
+uses = { compile = 1 }
+
+# shared/ targets Java 17, kotlin-desktop/ Java 21. JAVA_HOME and ANDROID_HOME come from masond's
+# launchd environment (com.brianm998.mason.plist). There are no Kotlin unit tests yet, so this
+# only compiles.
+[suite.kotlin-build]
+command = "./gradlew :shared:compileKotlin :kotlin-desktop:compileKotlin :android:compileDebugKotlin --no-daemon 2>&1 && echo KOTLIN-BUILD-OK"
+parser = "regex"
+pass_regex = "^KOTLIN-BUILD-OK$"
+fail_regex = "FAILURE: Build failed|^e: "
+level = "t1"
+uses = { compile = 1 }
+
+# ---------------------------------------------------------------------------------------------
+# Impact map. Entries are unioned; an unmapped path selects every suite. diff-check runs always.
+# ---------------------------------------------------------------------------------------------
+[impact]
+"core/**" = ["diff-check", "core-clippy", "core-test"]
+"core/proto/**" = ["kit-test", "macos-build", "kotlin-build"]
+"kit/**" = ["diff-check", "kit-test", "macos-build"]
+"macos/**" = ["diff-check", "macos-build"]
+"ios/**" = ["diff-check", "kit-test"]
+"shared/**" = ["diff-check", "kotlin-build"]
+"kotlin-desktop/**" = ["diff-check", "kotlin-build"]
+"android/**" = ["diff-check", "kotlin-build"]
+"gradle/**" = ["diff-check", "kotlin-build"]
+"*.gradle.kts" = ["diff-check", "kotlin-build"]
+"gradle.properties" = ["diff-check", "kotlin-build"]
+".mason/**" = ["diff-check"]
+".claude/**" = []
+".github/**" = ["diff-check"]
+"docs/**" = ["diff-check"]
+"store/**" = ["diff-check"]
+"releases/**" = ["diff-check"]
+"tools/**" = ["diff-check"]
+"**/*.md" = ["diff-check"]
+"VERSION" = ["diff-check"]
