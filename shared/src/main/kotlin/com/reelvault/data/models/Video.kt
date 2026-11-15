@@ -1055,6 +1055,19 @@ const val METADATA_VALUE_SEPARATOR = ""
  *  `METADATA_NEGATE_PREFIX`. */
 val METADATA_NEGATE_PREFIX: String = 30.toChar().toString()
 
+/** The wire [MetadataFilter.value] for this column: selected values joined by
+ *  [METADATA_VALUE_SEPARATOR], prefixed with [METADATA_NEGATE_PREFIX] when negated. */
+fun MetadataColumn.toWireValue(): String {
+    val value = values.joinToString(METADATA_VALUE_SEPARATOR)
+    return if (negate) METADATA_NEGATE_PREFIX + value else value
+}
+
+/** Same wire encoding for a saved smart-collection column. */
+fun SmartCollectionColumn.toWireValue(): String {
+    val value = values.joinToString(METADATA_VALUE_SEPARATOR)
+    return if (negate) METADATA_NEGATE_PREFIX + value else value
+}
+
 /** Result of a GetMetadataFacets call: per-column values + the key picker set. */
 data class MetadataFacetsResult(
     val columns: List<FacetColumn> = emptyList(),

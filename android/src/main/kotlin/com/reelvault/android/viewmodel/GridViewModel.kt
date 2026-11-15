@@ -11,6 +11,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.reelvault.data.models.AttributeFilterState
 import com.reelvault.data.models.CatalogEvent
+import com.reelvault.data.models.toWireValue
 import com.reelvault.data.models.CatalogEventKind
 import com.reelvault.data.models.Collection
 import com.reelvault.data.models.LibraryLocation
@@ -712,9 +713,7 @@ class GridViewModel(
         smartMetadataFilters = f.columns
             .filter { it.values.isNotEmpty() }
             .map { col ->
-                val value = col.values.joinToString(METADATA_VALUE_SEPARATOR)
-                val wire = if (col.negate) METADATA_NEGATE_PREFIX + value else value
-                MetadataFilter(col.key, wire)
+                MetadataFilter(col.key, col.toWireValue())
             } + derivedAttributeMetadataFilters(f.hasAudio, f.orientation)
     }
 

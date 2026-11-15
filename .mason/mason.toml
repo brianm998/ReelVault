@@ -38,6 +38,7 @@ suites = [
   "kit-test",
   "macos-build",
   "kotlin-build",
+  "kotlin-test",
 ]
 max_rounds = 3
 on_red = "develop"
@@ -107,8 +108,7 @@ level = "t1"
 uses = { compile = 1 }
 
 # shared/ targets Java 17, kotlin-desktop/ Java 21. JAVA_HOME and ANDROID_HOME come from masond's
-# launchd environment (com.brianm998.mason.plist). There are no Kotlin unit tests yet, so this
-# only compiles.
+# launchd environment (com.brianm998.mason.plist). This only compiles; unit tests are kotlin-test.
 [suite.kotlin-build]
 command = "./gradlew :shared:compileKotlin :kotlin-desktop:compileKotlin :android:compileDebugKotlin --no-daemon 2>&1 && echo KOTLIN-BUILD-OK"
 parser = "regex"
@@ -117,21 +117,32 @@ fail_regex = "FAILURE: Build failed|^e: "
 level = "t1"
 uses = { compile = 1 }
 
+# JUnit 4 unit tests in shared/ (smart-collection JSON, metadata-filter encoding, client filter
+# match, sync tag rewrite). The task always re-runs so every test prints its PASSED line.
+[suite.kotlin-test]
+command = "./gradlew :shared:test --no-daemon 2>&1"
+parser = "regex"
+pass_regex = '^(.+) > (.+) PASSED$'
+fail_regex = '^(.+) > (.+) FAILED$|FAILURE: Build failed|^e: '
+min_tests = 54 # measured 54 on 2026-11-14
+level = "t1"
+uses = { compile = 1 }
+
 # ---------------------------------------------------------------------------------------------
 # Impact map. Entries are unioned; an unmapped path selects every suite. diff-check runs always.
 # ---------------------------------------------------------------------------------------------
 [impact]
 "core/**" = ["diff-check", "core-clippy", "core-test"]
-"core/proto/**" = ["kit-test", "macos-build", "kotlin-build"]
+"core/proto/**" = ["kit-test", "macos-build", "kotlin-build", "kotlin-test"]
 "kit/**" = ["diff-check", "kit-test", "macos-build"]
 "macos/**" = ["diff-check", "macos-build"]
 "ios/**" = ["diff-check", "kit-test"]
-"shared/**" = ["diff-check", "kotlin-build"]
-"kotlin-desktop/**" = ["diff-check", "kotlin-build"]
-"android/**" = ["diff-check", "kotlin-build"]
-"gradle/**" = ["diff-check", "kotlin-build"]
-"*.gradle.kts" = ["diff-check", "kotlin-build"]
-"gradle.properties" = ["diff-check", "kotlin-build"]
+"shared/**" = ["diff-check", "kotlin-build", "kotlin-test"]
+"kotlin-desktop/**" = ["diff-check", "kotlin-build", "kotlin-test"]
+"android/**" = ["diff-check", "kotlin-build", "kotlin-test"]
+"gradle/**" = ["diff-check", "kotlin-build", "kotlin-test"]
+"*.gradle.kts" = ["diff-check", "kotlin-build", "kotlin-test"]
+"gradle.properties" = ["diff-check", "kotlin-build", "kotlin-test"]
 ".mason/**" = ["diff-check"]
 ".claude/**" = []
 ".github/**" = ["diff-check"]
