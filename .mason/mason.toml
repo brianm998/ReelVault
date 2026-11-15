@@ -141,7 +141,7 @@ uses = { compile = 1 }
 "gradle/**" = ["diff-check", "kotlin-build"]
 "*.gradle.kts" = ["diff-check", "kotlin-build"]
 "gradle.properties" = ["diff-check", "kotlin-build"]
-".mason/**" = ["diff-check"]
+".mason/**" = ["diff-check", "ios-build"]
 ".claude/**" = []
 ".github/**" = ["diff-check"]
 "docs/**" = ["diff-check"]
