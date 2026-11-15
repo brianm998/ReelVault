@@ -19,11 +19,10 @@ import com.reelvault.data.models.OrientationFilterState
 import com.reelvault.data.models.PostIndexProgress
 import com.reelvault.data.models.SmartCollectionFilters
 import com.reelvault.data.models.Tag
+import com.reelvault.data.models.toWireValue
 import com.reelvault.data.models.VideoSummary
 import com.reelvault.data.models.defaultGridTopSlots
 import com.reelvault.data.models.derivedAttributeMetadataFilters
-import com.reelvault.data.models.METADATA_NEGATE_PREFIX
-import com.reelvault.data.models.METADATA_VALUE_SEPARATOR
 import com.reelvault.data.repository.VideoRepository
 import com.reelvault.data.models.VideoLocation
 import kotlinx.coroutines.CancellationException
@@ -712,9 +711,7 @@ class GridViewModel(
         smartMetadataFilters = f.columns
             .filter { it.values.isNotEmpty() }
             .map { col ->
-                val value = col.values.joinToString(METADATA_VALUE_SEPARATOR)
-                val wire = if (col.negate) METADATA_NEGATE_PREFIX + value else value
-                MetadataFilter(col.key, wire)
+                MetadataFilter(col.key, col.toWireValue())
             } + derivedAttributeMetadataFilters(f.hasAudio, f.orientation)
     }
 

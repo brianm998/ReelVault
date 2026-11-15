@@ -7,6 +7,8 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import com.reelvault.data.models.PostIndexProgress
 import com.reelvault.data.models.VideoSummary
+import com.reelvault.data.models.matchesLocalFilters
+import com.reelvault.data.models.toWireValue
 import com.reelvault.data.repository.VideoRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -732,64 +734,20 @@ class GridViewModel(
      * box IS checked (it's computable client-side). `true` means "not filtered
      * out by anything we can see locally".
      */
-    private fun summaryMatchesLocalFilters(s: VideoSummary): Boolean {
-        when (_filterHasLocation.value) {
-            com.reelvault.data.models.AttributeFilterState.Yes -> if (!s.hasLocation) return false
-            com.reelvault.data.models.AttributeFilterState.No -> if (s.hasLocation) return false
-            com.reelvault.data.models.AttributeFilterState.Any -> {}
-        }
-        when (_filterHasKeywords.value) {
-            com.reelvault.data.models.AttributeFilterState.Yes -> if (s.tags.isEmpty()) return false
-            com.reelvault.data.models.AttributeFilterState.No -> if (s.tags.isNotEmpty()) return false
-            com.reelvault.data.models.AttributeFilterState.Any -> {}
-        }
-        when (_filterHasProxies.value) {
-            com.reelvault.data.models.AttributeFilterState.Yes -> if (!s.hasProxies) return false
-            com.reelvault.data.models.AttributeFilterState.No -> if (s.hasProxies) return false
-            com.reelvault.data.models.AttributeFilterState.Any -> {}
-        }
-        // The daemon classifies "full resolution" via a (camera, w, h) tuple
-        // set; the summary's already-classified status is the client-side
-        // mirror, so Full ⇔ in that set and anything else (incl. Unspecified)
-        // counts as "not full".
-        when (_filterFullResolution.value) {
-            com.reelvault.data.models.AttributeFilterState.Yes ->
-                if (s.fullResolution != com.reelvault.data.models.FullResolutionStatus.Full) return false
-            com.reelvault.data.models.AttributeFilterState.No ->
-                if (s.fullResolution == com.reelvault.data.models.FullResolutionStatus.Full) return false
-            com.reelvault.data.models.AttributeFilterState.Any -> {}
-        }
-        when (_filterHasAudio.value) {
-            com.reelvault.data.models.AttributeFilterState.Yes -> if (!s.hasAudio) return false
-            com.reelvault.data.models.AttributeFilterState.No -> if (s.hasAudio) return false
-            com.reelvault.data.models.AttributeFilterState.Any -> {}
-        }
-        // Mirror the daemon's orientation SQL (db.rs build_filter_clauses):
-        // portrait ⇔ height > width; landscape ⇔ has real dims and width ≥ height.
-        when (_filterOrientation.value) {
-            com.reelvault.data.models.OrientationFilterState.Portrait -> if (!s.isPortrait) return false
-            com.reelvault.data.models.OrientationFilterState.Landscape -> if (!s.isLandscape) return false
-            com.reelvault.data.models.OrientationFilterState.Any -> {}
-        }
-        if (_filterMinRating.value > 0 && s.rating < _filterMinRating.value) return false
-        if (_filterColorLabel.value.isNotEmpty() && s.colorLabel != _filterColorLabel.value) return false
-        // Geo/area filter — mirror the daemon's bounding-box test (db.rs
-        // build_filter_clauses) so an optimistic relocate drops a card out of an
-        // active Location filter the instant it leaves the box, matching the
-        // reload instead of letting it linger then vanish. 1° lat ≈ 111 km;
-        // 1° lon ≈ 111·cos(lat) km, with cos clamped near the poles.
-        val geo = _filterLocation.value
-        if (geo != null) {
-            val (lat, lon, radiusKm) = geo
-            if (!s.hasLocation) return false
-            val latDelta = kotlin.math.abs(radiusKm / 111.0)
-            val cosLat = kotlin.math.max(0.01, kotlin.math.abs(kotlin.math.cos(Math.toRadians(lat))))
-            val lonDelta = kotlin.math.abs(radiusKm / (111.0 * cosLat))
-            if (s.gpsLatitude < lat - latDelta || s.gpsLatitude > lat + latDelta) return false
-            if (s.gpsLongitude < lon - lonDelta || s.gpsLongitude > lon + lonDelta) return false
-        }
-        return true
-    }
+    private fun summaryMatchesLocalFilters(s: VideoSummary): Boolean =
+        s.matchesLocalFilters(
+            com.reelvault.data.models.LocalFilterState(
+                hasLocation = _filterHasLocation.value,
+                hasKeywords = _filterHasKeywords.value,
+                hasProxies = _filterHasProxies.value,
+                fullResolution = _filterFullResolution.value,
+                hasAudio = _filterHasAudio.value,
+                orientation = _filterOrientation.value,
+                minRating = _filterMinRating.value,
+                colorLabel = _filterColorLabel.value,
+                location = _filterLocation.value,
+            )
+        )
 
     /**
      * True while the DETAIL loupe is the active view. In detail mode the loupe
@@ -1554,10 +1512,8 @@ class GridViewModel(
                     it.values.isNotEmpty()
             }
             .map {
-                val value = it.values.joinToString(com.reelvault.data.models.METADATA_VALUE_SEPARATOR)
                 // "is not" columns prefix the value so the daemon inverts the match.
-                val wire = if (it.negate) com.reelvault.data.models.METADATA_NEGATE_PREFIX + value else value
-                com.reelvault.data.models.MetadataFilter(it.key, wire)
+                com.reelvault.data.models.MetadataFilter(it.key, it.toWireValue())
             } +
             // The has-audio / orientation attribute filters have no proto field;
             // they ride here as "has_audio" / "orientation" metadata filters.
