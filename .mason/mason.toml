@@ -5,10 +5,9 @@
 # The project registration (tracker, label, timeouts) lives outside the repo, in
 # ~/.config/mason/projects/reelvault.toml.
 #
-# Suites mirror .github/workflows/ci.yml and android-ci.yml, minus the iOS app build: that needs
-# the gitignored embedded-core XCFramework (`make xcframework`) in every task worktree, which is
-# a follow-up (see the GitHub issue "MASON: iOS app build suite"). Kit tests cover the shared
-# Swift code both Apple clients use.
+# Suites mirror .github/workflows/ci.yml and android-ci.yml. The iOS app build reuses an
+# embedded-core XCFramework cached by core/ tree hash (.mason/scripts/ios-build.sh). Kit tests
+# cover the shared Swift code both Apple clients use.
 #
 # Nothing here may put a window on this Mac's screen: no XCUITest, no `caffeinate -u`.
 schema = 1
@@ -38,6 +37,7 @@ suites = [
   "kit-test",
   "macos-build",
   "kotlin-build",
+  "ios-build",
 ]
 max_rounds = 3
 on_red = "develop"
@@ -106,6 +106,15 @@ fail_regex = "error:|Compiling failed"
 level = "t1"
 uses = { compile = 1 }
 
+# Build only (no XCUITest, nothing on screen). Needs protoc, iOS Rust targets, xcodegen, Xcode.
+[suite.ios-build]
+command = "bash .mason/scripts/ios-build.sh 2>&1"
+parser = "regex"
+pass_regex = "^IOS-BUILD-OK$"
+fail_regex = "error:|\\*\\* BUILD FAILED \\*\\*"
+level = "t1"
+uses = { compile = 1 }
+
 # shared/ targets Java 17, kotlin-desktop/ Java 21. JAVA_HOME and ANDROID_HOME come from masond's
 # launchd environment (com.brianm998.mason.plist). There are no Kotlin unit tests yet, so this
 # only compiles.
@@ -121,11 +130,11 @@ uses = { compile = 1 }
 # Impact map. Entries are unioned; an unmapped path selects every suite. diff-check runs always.
 # ---------------------------------------------------------------------------------------------
 [impact]
-"core/**" = ["diff-check", "core-clippy", "core-test"]
+"core/**" = ["diff-check", "core-clippy", "core-test", "ios-build"]
 "core/proto/**" = ["kit-test", "macos-build", "kotlin-build"]
-"kit/**" = ["diff-check", "kit-test", "macos-build"]
+"kit/**" = ["diff-check", "kit-test", "macos-build", "ios-build"]
 "macos/**" = ["diff-check", "macos-build"]
-"ios/**" = ["diff-check", "kit-test"]
+"ios/**" = ["diff-check", "kit-test", "ios-build"]
 "shared/**" = ["diff-check", "kotlin-build"]
 "kotlin-desktop/**" = ["diff-check", "kotlin-build"]
 "android/**" = ["diff-check", "kotlin-build"]
