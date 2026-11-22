@@ -98,6 +98,17 @@ pub const LOUDNESS_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 /// Deadline for a full transcode / HLS encode / proxy generation.
 pub const TRANSCODE_TIMEOUT: Duration = Duration::from_secs(6 * 60 * 60);
 
+/// Deadline for a proxy transcode of `total_frames` frames (0 = unknown):
+/// a budget of 0.5 s per frame (a 2 fps worst-case encode), floored at 10
+/// minutes and capped at [`TRANSCODE_TIMEOUT`]. Unknown length gets the cap.
+pub fn transcode_deadline(total_frames: i64) -> Duration {
+    if total_frames <= 0 {
+        return TRANSCODE_TIMEOUT;
+    }
+    let secs = (total_frames as u64 / 2).clamp(10 * 60, TRANSCODE_TIMEOUT.as_secs());
+    Duration::from_secs(secs)
+}
+
 fn timeout_error(timeout: Duration) -> io::Error {
     io::Error::new(
         io::ErrorKind::TimedOut,
@@ -132,7 +143,15 @@ pub fn run_with_timeout(cmd: &mut Command, timeout: Duration) -> io::Result<Outp
     let err_h = drain(child.stderr.take());
     let deadline = Instant::now() + timeout;
     let status = loop {
-        match child.try_wait()? {
+        let polled = match child.try_wait() {
+            Ok(p) => p,
+            Err(e) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(e);
+            }
+        };
+        match polled {
             Some(st) => break st,
             None if Instant::now() >= deadline => {
                 let _ = child.kill();

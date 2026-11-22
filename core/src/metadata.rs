@@ -736,14 +736,20 @@ impl MetadataExtractor {
             .arg("-metadata").arg(format!("location={}", iso6709))
             .arg("-metadata").arg(format!("location-eng={}", iso6709))
             .arg(&temp_path)
-            .status_timeout(crate::ffmpeg::REMUX_TIMEOUT);
+            .output_timeout(crate::ffmpeg::REMUX_TIMEOUT);
 
+        let mut stderr_tail = String::new();
         let ok = match status {
-            Ok(s) => s.success(),
+            Ok(o) => {
+                if !o.status.success() {
+                    stderr_tail = String::from_utf8_lossy(&o.stderr).trim().to_string();
+                }
+                o.status.success()
+            }
             Err(e) => {
                 let _ = std::fs::remove_file(&temp_path);
                 return Err(ReelVaultError::MetadataExtractionFailed(format!(
-                    "ffmpeg failed to spawn: {}", e
+                    "ffmpeg failed to spawn or timed out: {}", e
                 )));
             }
         };
@@ -751,7 +757,10 @@ impl MetadataExtractor {
         if !ok {
             let _ = std::fs::remove_file(&temp_path);
             return Err(ReelVaultError::MetadataExtractionFailed(
-                "ffmpeg returned a non-zero exit code while writing location".to_string(),
+                format!(
+                    "ffmpeg returned a non-zero exit code while writing location: {}",
+                    stderr_tail
+                ),
             ));
         }
 
@@ -815,14 +824,20 @@ impl MetadataExtractor {
             .arg("-map_metadata").arg("0")
             .arg("-metadata").arg(format!("creation_time={}", iso))
             .arg(&temp_path)
-            .status_timeout(crate::ffmpeg::REMUX_TIMEOUT);
+            .output_timeout(crate::ffmpeg::REMUX_TIMEOUT);
 
+        let mut stderr_tail = String::new();
         let ok = match status {
-            Ok(s) => s.success(),
+            Ok(o) => {
+                if !o.status.success() {
+                    stderr_tail = String::from_utf8_lossy(&o.stderr).trim().to_string();
+                }
+                o.status.success()
+            }
             Err(e) => {
                 let _ = std::fs::remove_file(&temp_path);
                 return Err(ReelVaultError::MetadataExtractionFailed(format!(
-                    "ffmpeg failed to spawn: {}", e
+                    "ffmpeg failed to spawn or timed out: {}", e
                 )));
             }
         };
@@ -830,7 +845,10 @@ impl MetadataExtractor {
         if !ok {
             let _ = std::fs::remove_file(&temp_path);
             return Err(ReelVaultError::MetadataExtractionFailed(
-                "ffmpeg returned a non-zero exit code while writing creation_time".to_string(),
+                format!(
+                    "ffmpeg returned a non-zero exit code while writing creation_time: {}",
+                    stderr_tail
+                ),
             ));
         }
 

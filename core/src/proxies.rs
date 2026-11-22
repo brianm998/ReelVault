@@ -938,7 +938,12 @@ pub(crate) fn ffmpeg_transcode_proxy(
         .stderr(std::process::Stdio::inherit())
         .spawn()
         .map_err(|e| crate::error::ReelVaultError::FfmpegError(format!("spawn ffmpeg: {}", e)))?;
-    drive_transcode_child(child, crate::ffmpeg::TRANSCODE_TIMEOUT, total_frames, progress)
+    drive_transcode_child(
+        child,
+        crate::ffmpeg::transcode_deadline(total_frames),
+        total_frames,
+        progress,
+    )
 }
 
 /// Drives a spawned ffmpeg (stdout piped) to completion: parses progress,
@@ -991,21 +996,39 @@ fn drive_transcode_child(
 
     // Poll with a short-lived lock: holding it across a blocking wait() would
     // keep the watchdog from ever taking it to kill a stalled child.
+    let mut early: Option<crate::error::ReelVaultError> = None;
     let waited = loop {
-        let polled = child
-            .lock()
-            .map_err(|_| {
-                crate::error::ReelVaultError::FfmpegError("ffmpeg child lock poisoned".into())
-            })?
-            .try_wait();
-        match polled {
-            Ok(None) => std::thread::sleep(std::time::Duration::from_millis(50)),
+        let mut guard = match child.lock() {
+            Ok(g) => g,
+            Err(poisoned) => {
+                // Still kill and reap the child through the poisoned guard.
+                let mut c = poisoned.into_inner();
+                let _ = c.kill();
+                let _ = c.wait();
+                early = Some(crate::error::ReelVaultError::FfmpegError(
+                    "ffmpeg child lock poisoned".into(),
+                ));
+                break Err(std::io::Error::other("lock poisoned"));
+            }
+        };
+        match guard.try_wait() {
+            Ok(None) => {
+                drop(guard);
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
             Ok(Some(st)) => break Ok(st),
-            Err(e) => break Err(e),
+            Err(e) => {
+                let _ = guard.kill();
+                let _ = guard.wait();
+                break Err(e);
+            }
         }
     };
     let _ = done_tx.send(());
     let _ = watchdog.join();
+    if let Some(e) = early {
+        return Err(e);
+    }
     if timed_out.load(std::sync::atomic::Ordering::SeqCst) {
         return Err(crate::error::ReelVaultError::FfmpegError(format!(
             "ffmpeg timed out after {}s and was killed",
