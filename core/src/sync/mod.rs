@@ -47,7 +47,21 @@ pub fn reconcile_catalog(
             item.action,
             SyncAction::AdoptLocal { .. } | SyncAction::SkipFileReconcileData { marks_changed: true, .. }
         );
-        let data = if needs_data { fetch_remote_data(&item.source_video_id)? } else { None };
+        let data = if needs_data {
+            // A missing result must not look like success: apply() would
+            // advance the link's remote_rev and the marks would never retry.
+            match fetch_remote_data(&item.source_video_id)? {
+                Some(d) => Some(d),
+                None => {
+                    return Err(crate::error::ReelVaultError::VideoNotFound(format!(
+                        "peer returned no catalog data for video {}; link left stale",
+                        item.source_video_id
+                    )))
+                }
+            }
+        } else {
+            None
+        };
         exec.apply(peer_key, item, data.as_ref())?;
         match &item.action {
             SyncAction::AdoptLocal { .. } => out.adopted += 1,
@@ -106,5 +120,26 @@ mod two_catalog_tests {
         let third = reconcile_catalog(&b, "peerA", &manifest, |id| a.get_video_catalog_data(id)).unwrap();
         assert_eq!(third.marks_reconciled, 1);
         assert_eq!(b.get_video_catalog_data(&b1).unwrap().unwrap().rating, 2);
+    }
+
+    /// A peer that cannot supply catalog data must leave the link stale (an
+    /// error), not advance remote_rev and drop the marks for good.
+    #[test]
+    fn missing_remote_data_leaves_link_stale() {
+        let tmp = tempfile::tempdir().unwrap();
+        let a = open(tmp.path(), "a.db");
+        let b = open(tmp.path(), "b.db");
+        let a1 = a.add_video("/a/one.mov", "one.mov", None, None, Some(10)).unwrap();
+        a.set_content_hash(&a1, "h1").unwrap();
+        a.update_video_rating(&a1, 4).unwrap();
+        let b1 = b.add_video("/b/one.mov", "one.mov", None, None, Some(10)).unwrap();
+        b.set_content_hash(&b1, "h1").unwrap();
+
+        let manifest = a.get_sync_manifest_page(100, "").unwrap();
+        assert!(reconcile_catalog(&b, "peerA", &manifest, |_| Ok(None)).is_err());
+        // Retry with data available still adopts and merges.
+        let r = reconcile_catalog(&b, "peerA", &manifest, |id| a.get_video_catalog_data(id)).unwrap();
+        assert_eq!(r.adopted, 1);
+        assert_eq!(b.get_video_catalog_data(&b1).unwrap().unwrap().rating, 4);
     }
 }
