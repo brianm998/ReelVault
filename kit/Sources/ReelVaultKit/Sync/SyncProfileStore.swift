@@ -32,19 +32,31 @@ public final class SyncProfileStore: ObservableObject {
     /// One-time move of pre-core-store profiles into the core. The legacy key
     /// is only cleared once every profile was accepted, so a failure retries.
     private func migrateLegacyProfiles() async {
-        guard let data = UserDefaults.standard.data(forKey: Self.legacyKey),
-              let saved = try? JSONDecoder().decode([SyncProfile].self, from: data)
-        else { return }
         do {
-            for p in saved {
-                let req = Reelvault_UpsertSyncProfileRequest.with { $0.profile = Self.proto(from: p) }
+            try await Self.migrateLegacyProfiles(defaults: .standard) { [self] req in
                 _ = try await withLocalClient { try await $0.upsertSyncProfile(req) }
-                Self.setAutoSync(p.autoSync, for: p.id)
             }
-            UserDefaults.standard.removeObject(forKey: Self.legacyKey)
         } catch {
             lastError = error.localizedDescription
         }
+    }
+
+    /// Core of the migration, with the upsert injected so it is testable.
+    /// Throws (leaving the legacy key in place for a retry) if any upsert fails;
+    /// an undecodable legacy blob is left untouched.
+    static func migrateLegacyProfiles(
+        defaults: UserDefaults,
+        upsert: (Reelvault_UpsertSyncProfileRequest) async throws -> Void
+    ) async throws {
+        guard let data = defaults.data(forKey: legacyKey),
+              let saved = try? JSONDecoder().decode([SyncProfile].self, from: data)
+        else { return }
+        for p in saved {
+            let req = Reelvault_UpsertSyncProfileRequest.with { $0.profile = proto(from: p) }
+            try await upsert(req)
+            setAutoSync(p.autoSync, for: p.id)
+        }
+        defaults.removeObject(forKey: legacyKey)
     }
 
     public func load() async {
@@ -136,7 +148,7 @@ public final class SyncProfileStore: ObservableObject {
         Set(UserDefaults.standard.stringArray(forKey: autoSyncKey) ?? [])
     }
 
-    private static func setAutoSync(_ on: Bool, for id: String) {
+    static func setAutoSync(_ on: Bool, for id: String) {
         var ids = autoSyncIds()
         if on { ids.insert(id) } else { ids.remove(id) }
         UserDefaults.standard.set(Array(ids), forKey: autoSyncKey)

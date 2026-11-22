@@ -407,53 +407,16 @@ pub(crate) fn ingest_synced(path: &str, filename: &str, origin_hash: &str, deriv
     if path.is_empty() {
         return -2;
     }
-    let filename_owned = if filename.is_empty() {
-        Path::new(path)
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("video")
-            .to_string()
-    } else {
-        filename.to_string()
-    };
-    let source = crate::media_backend::MediaSource::Path(PathBuf::from(path));
-
-    match crate::indexing::IndexingEngine::index_media_source(
-        ctx.db.as_ref(),
-        &source,
-        path,
-        &filename_owned,
-        "path",
-        path,
+    match crate::sync::ingest_synced_into(
+        &ctx.db,
         &ctx.cache,
+        &ctx.events,
+        path,
+        filename,
+        origin_hash,
+        derived_height,
     ) {
-        Ok(video_id) => {
-            // Stamp provenance: mark as derived and record the origin hash.
-            let db = &ctx.db;
-            let oh = origin_hash.to_string();
-            let dh: Option<i32> = if derived_height > 0 { Some(derived_height) } else { None };
-            if let Ok(conn) = db.get_connection() {
-                // Only a downscaled copy is "derived"; a full-size pull is an
-                // original and must stay visible to the manifest / planner.
-                if let Err(e) = conn.execute(
-                    "UPDATE videos SET is_derived = ?3, origin_hash = ?1 WHERE id = ?2",
-                    rusqlite::params![oh, &video_id, dh.is_some() as i32],
-                ) {
-                    tracing::warn!("ingest_synced: could not stamp provenance for {video_id}: {e}");
-                }
-                // Also update video_locations if it exists.
-                let _ = conn.execute(
-                    "UPDATE video_locations SET file_size_bytes = COALESCE((SELECT length_via_stat), file_size_bytes) WHERE video_id = ?1",
-                    rusqlite::params![&video_id],
-                );
-                let _ = dh; // suppress unused warning when no derived_height
-            }
-            let _ = ctx.events.send(crate::watcher::CatalogChange::VideoAdded {
-                video_id,
-                path: PathBuf::from(path),
-            });
-            0
-        }
+        Ok(_) => 0,
         Err(e) => {
             tracing::warn!("ingest_synced({path}) failed: {e}");
             -3

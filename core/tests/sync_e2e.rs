@@ -4,7 +4,8 @@
 //! Push: A's file bytes go to B through the resumable `/upload` protocol
 //! (chunked, `total_size` + `content_hash`), B indexes it and receives A's
 //! catalog data. Pull: B asks A's `PrepareRendition` for a download path and
-//! fetches it from A's `/video/<id>?height=` route. `reconcile_catalog` then
+//! fetches it from A's `/video/<id>?height=` route, ingests it through
+//! `ingest_synced` and links it by id. `reconcile_catalog` then
 //! adopts the transferred copies instead of re-transferring them.
 mod common;
 
@@ -19,7 +20,8 @@ use reelvault_core::media_server::{router, MEDIA_CACHE_VERSION};
 use reelvault_core::metadata::FFProbeOutput;
 use reelvault_core::service::reelvault::reel_vault_server::ReelVault;
 use reelvault_core::service::reelvault::*;
-use reelvault_core::sync::reconcile_catalog;
+use reelvault_core::db::SyncLinkParams;
+use reelvault_core::sync::{ingest_synced_into, reconcile_catalog, SyncExecutor};
 use reelvault_core::thumbnails::ColorInfo;
 use tonic::Request as GrpcRequest;
 use tower::ServiceExt;
@@ -111,10 +113,8 @@ async fn push_and_pull_between_two_daemons() {
     set_backend(Arc::new(ProbeOnly));
     let a = Harness::new().await;
     let b = Harness::new().await;
-    let a_hdr = a.paired_header("tok-a");
     let b_hdr = b.paired_header("tok-b");
     let b_import = b.dir.path().join("import");
-    let app_a = router(a.media_state(Some(a.dir.path().join("import"))));
     let app_b = router(b.media_state(Some(b_import.clone())));
 
     // A holds a small "video" with marks.
@@ -158,7 +158,10 @@ async fn push_and_pull_between_two_daemons() {
     // Seed B's rendition cache (what a transcode would leave; no ffmpeg in CI).
     let stream = b.dir.path().join("thumbs/stream");
     std::fs::create_dir_all(&stream).unwrap();
-    std::fs::write(stream.join(format!("{b2}_480.{MEDIA_CACHE_VERSION}.mp4")), &pull_bytes).unwrap();
+    // The rendition is a *different* byte stream from the original, as a real
+    // downscale would be: its hash must not match the original's.
+    let rendition: Vec<u8> = (0..1800u32).map(|i| (i % 7) as u8 ^ 0x5a).collect();
+    std::fs::write(stream.join(format!("{b2}_480.{MEDIA_CACHE_VERSION}.mp4")), &rendition).unwrap();
 
     let manifest = b.db.get_sync_manifest_page(100, "").unwrap();
     let plan = reconcile_catalog(&a.db, "peer-b", &manifest, |id| b.db.get_video_catalog_data(id)).unwrap();
@@ -192,20 +195,53 @@ async fn push_and_pull_between_two_daemons() {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let got = body_bytes(resp).await;
-    assert_eq!(got, pull_bytes);
+    assert_eq!(got, rendition);
+    assert_ne!(got, pull_bytes);
 
-    // Land it on A through the same upload route a client would use for ingest.
-    // NOTE: the rendition here is seeded byte-identical to the original, so the
-    // hash matches. A real transcoded rendition would NOT match the original's
-    // hash; the client must then link by id (record a sync link) rather than by
-    // hash. That path is not covered here and is why pull stays flagged off.
-    let a_new = push(&app_a, &a_hdr, "second.mp4", &got, &phash, 4096).await;
-    a.db.set_content_hash(&a_new, &phash).unwrap();
+    // Client side of a pull: write the download to a local file on A, then
+    // ingest it through the real `ingest_synced` path (provenance stamped,
+    // new local id returned), record the sync link by id (the rendition's
+    // hash differs from the original's, so hash adoption cannot find it) and
+    // copy B's catalog data onto it.
+    let landed = a.dir.path().join("second_480.mp4");
+    std::fs::write(&landed, &got).unwrap();
+    let (tx, _rx) = tokio::sync::broadcast::channel(16);
+    let a_new = ingest_synced_into(
+        &a.db,
+        &a.dir.path().join("thumbs"),
+        &tx,
+        landed.to_str().unwrap(),
+        "second.mp4",
+        &phash,
+        480,
+    )
+    .unwrap();
+    let ingested: (bool, Option<String>) = a
+        .db
+        .get_connection()
+        .unwrap()
+        .query_row("SELECT is_derived, origin_hash FROM videos WHERE id = ?1", [&a_new], |r| {
+            Ok((r.get::<_, i32>(0)? == 1, r.get(1)?))
+        })
+        .unwrap();
+    assert_eq!(ingested, (true, Some(phash.clone())), "derived copy stamped with the origin hash");
     let data = b.db.get_video_catalog_data(&b2).unwrap().unwrap();
+    SyncExecutor::new(a.db.clone())
+        .update_sync_link_after_reconcile(&SyncLinkParams {
+            local_video_id: a_new.clone(),
+            peer_key: "peer-b".into(),
+            remote_video_id: b2.clone(),
+            origin_hash: Some(phash.clone()),
+            is_derived: true,
+            derived_height: Some(480),
+            local_rev: 0,
+            remote_rev: data.marks_rev,
+        })
+        .unwrap();
     a.db.apply_video_catalog_data(&a_new, &data).unwrap();
     assert_eq!(a.db.get_video_catalog_data(&a_new).unwrap().unwrap().rating, 3);
 
-    // Both sides now converge: a re-run transfers nothing.
+    // Both sides now converge: the link (not a hash hit) stops a re-copy.
     let manifest = b.db.get_sync_manifest_page(100, "").unwrap();
     let again = reconcile_catalog(&a.db, "peer-b", &manifest, |id| b.db.get_video_catalog_data(id)).unwrap();
     assert!(again.to_copy.is_empty(), "nothing left to transfer: {again:?}");

@@ -2,7 +2,7 @@
 
 Done (core only):
 - `sync::Planner` returned `CopyNew` for a content-hash hit, the same as a miss. It now returns `AdoptLocal` for one local match and `Ambiguous` for several.
-- `SyncExecutor::apply` takes the peer's catalog data: on `AdoptLocal`, and on `SkipFileReconcileData { marks_changed: true }`, it merges that data into the local video *before* advancing the link's `remote_rev`, so a failed merge is retried and later mark changes are detected.
+- `SyncExecutor::apply` takes the peer's catalog data: on `AdoptLocal`, and on `SkipFileReconcileData { marks_changed: true }`, `AdoptLocal` first records the sync link at a stale `remote_rev` (0), then reconciles marks, then advances `remote_rev`; a failed merge therefore leaves a link and the next plan retries the marks (`SkipFileReconcileData { marks_changed: true }`) instead of re-copying. Marks-changed items merge then advance. Test `adopt_records_link_before_marks_and_failed_merge_is_retried`.
 - `sync::reconcile_catalog` is the production entry point that plans + applies the database half of a sync (adopt, merge marks, tombstones) and returns the ids whose bytes still need transferring.
 - Fixed `Database::get_video_catalog_data`: it selected nonexistent `gps_lat`/`gps_lon` columns and read the integer `creation_date` as text, so the `GetVideoCatalogData` RPC failed for every video.
 - Test `two_catalogs_adopt_merge_and_report_copies` drives two separate catalog databases (A as peer, B as local) through adopt, marks merge, idempotent re-run and marks-change detection.
@@ -23,3 +23,21 @@ Still not done (task 918 remains open), so `CatalogSyncFeature` (kit and shared)
 Platform deviation: none intended; Kotlin got the push fix first and Swift remains scaffolded behind the flag.
 
 Follow-up (review fixes): legacy `reelvault.syncProfiles` UserDefaults profiles are migrated into the core on first `SyncProfileStore.load()`; a zero-byte Kotlin push now fails with a specific error. The pull leg of `sync_e2e.rs` seeds a byte-identical rendition, so it does not cover transcoded pulls (hash mismatch); noted in the test. Acceptance criteria 2 and 3 remain unmet; this change lands as partial progress and #918 needs follow-ups: reconcile/record-link RPC, ingest returning the video id, Swift SyncManager transfer, real-client verification, then flag removal.
+
+## Round 3 (split decision)
+
+The owner split #918: this change lands the partial work below; the rest moved to follow-up tasks.
+
+Landed in this round:
+- `sync_e2e.rs` pull leg now downloads a *distinct* rendition (different bytes and hash from the original) via `PrepareRendition` + `/video`, ingests it through `sync::ingest_synced_into` (the function behind `embed::ingest_synced`, now returning the new video id), records the link by id and applies catalog data; a re-run transfers nothing.
+- Legacy `reelvault.syncProfiles` UserDefaults profiles migrate into the core `sync_profiles` store once (`SyncProfileStore.migrateLegacyProfiles`); the legacy key is cleared only after every upsert succeeds. Swift tests cover migrate-once and failure-retains.
+- Zero-byte originals fail with "original is empty (0 bytes)" via `checkPushable` (Kotlin `shared`), with `CheckPushableTest`.
+- Executor `AdoptLocal` ordering as above.
+
+Moved to follow-up tasks (not done here; `CatalogSyncFeature` stays OFF in kit and shared):
+1. Kit pull with `ingest_synced` and `ApplyVideoCatalogData` (needs ingest id exposure over FFI, which the core function now supports).
+2. Apple push/pull byte transfer (Swift `SyncManager` is still the `notAvailable` scaffold).
+3. A production caller for `reconcile_catalog`/planner (RPC) or their deletion.
+4. Real-device verification of push/pull on one Apple and one Kotlin client, and removal of the O1 flag (owner).
+Open acceptance criteria: push/pull verified on real clients; O1 flag removed. The end-to-end test criterion is met in-process.
+Platform deviation: Kotlin got push streaming and zero-byte checks; Swift transfer is deferred (scaffold behind the flag).

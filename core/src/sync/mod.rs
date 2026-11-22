@@ -2,9 +2,11 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 pub mod executor;
+pub mod ingest;
 pub mod planner;
 
 pub use executor::SyncExecutor;
+pub use ingest::ingest_synced_into;
 pub use planner::{Planner, SyncAction, SyncPlan, SyncPlanItem};
 
 use crate::db::{Database, SyncManifestRow, VideoCatalogData};

@@ -59,8 +59,21 @@ impl SyncExecutor {
             remote_rev: item.remote_marks_rev,
         };
         match &item.action {
-            AdoptLocal { local_video_id }
-            | SkipFileReconcileData { local_video_id, marks_changed: true } => {
+            AdoptLocal { local_video_id } => {
+                // Record the link first at a stale revision (0), then reconcile
+                // marks, then advance the revision. A failed merge leaves the
+                // link behind but stale, so the next plan reports
+                // `SkipFileReconcileData { marks_changed: true }` and retries
+                // instead of re-planning a transfer.
+                let mut stale = link(local_video_id);
+                stale.remote_rev = 0;
+                self.update_sync_link_after_reconcile(&stale)?;
+                if let Some(d) = remote_data {
+                    self.db.apply_video_catalog_data(local_video_id, d)?;
+                }
+                self.update_sync_link_after_reconcile(&link(local_video_id))
+            }
+            SkipFileReconcileData { local_video_id, marks_changed: true } => {
                 if let Some(d) = remote_data {
                     self.db.apply_video_catalog_data(local_video_id, d)?;
                 }
@@ -113,5 +126,73 @@ mod tests {
             again[0].action,
             SyncAction::SkipFileReconcileData { local_video_id: id, marks_changed: false }
         );
+    }
+
+    fn data(rating: i32) -> crate::db::VideoCatalogData {
+        crate::db::VideoCatalogData {
+            marks_rev: 3,
+            tags: vec![],
+            tag_colors: vec![],
+            collections: vec![],
+            smart_collections: vec![],
+            rating,
+            color_label: String::new(),
+            notes: String::new(),
+            creation_date_str: String::new(),
+            gps_lat: 0.0,
+            gps_lon: 0.0,
+            has_gps: false,
+            group_name: String::new(),
+            proxy_of_id: String::new(),
+        }
+    }
+
+    /// A failed marks merge after adoption leaves a recorded-but-stale link, so
+    /// the next plan retries the marks instead of re-copying the file.
+    #[test]
+    fn adopt_records_link_before_marks_and_failed_merge_is_retried() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = Database::new_empty();
+        db.set_path(&tmp.path().join("c.db")).unwrap();
+        let db = Arc::new(db);
+        let id = db.add_video("/lib/a.mov", "a.mov", None, None, Some(10)).unwrap();
+        db.set_content_hash(&id, "h1").unwrap();
+        let row = crate::db::SyncManifestRow {
+            video_id: "remote1".into(),
+            content_hash: Some("h1".into()),
+            marks_rev: 3,
+            size_bytes: 10,
+            duration_ms: 0,
+            filename: "a.mov".into(),
+            width: 0,
+            height: 0,
+            codec_video: String::new(),
+            is_derived: false,
+            proxy_of: None,
+            has_streamable_proxy: false,
+            deleted_at: None,
+        };
+        let planner = Planner::new(db.clone(), "peer".into());
+        let hits = db.lookup_by_content_hash(&["h1".to_string()]).unwrap();
+        let plan = planner.classify(&[row.clone()], &hits);
+        // Data that cannot be applied (rating violates the column's CHECK).
+        let bad = data(99);
+        let exec = SyncExecutor::new(db.clone());
+        assert!(exec.apply("peer", &plan[0], Some(&bad)).is_err());
+        {
+            let link = db.find_sync_link_by_remote("peer", "remote1").unwrap().expect("link recorded first");
+            assert_eq!((link.local_video_id.as_str(), link.remote_rev_at_sync), (id.as_str(), 0));
+            let again = planner.classify(&[row.clone()], &hits);
+            assert_eq!(
+                again[0].action,
+                SyncAction::SkipFileReconcileData { local_video_id: id.clone(), marks_changed: true }
+            );
+        }
+        // A good merge then advances the revision.
+        let good = data(4);
+        exec.apply("peer", &plan[0], Some(&good)).unwrap();
+        let link = db.find_sync_link_by_remote("peer", "remote1").unwrap().unwrap();
+        assert_eq!(link.remote_rev_at_sync, 3);
+        assert_eq!(db.get_video_catalog_data(&id).unwrap().unwrap().rating, 4);
     }
 }

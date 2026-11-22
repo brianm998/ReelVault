@@ -199,10 +199,7 @@ class SyncManager(
                 Reelvault.GetMetadataRequest.newBuilder().setVideoId(entry.videoId).build()
             ).path
             val file = File(path)
-            if (!file.isFile) throw Exception("${entry.filename}: original is not a local file ($path)")
-            val total = file.length()
-            if (total == 0L) throw Exception("${entry.filename}: original is empty (0 bytes); nothing to push")
-            if (entry.contentHash.isEmpty()) throw Exception("${entry.filename}: content hash not computed yet")
+            val total = checkPushable(entry.filename, file, entry.contentHash)
 
             val client = com.reelvault.data.remote.PinnedTls.pinnedHttpClient(fingerprint)
             val base = "https://$remoteHost:$remoteMediaPort"
@@ -516,3 +513,15 @@ private class BearerTokenInterceptor(private val token: String) : ClientIntercep
         }
 }
 
+/**
+ * Validate a push source and return its size. A missing/non-file original, an
+ * empty (0-byte) one, or one whose content hash is not computed yet fails with
+ * a specific message instead of an opaque upload error.
+ */
+internal fun checkPushable(filename: String, file: File, contentHash: String): Long {
+    if (!file.isFile) throw Exception("$filename: original is not a local file (${file.path})")
+    val total = file.length()
+    if (total == 0L) throw Exception("$filename: original is empty (0 bytes); nothing to push")
+    if (contentHash.isEmpty()) throw Exception("$filename: content hash not computed yet")
+    return total
+}
