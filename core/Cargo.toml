@@ -86,7 +86,6 @@ tracing-appender = "0.2"
 clap = { version = "4.5", features = ["derive"] }
 prettytable-rs = "0.10"
 humansize = "2.1"
-indicatif = "0.17"
 
 # File operations
 walkdir = "2.4"
@@ -110,7 +109,6 @@ rayon = "1.10"
 
 # Process execution (for FFprobe)
 which = "5.0"
-serde_with = "3.4"
 
 # Content hashing for catalog sync (sparse blake3 over first+last 8 MiB)
 blake3 = "1"
@@ -138,7 +136,6 @@ jni = "0.21"
 # Development
 [dev-dependencies]
 criterion = "0.5"
-mockall = "0.12"
 http-body-util = "0.1"
 
 # Build configuration

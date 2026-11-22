@@ -4,6 +4,7 @@ name: CI
 # Does not produce release artifacts — use the Release workflow for that.
 
 on:
+  workflow_call:
   push:
     branches: [main, develop]
   pull_request:
@@ -25,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.96.0
         with:
           components: clippy
 
@@ -38,20 +39,31 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             core/target
-          key: ci-core-${{ matrix.os }}-${{ hashFiles('core/Cargo.toml') }}
+          key: ci-core-${{ matrix.os }}-${{ hashFiles('core/Cargo.lock') }}
           restore-keys: ci-core-${{ matrix.os }}-
 
       - name: Check
-        run: cargo check
+        run: cargo check --locked
         working-directory: core
 
       - name: Clippy
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --locked --all-targets -- -D warnings
         working-directory: core
 
       - name: Test
-        run: cargo test
+        run: cargo test --locked
         working-directory: core
+
+  # ── Dependency advisories (RustSec) ───────────────────────────────────────
+  deny:
+    name: cargo-deny advisories
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: core/Cargo.toml
+          command: check advisories
 
   # ── Kotlin Compose Desktop: compile check ───────────────────────────────────
   kotlin-desktop:
@@ -146,7 +158,7 @@ jobs:
       # The app links the embedded Rust core as ReelVaultCore.xcframework
       # (gitignored build artifact). Build it before xcodebuild — it needs the
       # iOS Rust targets and protoc (the core's build.rs runs tonic_build).
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.96.0
         with:
           targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
 
@@ -163,7 +175,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             core/target
-          key: ci-ios-core-${{ hashFiles('core/Cargo.toml') }}
+          key: ci-ios-core-${{ hashFiles('core/Cargo.lock') }}
           restore-keys: ci-ios-core-
 
       - uses: actions/cache@v4

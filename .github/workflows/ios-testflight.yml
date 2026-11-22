@@ -24,8 +24,13 @@ env:
   SCHEME: ReelVault
 
 jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
   testflight:
     name: Archive & upload to TestFlight
+    needs: ci
     runs-on: macos-latest
 
     steps:
@@ -40,7 +45,7 @@ jobs:
       # (gitignored build artifact). Build it (release) before archiving — it
       # needs the iOS Rust targets and protoc (the core's build.rs runs
       # tonic_build).
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.96.0
         with:
           targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
 
