@@ -65,6 +65,10 @@ class SyncManager(
 
     private val concurrencyLimit = 2
 
+    private companion object {
+        const val UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024
+    }
+
     @Volatile
     private var cancelled = false
 
@@ -139,7 +143,7 @@ class SyncManager(
                         if (cancelled) return@async
                         semaphore.acquire()
                         try {
-                            pushVideo(entry, profile)
+                            pushVideo(entry, localStub, remoteStub)
                             completed++
                         } catch (e: Exception) {
                             failed++
@@ -167,9 +171,18 @@ class SyncManager(
         return SyncRunResult(total, completed, failed, 0, errors)
     }
 
+    /**
+     * Push one video: read the original from the path the local core reports
+     * (`GetMetadata.path`; no loopback media route is involved), stream it to
+     * the remote through the resumable `/upload` protocol in [UPLOAD_CHUNK_BYTES]
+     * pieces (resuming from the server's `bytes_received`, verified by
+     * `content_hash`), then copy the catalog data (tags, rating, ...) onto the
+     * video the remote indexed.
+     */
     private suspend fun pushVideo(
         entry: Reelvault.SyncManifestEntry,
-        profile: SyncProfile,
+        localStub: ReelVaultGrpcKt.ReelVaultCoroutineStub,
+        remoteStub: ReelVaultGrpcKt.ReelVaultCoroutineStub,
     ) = withContext(Dispatchers.IO) {
         val job = SyncJob(
             videoId = entry.videoId,
@@ -178,30 +191,73 @@ class SyncManager(
             status = SyncJobStatus.IN_FLIGHT,
         )
         updateJobs { it + job }
+        fun finish(status: SyncJobStatus, progress: Float = 0f) =
+            updateJobs { jobs -> jobs.map { if (it.id == job.id) it.copy(status = status, progress = progress) else it } }
 
-        // Resolve local media URL from the local daemon's media port (loopback).
-        val localMediaBase = "http://127.0.0.1:${localGrpcPort + 1}"
-        val remoteUploadUrl = "https://$remoteHost:$remoteMediaPort/upload"
+        try {
+            val path = localStub.getMetadata(
+                Reelvault.GetMetadataRequest.newBuilder().setVideoId(entry.videoId).build()
+            ).path
+            val file = File(path)
+            if (!file.isFile) throw Exception("${entry.filename}: original is not a local file ($path)")
+            val total = file.length()
+            if (entry.contentHash.isEmpty()) throw Exception("${entry.filename}: content hash not computed yet")
 
-        // Stream local → remote via HTTP upload.
-        val client = com.reelvault.data.remote.PinnedTls.pinnedHttpClient(fingerprint)
-        val sourceUrl = java.net.URL("$localMediaBase/media/${entry.videoId}")
-        val bytes = sourceUrl.openStream().use { it.readBytes() }
-        val mediaType = "application/octet-stream".toMediaTypeOrNull()
-        val body = bytes.toRequestBody(mediaType)
-        val request = okhttp3.Request.Builder()
-            .url("$remoteUploadUrl?filename=${java.net.URLEncoder.encode(entry.filename, "UTF-8")}")
-            .header("Authorization", "Bearer $token")
-            .post(body)
-            .build()
-        client.newCall(request).execute().use { resp ->
-            if (!resp.isSuccessful) {
-                updateJobs { jobs -> jobs.map { if (it.id == job.id) it.copy(status = SyncJobStatus.FAILED) else it } }
-                throw Exception("Upload failed: HTTP ${resp.code}")
+            val client = com.reelvault.data.remote.PinnedTls.pinnedHttpClient(fingerprint)
+            val base = "https://$remoteHost:$remoteMediaPort"
+            // Deterministic id so an interrupted push resumes (hex hash is alphanumeric).
+            val uploadId = "sync-" + entry.contentHash.filter { it.isLetterOrDigit() }.take(40)
+
+            var offset = queryBytesReceived(client, base, uploadId).coerceAtMost(total)
+            if (offset == total) offset = 0 // a stale full .part: restart rather than resend nothing
+            var remoteVideoId: String? = null
+            java.io.RandomAccessFile(file, "r").use { raf ->
+                while (offset < total) {
+                    val len = minOf(UPLOAD_CHUNK_BYTES.toLong(), total - offset).toInt()
+                    val chunk = ByteArray(len).also { raf.seek(offset); raf.readFully(it) }
+                    val url = "$base/upload?filename=${java.net.URLEncoder.encode(entry.filename, "UTF-8")}" +
+                        "&upload_id=$uploadId&total_size=$total&offset=$offset" +
+                        "&content_hash=${java.net.URLEncoder.encode(entry.contentHash, "UTF-8")}"
+                    val req = okhttp3.Request.Builder().url(url)
+                        .header("Authorization", "Bearer $token")
+                        .post(chunk.toRequestBody("application/octet-stream".toMediaTypeOrNull()))
+                        .build()
+                    client.newCall(req).execute().use { resp ->
+                        if (!resp.isSuccessful) throw Exception("Upload failed: HTTP ${resp.code}")
+                        val json = org.json.JSONObject(resp.body?.string().orEmpty())
+                        offset += len
+                        if (offset >= total) {
+                            remoteVideoId = json.optString("video_id").takeIf { it.isNotEmpty() && it != "null" }
+                        }
+                    }
+                    finish(SyncJobStatus.IN_FLIGHT, offset.toFloat() / total * 0.95f)
+                }
             }
-        }
+            val newId = remoteVideoId ?: throw Exception("${entry.filename}: remote did not index the upload")
 
-        updateJobs { jobs -> jobs.map { if (it.id == job.id) it.copy(status = SyncJobStatus.DONE, progress = 1f) else it } }
+            val data = localStub.getVideoCatalogData(
+                Reelvault.VideoCatalogDataRequest.newBuilder().setVideoId(entry.videoId).build()
+            )
+            remoteStub.applyVideoCatalogData(
+                Reelvault.ApplyCatalogDataRequest.newBuilder().setVideoId(newId).setData(data).build()
+            )
+            finish(SyncJobStatus.DONE, 1f)
+        } catch (e: Exception) {
+            finish(SyncJobStatus.FAILED)
+            throw e
+        }
+    }
+
+    /** Bytes the remote already holds for [uploadId] (0 when none). */
+    private fun queryBytesReceived(client: okhttp3.OkHttpClient, base: String, uploadId: String): Long {
+        val req = okhttp3.Request.Builder().url("$base/upload/$uploadId/status")
+            .header("Authorization", "Bearer $token")
+            .post(ByteArray(0).toRequestBody(null))
+            .build()
+        return client.newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful) throw Exception("Upload status failed: HTTP ${resp.code}")
+            org.json.JSONObject(resp.body?.string().orEmpty()).optLong("bytes_received", 0L)
+        }
     }
 
     // ── Pull (FROM_REMOTE) ────────────────────────────────────────────────

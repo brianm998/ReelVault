@@ -433,9 +433,11 @@ pub(crate) fn ingest_synced(path: &str, filename: &str, origin_hash: &str, deriv
             let oh = origin_hash.to_string();
             let dh: Option<i32> = if derived_height > 0 { Some(derived_height) } else { None };
             if let Ok(conn) = db.get_connection() {
+                // Only a downscaled copy is "derived"; a full-size pull is an
+                // original and must stay visible to the manifest / planner.
                 if let Err(e) = conn.execute(
-                    "UPDATE videos SET is_derived = 1, origin_hash = ?1 WHERE id = ?2",
-                    rusqlite::params![oh, &video_id],
+                    "UPDATE videos SET is_derived = ?3, origin_hash = ?1 WHERE id = ?2",
+                    rusqlite::params![oh, &video_id, dh.is_some() as i32],
                 ) {
                     tracing::warn!("ingest_synced: could not stamp provenance for {video_id}: {e}");
                 }
