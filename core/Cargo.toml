@@ -160,3 +160,7 @@ codegen-units = 1
 # resolvable), but shrinks the Android `libreelvault_core.so` from hundreds of MB
 # to a few — so the release AAB stays lean without depending on AGP/NDK stripping.
 strip = true
+
+[[bench]]
+name = "catalog_queries"
+harness = false
