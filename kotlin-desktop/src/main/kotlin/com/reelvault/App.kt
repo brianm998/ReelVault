@@ -3334,14 +3334,14 @@ fun ReelVaultTopBar(
                             )
                         }
                         HorizontalDivider()
-                        // Catalog sync — enabled when a remote daemon is paired.
-                        DropdownMenuItem(
+                        // Catalog sync — hidden until the transfer path exists (O1/O2).
+                        if (com.reelvault.sync.CatalogSyncFeature.ENABLED) DropdownMenuItem(
                             text = { Text("Sync to Remote…") },
                             onClick = { showSyncToRemote = true; showFileMenu = false },
                             enabled = hasPairedRemote,
                             leadingIcon = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
                         )
-                        DropdownMenuItem(
+                        if (com.reelvault.sync.CatalogSyncFeature.ENABLED) DropdownMenuItem(
                             text = { Text("Sync from Remote…") },
                             onClick = { showSyncFromRemote = true; showFileMenu = false },
                             enabled = hasPairedRemote,
