@@ -95,7 +95,7 @@ uses = { compile = 1 }
 [suite.kit-test]
 command = "swift test --package-path kit 2>&1"
 parser = "xctest"
-min_tests = 5 # measured 5 on 2026-11-14
+min_tests = 76 # measured 76 on 2026-11-22
 level = "t1"
 uses = { compile = 1 }
 
