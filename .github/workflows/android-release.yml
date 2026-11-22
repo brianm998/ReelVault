@@ -34,8 +34,17 @@ on:
       - 'android-v*'
 
 jobs:
+  ci:
+    name: Rust core CI
+    uses: ./.github/workflows/ci.yml
+
+  android-ci:
+    name: Android CI
+    uses: ./.github/workflows/android-ci.yml
+
   release:
     name: Build & publish to Google Play
+    needs: [ci, android-ci]
     runs-on: ubuntu-latest
 
     steps:
@@ -71,8 +80,8 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Speeds up the (LTO, 4-ABI) cross-compile across runs; keyed on the core's
-      # Cargo.toml since Cargo.lock is gitignored.
+      # Speeds up the (LTO, 4-ABI) cross-compile across runs; keyed on the
+      # committed core/Cargo.lock.
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: core

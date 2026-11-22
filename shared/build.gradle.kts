@@ -4,6 +4,7 @@
 import java.io.File
 
 plugins {
+    `java-library`
     kotlin("jvm") version "1.9.22"
     id("com.google.protobuf") version "0.9.4"
 }

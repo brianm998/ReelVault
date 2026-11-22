@@ -4,6 +4,7 @@ name: Android CI
 # Does not produce release artifacts — use android-release.yml for that.
 
 on:
+  workflow_call:
   push:
     branches: [main, develop]
   pull_request:
@@ -38,3 +39,6 @@ jobs:
 
       - name: Android unit tests
         run: ./gradlew :android:testDebugUnitTest --no-daemon
+
+      - name: Lint
+        run: ./gradlew :android:lintDebug --no-daemon

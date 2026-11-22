@@ -1,0 +1,3 @@
+# cargo-deny: CI runs `cargo deny check advisories` only.
+[advisories]
+version = 2
