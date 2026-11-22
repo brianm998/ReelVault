@@ -134,7 +134,7 @@ class ServerLauncher {
             logger.error("reelvault-core binary not found")
             return null
         }
-        val cmd = mutableListOf(bin.absolutePath, "--port", (preferredPort ?: 0).toString())
+        val cmd = mutableListOf(bin.absolutePath, "--port", (preferredPort ?: 0).toString(), "--exit-with-parent")
         if (dbPath.isNullOrBlank()) {
             cmd += "--no-catalog"
         } else {
