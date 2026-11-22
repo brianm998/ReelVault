@@ -6,7 +6,7 @@ import Foundation
 /// Snapshot of the filters a client can evaluate locally against a
 /// `VideoSummary`. Mirrors Kotlin's `LocalFilterState` (shared/); both are
 /// driven by `testdata/local_filter.json`.
-public struct LocalFilterState: Sendable {
+public struct LocalFilterState {
     public var hasLocation: AttributeFilterState = .any
     public var hasKeywords: AttributeFilterState = .any
     public var hasProxies: AttributeFilterState = .any
