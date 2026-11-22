@@ -30,7 +30,6 @@
 //! `set_backend` before first use). Trivially convertible to a threaded field
 //! later if a per-service backend is ever needed.
 
-use crate::ffmpeg::CommandTimeout;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 
