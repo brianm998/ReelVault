@@ -333,6 +333,10 @@ fun ListScreen(
                                 val isAnchor = anchorVideoId.value == video.id &&
                                                selectedVideoIds.value.size > 1
 
+                                DisposableEffect(video.id) {
+                                    viewModel.cardAppeared(video.id)
+                                    onDispose { viewModel.cardDisappeared(video.id) }
+                                }
                                 LaunchedEffect(video.id) {
                                     if (video.hasThumbnail) {
                                         viewModel.loadThumbnail(video.id)
@@ -503,6 +507,11 @@ fun ListScreen(
                             is ListDisplayRow.HorizontalStack -> {
                                 val allItems = listOf(row.representative) + row.children
 
+                                DisposableEffect(allItems.map { it.video.id }) {
+                                    val ids = allItems.map { it.video.id }
+                                    ids.forEach { viewModel.cardAppeared(it) }
+                                    onDispose { ids.forEach { viewModel.cardDisappeared(it) } }
+                                }
                                 LaunchedEffect(allItems.map { it.video.id }) {
                                     allItems.forEach { si ->
                                         if (si.video.hasThumbnail) viewModel.loadThumbnail(si.video.id)
