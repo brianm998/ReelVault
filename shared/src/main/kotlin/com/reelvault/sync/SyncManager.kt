@@ -74,6 +74,10 @@ class SyncManager(
      */
     suspend fun startSync(profile: SyncProfile) {
         if (_isRunning.value) return
+        if (!CatalogSyncFeature.ENABLED) {
+            _lastResult.value = SyncRunResult(errors = listOf("Catalog sync is not available yet"))
+            return
+        }
         _isRunning.value = true
         cancelled = false
         _jobs.value = emptyList()
