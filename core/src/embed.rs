@@ -509,6 +509,7 @@ pub(crate) fn prune_photos(present_ids_json: String) -> i32 {
             continue;
         }
         if ctx.db.delete_video(&video_id).is_ok() {
+            let _ = crate::thumbnails::ThumbnailGenerator::cleanup_thumbnails(&ctx.cache, &video_id);
             let _ = ctx.events.send(crate::watcher::CatalogChange::VideoRemoved {
                 video_id: Some(video_id),
                 path: PathBuf::from(format!("photos://{source_id}")),

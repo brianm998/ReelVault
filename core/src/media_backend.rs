@@ -110,6 +110,25 @@ pub trait MediaBackend: Send + Sync {
         out: &Path,
     ) -> Result<()>;
 
+    /// Extract one frame per `(time_secs, out)` job at `max_px`. The default
+    /// loops [`extract_frame`](Self::extract_frame), logging and skipping
+    /// failures; the CLI backend overrides it with a single ffmpeg launch.
+    fn extract_frames(
+        &self,
+        src: &MediaSource,
+        color: &ColorInfo,
+        jobs: &[(f64, PathBuf)],
+        max_px: i32,
+        quality: u8,
+    ) -> Result<()> {
+        for (t, out) in jobs {
+            if let Err(e) = self.extract_frame(src, color, *t, max_px, quality, out) {
+                tracing::warn!("frame at t={:.3}s failed: {}", t, e);
+            }
+        }
+        Ok(())
+    }
+
     /// Transcode a downscaled H.264/AAC proxy at `target_height` to `out` —
     /// replaces the libx264 ffmpeg pass. `total_frames` (0 = unknown) lets the
     /// implementation report `progress` as a 0.0–85.0 percentage on the band the
@@ -180,6 +199,27 @@ impl MediaBackend for CliMediaBackend {
         out: &Path,
     ) -> Result<()> {
         ffmpeg_extract_frame(src.require_path()?, color, time_secs, max_px, quality, out)
+    }
+
+    fn extract_frames(
+        &self,
+        src: &MediaSource,
+        color: &ColorInfo,
+        jobs: &[(f64, PathBuf)],
+        max_px: i32,
+        quality: u8,
+    ) -> Result<()> {
+        let path = src.require_path()?;
+        if crate::thumbnails::ffmpeg_extract_frames(path, color, jobs, max_px, quality).is_ok() {
+            return Ok(());
+        }
+        // One bad position shouldn't cost the rest: retry frame by frame.
+        for (t, out) in jobs {
+            if let Err(e) = ffmpeg_extract_frame(path, color, *t, max_px, quality, out) {
+                tracing::warn!("frame at t={:.3}s failed: {}", t, e);
+            }
+        }
+        Ok(())
     }
 
     fn transcode_proxy(

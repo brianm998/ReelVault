@@ -48,41 +48,34 @@ impl ThumbnailGenerator {
             ));
         }
 
-        // Extract one frame from middle of video
+        // One frame from the middle of the video, extracted at the largest
+        // size (never upscaled). It is published as the large still as-is, and
+        // the small/medium sizes are derived from it in-process.
         let thumbnail_frame = Self::extract_frame(source, cache_dir, video_id, duration_secs)?;
-
-        // Generate different sizes
-        Self::generate_size(
-            &thumbnail_frame,
-            video_id,
-            cache_dir,
-            "small",
-            Self::SMALL_WIDTH,
-        )?;
-        Self::generate_size(
-            &thumbnail_frame,
-            video_id,
-            cache_dir,
-            "medium",
-            Self::MEDIUM_WIDTH,
-        )?;
-        Self::generate_size(
-            &thumbnail_frame,
-            video_id,
-            cache_dir,
-            "large",
-            Self::LARGE_WIDTH,
-        )?;
-
-        // Clean up temp frame
+        let result = Self::derive_sizes(&thumbnail_frame, video_id, cache_dir);
         let _ = std::fs::remove_file(&thumbnail_frame);
+        result
+    }
 
+    /// Publish `frame` (already up to `LARGE_WIDTH` wide) as the large still and
+    /// derive the small and medium stills from it with the `image` crate — no
+    /// further process launches, and the large file is encoded only once.
+    fn derive_sizes(frame: &Path, video_id: &str, cache_dir: &Path) -> Result<()> {
+        let bytes = std::fs::read(frame)?;
+        let img = image::load_from_memory(&bytes)
+            .map_err(|e| ReelVaultError::ThumbnailGenerationFailed(e.to_string()))?;
+        for (name, width) in [("small", Self::SMALL_WIDTH), ("medium", Self::MEDIUM_WIDTH)] {
+            let jpeg = resize_to_jpeg(&img, width as u32)?;
+            write_atomic(&cache_dir.join(format!("{}_{}.jpg", video_id, name)), &jpeg)?;
+        }
+        write_atomic(&cache_dir.join(format!("{}_large.jpg", video_id)), &bytes)?;
         Ok(())
     }
 
     fn extract_frame(source: &MediaSource, cache_dir: &Path, video_id: &str, duration_secs: f64) -> Result<PathBuf> {
         // Extract frame at 50% through the video
-        let temp_path = cache_dir.join(format!("{}_temp.jpg", video_id));
+        // Unique per call so concurrent generations never share a scratch file.
+        let temp_path = tmp_sibling(&cache_dir.join(format!("{}_temp.jpg", video_id)));
 
         // Calculate seek position at 50% of duration
         let seek_pos = if duration_secs > 0.0 {
@@ -105,68 +98,11 @@ impl ThumbnailGenerator {
             }
         }
 
-        // Frame at 400px wide, JPEG quality 5 — the source still that
-        // `generate_size` then downscales into the small/medium/large variants.
-        backend().extract_frame(source, &color_info, seek_pos, 400, 5, &temp_path)?;
+        // Frame at up to LARGE_WIDTH, JPEG quality 5 — the source still that
+        // `derive_sizes` turns into the small/medium/large variants.
+        backend().extract_frame(source, &color_info, seek_pos, Self::LARGE_WIDTH, 5, &temp_path)?;
 
         Ok(temp_path)
-    }
-
-    fn generate_size(
-        frame_path: &Path,
-        video_id: &str,
-        cache_dir: &Path,
-        size_name: &str,
-        width: i32,
-    ) -> Result<()> {
-        let output_path = cache_dir.join(format!("{}_{}.jpg", video_id, size_name));
-
-        // Resizing a JPEG is pure image work, not video decode — on iOS (no
-        // ffmpeg subprocess) do it with the `image` crate. Desktop keeps the
-        // ffmpeg path so its thumbnails are byte-for-byte unchanged.
-        #[cfg(any(target_os = "ios", target_os = "android"))]
-        {
-            use image::GenericImageView;
-            let img = image::open(frame_path)
-                .map_err(|e| ReelVaultError::ThumbnailGenerationFailed(e.to_string()))?;
-            let (w, h) = img.dimensions();
-            let nw = width.max(1) as u32;
-            // Width-driven, aspect-preserving (mirrors ffmpeg `scale=W:-1`).
-            let nh = if w > 0 {
-                (((h as u64) * (nw as u64) / (w as u64)).max(1)) as u32
-            } else {
-                nw
-            };
-            img.resize_exact(nw, nh, image::imageops::FilterType::Lanczos3)
-                .save_with_format(&output_path, image::ImageFormat::Jpeg)
-                .map_err(|e| ReelVaultError::ThumbnailGenerationFailed(e.to_string()))?;
-            Ok(())
-        }
-
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        {
-            let output = crate::ffmpeg::ffmpeg_command()
-                .args([
-                    "-v",
-                    "error",
-                    "-i",
-                    frame_path.to_str().unwrap_or(""),
-                    "-vf",
-                    &format!("scale={}:-1", width),
-                    "-q:v",
-                    "5",
-                    output_path.to_str().unwrap_or(""),
-                ])
-                .output_timeout(crate::ffmpeg::FRAME_TIMEOUT)
-                .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to resize thumbnail: {}", e)))?;
-
-            if !output.status.success() {
-                let error_msg = String::from_utf8_lossy(&output.stderr);
-                return Err(ReelVaultError::ThumbnailGenerationFailed(error_msg.to_string()));
-            }
-
-            Ok(())
-        }
     }
 
     pub fn get_thumbnail(
@@ -194,6 +130,46 @@ impl ThumbnailGenerator {
             }
         }
         Ok(())
+    }
+
+    /// Remove cache files whose video id is not in `known_ids` (the catalog's
+    /// ids, soft-deleted rows included). A cache file is `{id}_...jpg`; files
+    /// younger than `min_age` are left alone so in-flight generation for a row
+    /// not yet committed is never raced. At most `max_removals` files go per
+    /// call so a huge backlog can't hog the disk; returns how many were removed.
+    pub fn sweep_orphans(
+        cache_dir: &Path,
+        known_ids: &std::collections::HashSet<String>,
+        min_age: std::time::Duration,
+        max_removals: usize,
+    ) -> usize {
+        let Ok(entries) = std::fs::read_dir(cache_dir) else { return 0 };
+        let mut removed = 0;
+        for entry in entries.flatten() {
+            if removed >= max_removals {
+                break;
+            }
+            let name = entry.file_name();
+            let Some(name) = name.to_str() else { continue };
+            if !name.ends_with(".jpg") || name.starts_with('.') {
+                continue;
+            }
+            let Some((id, _)) = name.split_once('_') else { continue };
+            if id.len() < 32 || known_ids.contains(id) {
+                continue;
+            }
+            let old_enough = entry
+                .metadata()
+                .and_then(|m| m.modified())
+                .ok()
+                .and_then(|t| t.elapsed().ok())
+                .map(|age| age >= min_age)
+                .unwrap_or(false);
+            if old_enough && std::fs::remove_file(entry.path()).is_ok() {
+                removed += 1;
+            }
+        }
+        removed
     }
 
     /// Generate evenly-spaced scrub frames (for the Lightroom-style hover
@@ -273,35 +249,29 @@ impl ThumbnailGenerator {
         } // end: local-file ProRes-RAW fast path
 
         let count = Self::SCRUB_FRAME_COUNT;
+        // Distribute frames across 5%..95% of the video (5%, 15%, ... 95% for
+        // 10 frames). Only frames that don't exist yet are requested, and all
+        // of them come from a single ffmpeg run.
+        let mut jobs: Vec<(f64, PathBuf)> = Vec::new();
         for i in 0..count {
             let output = cache_dir.join(format!("{}_scrub_{}.jpg", video_id, i));
             if output.exists() {
                 continue;
             }
-
-            // Distribute frames across 5%..95% of the video. With 10 frames,
-            // that gives positions at 5%, 15%, 25%, ..., 95%.
             let pct = if count > 1 {
                 0.05 + (i as f64 / (count - 1) as f64) * 0.9
             } else {
                 0.5
             };
-            let seek_pos = duration_secs * pct;
-
-            // One frame per position at SCRUB_WIDTH, JPEG quality 6. The backend
-            // acquires/releases an ffmpeg permit per call, so a slot frees for
-            // another concurrent run between iterations.
-            if let Err(e) =
-                backend().extract_frame(source, &color_info, seek_pos, Self::SCRUB_WIDTH, 6, &output)
-            {
-                tracing::warn!(
-                    "Scrub frame {} for {} (t={:.3}s) failed: {}",
-                    i,
-                    video_id,
-                    seek_pos,
-                    e
-                );
-            }
+            jobs.push((duration_secs * pct, output));
+        }
+        if jobs.is_empty() {
+            return Ok(());
+        }
+        if let Err(e) =
+            backend().extract_frames(source, &color_info, &jobs, Self::SCRUB_WIDTH, 6)
+        {
+            tracing::warn!("Scrub frames for {} failed: {}", video_id, e);
         }
         Ok(())
     }
@@ -394,6 +364,58 @@ impl ThumbnailGenerator {
         // wants a crisper still than the grid).
         backend().extract_frame(source, &color_info, seek_pos, max_width, 3, &output)
     }
+}
+
+static TMP_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// A unique scratch path next to `out` (same directory, so a rename is atomic,
+/// and same `{id}_` prefix so per-video cleanup and the orphan sweep cover
+/// leftovers). Keeps a `.jpg` extension so ffmpeg infers the muxer.
+pub(crate) fn tmp_sibling(out: &Path) -> PathBuf {
+    let n = TMP_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let stem = out.file_stem().and_then(|s| s.to_str()).unwrap_or("thumb");
+    out.with_file_name(format!("{}.tmp{}-{}.jpg", stem, std::process::id(), n))
+}
+
+/// Write `bytes` to `out` through a unique temp file and rename into place, so a
+/// concurrent reader sees either nothing/the old file or the complete new one.
+pub(crate) fn write_atomic(out: &Path, bytes: &[u8]) -> Result<()> {
+    let tmp = tmp_sibling(out);
+    if let Err(e) = std::fs::write(&tmp, bytes).and_then(|_| std::fs::rename(&tmp, out)) {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(ReelVaultError::IoError(e));
+    }
+    Ok(())
+}
+
+/// Run `produce` against a unique temp path and rename the result onto `out`
+/// only on success.
+fn publish_via_tmp(out: &Path, produce: impl FnOnce(&Path) -> Result<()>) -> Result<()> {
+    let tmp = tmp_sibling(out);
+    let r = produce(&tmp).and_then(|_| std::fs::rename(&tmp, out).map_err(ReelVaultError::IoError));
+    if r.is_err() {
+        let _ = std::fs::remove_file(&tmp);
+    }
+    r
+}
+
+/// Downscale `img` to `width` (aspect-preserving, never upscaled) and encode JPEG.
+fn resize_to_jpeg(img: &image::DynamicImage, width: u32) -> Result<Vec<u8>> {
+    use image::GenericImageView;
+    let (w, h) = img.dimensions();
+    let resized;
+    let src = if w > width && w > 0 {
+        let nh = (((h as u64) * (width as u64) / (w as u64)).max(1)) as u32;
+        resized = img.resize_exact(width, nh, image::imageops::FilterType::Lanczos3);
+        &resized
+    } else {
+        img
+    };
+    let mut buf = Vec::new();
+    src.to_rgb8()
+        .write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Jpeg)
+        .map_err(|e| ReelVaultError::ThumbnailGenerationFailed(e.to_string()))?;
+    Ok(buf)
 }
 
 /// Read a cache file: `Ok(None)` only when the file genuinely doesn't exist;
@@ -504,6 +526,19 @@ pub(crate) fn ffmpeg_extract_frame(
     quality: u8,
     out: &Path,
 ) -> Result<()> {
+    publish_via_tmp(out, |tmp| {
+        ffmpeg_extract_frame_to(video_path, color, seek_secs, max_px, quality, tmp)
+    })
+}
+
+fn ffmpeg_extract_frame_to(
+    video_path: &Path,
+    color: &ColorInfo,
+    seek_secs: f64,
+    max_px: i32,
+    quality: u8,
+    out: &Path,
+) -> Result<()> {
     let scale = format!("scale=min({}\\,iw):-1", max_px);
     let vf = build_thumbnail_vf(color, &scale);
 
@@ -534,6 +569,57 @@ pub(crate) fn ffmpeg_extract_frame(
         ));
     }
     Ok(())
+}
+
+/// Extract several frames in ONE ffmpeg launch: the file is opened once per
+/// `(seek, output)` job as a separate fast-seeked input and each is mapped to its
+/// own output with one frame. Outputs are written to temp names and renamed into
+/// place only if ffmpeg succeeded. A frame that fails to decode fails the whole
+/// run; the backend then retries frame by frame.
+pub(crate) fn ffmpeg_extract_frames(
+    video_path: &Path,
+    color: &ColorInfo,
+    jobs: &[(f64, PathBuf)],
+    max_px: i32,
+    quality: u8,
+) -> Result<()> {
+    if jobs.is_empty() {
+        return Ok(());
+    }
+    let vf = build_thumbnail_vf(color, &format!("scale=min({}\\,iw):-1", max_px));
+    let tmps: Vec<PathBuf> = jobs.iter().map(|(_, o)| tmp_sibling(o)).collect();
+
+    let mut cmd = crate::ffmpeg::ffmpeg_command();
+    cmd.args(["-v", "error"]);
+    for (seek, _) in jobs {
+        cmd.args(["-ss", &format!("{:.3}", seek), "-i", video_path.to_str().unwrap_or("")]);
+    }
+    for (i, tmp) in tmps.iter().enumerate() {
+        cmd.args(["-map", &format!("{}:v:0", i), "-frames:v", "1", "-vf", &vf]);
+        cmd.args(["-q:v", &quality.to_string(), "-y"]);
+        cmd.arg(tmp);
+    }
+
+    let _permit = acquire_ffmpeg_permit();
+    let output = cmd
+        .output_timeout(crate::ffmpeg::FRAME_TIMEOUT)
+        .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to run ffmpeg: {}", e)));
+    let result = match output {
+        Ok(o) if o.status.success() => Ok(()),
+        Ok(o) => Err(ReelVaultError::ThumbnailGenerationFailed(
+            String::from_utf8_lossy(&o.stderr).to_string(),
+        )),
+        Err(e) => Err(e),
+    };
+    // All-or-nothing: a failed run may leave a truncated output, so publish
+    // only after success. The caller falls back to per-frame extraction.
+    for (tmp, (_, out)) in tmps.iter().zip(jobs) {
+        if result.is_ok() && std::fs::rename(tmp, out).is_ok() {
+            continue;
+        }
+        let _ = std::fs::remove_file(tmp);
+    }
+    result
 }
 
 fn tonemap_prefix(ci: &ColorInfo) -> Option<String> {
@@ -637,6 +723,15 @@ fn frameshot_extract(
     time_secs: f64,
     max_px: i32,
 ) -> Result<()> {
+    publish_via_tmp(out_path, |tmp| frameshot_extract_to(video_path, tmp, time_secs, max_px))
+}
+
+fn frameshot_extract_to(
+    video_path: &Path,
+    out_path: &Path,
+    time_secs: f64,
+    max_px: i32,
+) -> Result<()> {
     let helper = frameshot_path().ok_or_else(|| {
         ReelVaultError::ThumbnailGenerationFailed("rv-frameshot helper unavailable".into())
     })?;
@@ -664,6 +759,10 @@ fn frameshot_extract(
 /// ProRes RAW clip every thumbnail/scrub size is this one frame — correct
 /// colour beats true scrubbing, which ffmpeg can't develop here anyway.
 fn quicklook_poster(video_path: &Path, out_path: &Path, max_px: i32) -> Result<()> {
+    publish_via_tmp(out_path, |tmp| quicklook_poster_to(video_path, tmp, max_px))
+}
+
+fn quicklook_poster_to(video_path: &Path, out_path: &Path, max_px: i32) -> Result<()> {
     let parent = out_path.parent().ok_or_else(|| {
         ReelVaultError::ThumbnailGenerationFailed("thumbnail output path has no parent".into())
     })?;
@@ -861,5 +960,98 @@ mod color_tests {
         let vf = build_thumbnail_vf(&info, "scale=400:-1");
         assert!(vf.contains("itrc=bt2020-10"));
         assert!(vf.ends_with(",format=yuvj420p"));
+    }
+}
+
+#[cfg(test)]
+mod cache_tests {
+    use super::*;
+    use std::collections::HashSet;
+
+    #[test]
+    fn concurrent_readers_never_see_a_partial_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("a_large.jpg");
+        let full_a = vec![b'a'; 256 * 1024];
+        let full_b = vec![b'b'; 512 * 1024];
+        write_atomic(&out, &full_a).unwrap();
+        let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let readers: Vec<_> = (0..4)
+            .map(|_| {
+                let (out, stop, a, b) = (out.clone(), stop.clone(), full_a.clone(), full_b.clone());
+                std::thread::spawn(move || {
+                    let mut reads = 0;
+                    while !stop.load(std::sync::atomic::Ordering::Relaxed) {
+                        let got = std::fs::read(&out).unwrap();
+                        assert!(got == a || got == b, "observed a partial file ({} bytes)", got.len());
+                        reads += 1;
+                    }
+                    reads
+                })
+            })
+            .collect();
+        let writers: Vec<_> = (0..2)
+            .map(|w| {
+                let (out, a, b) = (out.clone(), full_a.clone(), full_b.clone());
+                std::thread::spawn(move || {
+                    for i in 0..200 {
+                        write_atomic(&out, if (i + w) % 2 == 0 { &a } else { &b }).unwrap();
+                    }
+                })
+            })
+            .collect();
+        for w in writers {
+            w.join().unwrap();
+        }
+        stop.store(true, std::sync::atomic::Ordering::Relaxed);
+        for r in readers {
+            assert!(r.join().unwrap() > 0);
+        }
+        // No temp files left behind.
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn derived_sizes_come_from_the_large_source() {
+        use image::GenericImageView;
+        let dir = tempfile::tempdir().unwrap();
+        let frame = dir.path().join("frame.jpg");
+        let img = image::DynamicImage::ImageRgb8(image::RgbImage::new(800, 450));
+        let jpeg = resize_to_jpeg(&img, 800).unwrap();
+        std::fs::write(&frame, &jpeg).unwrap();
+        let id = "11111111-1111-1111-1111-111111111111";
+        ThumbnailGenerator::derive_sizes(&frame, id, dir.path()).unwrap();
+        let dims = |n: &str| {
+            image::open(dir.path().join(format!("{id}_{n}.jpg"))).unwrap().dimensions()
+        };
+        assert_eq!(dims("large"), (800, 450));
+        assert_eq!(dims("medium"), (400, 225));
+        assert_eq!(dims("small"), (200, 112));
+    }
+
+    #[test]
+    fn sweep_removes_only_unknown_ids() {
+        let dir = tempfile::tempdir().unwrap();
+        let keep = "22222222-2222-2222-2222-222222222222";
+        let gone = "33333333-3333-3333-3333-333333333333";
+        for id in [keep, gone] {
+            for n in ["small", "scrub_0"] {
+                std::fs::write(dir.path().join(format!("{id}_{n}.jpg")), b"x").unwrap();
+            }
+        }
+        std::fs::write(dir.path().join("notes.txt"), b"x").unwrap();
+        let known: HashSet<String> = [keep.to_string()].into();
+        // Too young: nothing removed.
+        assert_eq!(
+            ThumbnailGenerator::sweep_orphans(dir.path(), &known, std::time::Duration::from_secs(3600), 100),
+            0
+        );
+        // Bounded.
+        assert_eq!(ThumbnailGenerator::sweep_orphans(dir.path(), &known, std::time::Duration::ZERO, 1), 1);
+        assert_eq!(ThumbnailGenerator::sweep_orphans(dir.path(), &known, std::time::Duration::ZERO, 100), 1);
+        assert!(dir.path().join(format!("{keep}_small.jpg")).exists());
+        assert!(dir.path().join(format!("{keep}_scrub_0.jpg")).exists());
+        assert!(!dir.path().join(format!("{gone}_small.jpg")).exists());
+        assert!(dir.path().join("notes.txt").exists());
     }
 }

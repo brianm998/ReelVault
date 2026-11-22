@@ -111,6 +111,25 @@ impl ReelVaultService {
             data_dir,
         };
 
+        // Bounded background sweep of thumbnail files whose video is gone.
+        if service.db.current_path().is_some() {
+            let db = Arc::clone(&service.db);
+            let cache = service.config.thumbnail_cache_path.clone();
+            tokio::task::spawn_blocking(move || {
+                if let Ok(ids) = db.all_video_ids() {
+                    let n = ThumbnailGenerator::sweep_orphans(
+                        &cache,
+                        &ids,
+                        std::time::Duration::from_secs(600),
+                        5000,
+                    );
+                    if n > 0 {
+                        tracing::info!("thumbnail sweep removed {n} orphaned file(s)");
+                    }
+                }
+            });
+        }
+
         // Boot the watcher if config says so and a catalog is open.
         // Done on a Tokio task so `new` stays synchronous.
         if config.watch_enabled && service.db.current_path().is_some() {
@@ -1738,9 +1757,20 @@ impl ReelVaultTrait for ReelVaultService {
     ) -> std::result::Result<Response<LocationResponse>, Status> {
         let req = request.into_inner();
 
+        // Collect the ids first: the rows are hard-deleted below, and their
+        // cached thumbnails would otherwise stay forever.
+        let doomed = self.db.video_ids_under(&req.path).unwrap_or_default();
         let deleted = self.db
             .remove_library_location(&req.path)
             .map_err(Status::from)?;
+        {
+            let cache = self.config.thumbnail_cache_path.clone();
+            tokio::task::spawn_blocking(move || {
+                for id in doomed {
+                    let _ = ThumbnailGenerator::cleanup_thumbnails(&cache, &id);
+                }
+            });
+        }
 
         // Drop this path from the watcher.
         let handle = self.clone_for_watcher();
