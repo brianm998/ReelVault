@@ -3907,7 +3907,7 @@ impl ReelVaultTrait for ReelVaultService {
         let proto = req.profile.ok_or_else(|| Status::invalid_argument("profile required"))?;
         let db = Arc::clone(&self.db);
         let id = if proto.id.is_empty() { uuid::Uuid::new_v4().to_string() } else { proto.id.clone() };
-        let now = chrono::Utc::now().timestamp_millis();
+        let now = crate::db::now_ms();
         let profile = crate::db::SyncProfile {
             id: id.clone(),
             name: proto.name,

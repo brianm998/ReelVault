@@ -3,7 +3,29 @@
 
 use crate::error::{Result, ReelVaultError};
 use crate::metadata_keys::{self, SqlVal};
-use chrono::Utc;
+
+/// Current Unix time in whole seconds (UTC).
+pub(crate) fn now_secs() -> i64 {
+    time::OffsetDateTime::now_utc().unix_timestamp()
+}
+
+/// Current Unix time in milliseconds (UTC).
+pub(crate) fn now_ms() -> i64 {
+    unix_ms(time::OffsetDateTime::now_utc())
+}
+
+/// Unix milliseconds of `dt` (floored, like chrono's `timestamp_millis`).
+pub(crate) fn unix_ms(dt: time::OffsetDateTime) -> i64 {
+    dt.unix_timestamp_nanos().div_euclid(1_000_000) as i64
+}
+
+/// Parse a naive `PrimitiveDateTime` with a runtime format description,
+/// interpreted as UTC, returning Unix milliseconds.
+pub(crate) fn parse_naive_utc_ms(s: &str, fmt: &str) -> Option<i64> {
+    let desc = time::format_description::parse(fmt).ok()?;
+    let p = time::PrimitiveDateTime::parse(s, &desc).ok()?;
+    Some(unix_ms(p.assume_utc()))
+}
 use rusqlite::{params, Connection, OptionalExtension};
 use std::collections::{BTreeSet, HashSet};
 use std::ops::{Deref, DerefMut};
@@ -848,7 +870,7 @@ impl Database {
     /// Record a paired device, storing only the token hash.
     pub fn add_paired_device(&self, token_hash: &str, device_name: &str) -> Result<()> {
         let conn = self.get_connection()?;
-        let now = chrono::Utc::now().timestamp();
+        let now = now_secs();
         conn.execute(
             "INSERT OR REPLACE INTO paired_devices (token_hash, device_name, paired_at, last_seen)
              VALUES (?1, ?2, ?3, ?3)",
@@ -917,7 +939,7 @@ impl Database {
             return Ok(0);
         }
         let conn = self.get_connection()?;
-        let now = chrono::Utc::now().timestamp();
+        let now = now_secs();
         for h in &seen {
             conn.execute(
                 "UPDATE paired_devices SET last_seen = ?2 WHERE token_hash = ?1",
@@ -980,7 +1002,7 @@ impl Database {
     ) -> Result<String> {
         let conn = self.get_connection()?;
         let video_id = Uuid::new_v4().to_string();
-        let now = Utc::now();
+        let now = now_ms();
 
         conn.execute(
             "INSERT INTO videos (id, path, filename, volume_id, hash, file_size_bytes, indexed_at)
@@ -992,7 +1014,7 @@ impl Database {
                 volume_id,
                 hash,
                 file_size_bytes,
-                now.timestamp_millis()
+                now
             ],
         )
         .map_err(|e| {
@@ -1062,7 +1084,7 @@ impl Database {
     ) -> Result<String> {
         let conn = self.get_connection()?;
         let loc_id = Uuid::new_v4().to_string();
-        let now = Utc::now().timestamp_millis();
+        let now = now_ms();
         conn.execute(
             "INSERT OR IGNORE INTO video_locations (id, video_id, path, filename, file_size_bytes, is_online, indexed_at) \
              VALUES (?1, ?2, ?3, ?4, ?5, 1, ?6)",
@@ -1617,7 +1639,7 @@ impl Database {
 
     pub fn delete_video(&self, video_id: &str) -> Result<()> {
         let conn = self.get_connection()?;
-        let now_ms = chrono::Utc::now().timestamp_millis();
+        let now_ms = now_ms();
         conn.execute(
             "UPDATE videos SET deleted_at = ?1 WHERE id = ?2 AND deleted_at IS NULL",
             rusqlite::params![now_ms, video_id],
@@ -1809,7 +1831,7 @@ impl Database {
         };
 
         // Apply tag + record history in one transaction.
-        let now = chrono::Utc::now().timestamp();
+        let now = now_secs();
         conn.execute(
             "INSERT OR IGNORE INTO video_tags (video_id, tag_id) VALUES (?, ?)",
             params![video_id, &tag_id],
@@ -1998,7 +2020,7 @@ impl Database {
         conn.execute(
             "INSERT INTO video_notes (video_id, notes, updated_at) VALUES (?, ?, ?)
              ON CONFLICT(video_id) DO UPDATE SET notes = ?, updated_at = ?",
-            params![video_id, notes, Utc::now().timestamp_millis(), notes, Utc::now().timestamp_millis()],
+            params![video_id, notes, now_ms(), notes, now_ms()],
         )
         .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
@@ -4325,7 +4347,7 @@ impl Database {
     pub fn add_sync_link(&self, params: &SyncLinkParams) -> Result<()> {
         let conn = self.get_connection()?;
         let id = uuid::Uuid::new_v4().to_string();
-        let now_ms = chrono::Utc::now().timestamp_millis();
+        let now_ms = now_ms();
         conn.execute(
             "INSERT INTO sync_links (id, local_video_id, peer_key, remote_video_id, origin_hash, is_derived, derived_height, last_synced_ms, local_rev_at_sync, remote_rev_at_sync)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
@@ -4699,7 +4721,7 @@ impl Database {
 
     pub fn upsert_sync_profile(&self, p: &SyncProfile) -> Result<()> {
         let conn = self.get_connection()?;
-        let now = chrono::Utc::now().timestamp_millis();
+        let now = now_ms();
         conn.execute(
             "INSERT INTO sync_profiles (id, name, peer_key, direction, filter_json, target_height, collection_resolutions, device_label, last_run_ms, created_ms, updated_ms)
              VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)

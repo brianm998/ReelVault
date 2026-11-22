@@ -790,12 +790,11 @@ impl MetadataExtractor {
             ));
         }
 
-        // Chrono is already a dependency — use it for a robust UTC string.
-        let dt = chrono::DateTime::<chrono::Utc>::from_timestamp_millis(timestamp_ms)
-            .ok_or_else(|| ReelVaultError::MetadataExtractionFailed(
+        let iso = Self::format_creation_time_iso(timestamp_ms).ok_or_else(|| {
+            ReelVaultError::MetadataExtractionFailed(
                 format!("timestamp_ms {} is out of range", timestamp_ms)
-            ))?;
-        let iso = dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
+            )
+        })?;
 
         let path = std::path::Path::new(video_path);
         let dir = path
@@ -1049,14 +1048,24 @@ impl MetadataExtractor {
         parse_iso6709(&raw)
     }
 
+    /// Unix ms → `YYYY-MM-DDTHH:MM:SS.sssZ` (UTC); `None` if out of range.
+    pub(crate) fn format_creation_time_iso(timestamp_ms: i64) -> Option<String> {
+        let dt = time::OffsetDateTime::from_unix_timestamp_nanos(timestamp_ms as i128 * 1_000_000).ok()?;
+        let desc = time::format_description::parse(
+            "[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]Z",
+        )
+        .ok()?;
+        dt.format(&desc).ok()
+    }
+
     fn extract_creation_date(tags: &Option<FFProbeTagMap>) -> Option<i64> {
         tags.as_ref().and_then(|t| {
             let date_str = t.get("creation_time")
                 .or_else(|| t.get("com.apple.quicktime.creationdate"))?;
             // Parse ISO 8601: "2024-01-15T10:30:00.000000Z"
-            chrono::DateTime::parse_from_rfc3339(date_str)
+            time::OffsetDateTime::parse(date_str, &time::format_description::well_known::Rfc3339)
                 .ok()
-                .map(|dt| dt.timestamp_millis())
+                .map(crate::db::unix_ms)
         })
     }
 
@@ -1655,6 +1664,18 @@ fn serialize_f32_vec(samples: &[f32]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn creation_time_iso_format_and_parse() {
+        assert_eq!(
+            MetadataExtractor::format_creation_time_iso(1705314600123).as_deref(),
+            Some("2024-01-15T10:30:00.123Z")
+        );
+        assert_eq!(MetadataExtractor::format_creation_time_iso(i64::MAX), None);
+        let mut tags = std::collections::HashMap::new();
+        tags.insert("creation_time".to_string(), "2024-01-15T10:30:00.000000Z".to_string());
+        assert_eq!(MetadataExtractor::extract_creation_date(&Some(tags)), Some(1705314600000));
+    }
     use std::collections::HashMap;
 
     /// Build an `Option<FFProbeTagMap>` from a slice of (key, value)
