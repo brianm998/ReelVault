@@ -866,12 +866,19 @@ fn ffmpeg_extract_frame_to(
     Ok(())
 }
 
+/// Deadline for a batch of `n` frames in one ffmpeg process: each frame gets
+/// the per-frame budget it had when launched alone (slow NAS sources), capped
+/// at 10x so a wedged process still ends.
+pub(crate) fn batch_timeout(n: usize) -> std::time::Duration {
+    crate::ffmpeg::FRAME_TIMEOUT * (n.clamp(1, 10) as u32)
+}
+
 /// Extract several frames in ONE ffmpeg launch: the file is opened once per
 /// `(seek, output)` job as a separate fast-seeked input and each is mapped to its
 /// own output with one frame. Outputs are written to temp names and renamed into
 /// place only if ffmpeg succeeded. If the batch fails nothing is published, the
 /// temp files are removed and the error is returned; there is no per-frame
-/// fallback, so a new video costs one scrub launch, failure included.
+/// fallback (the deadline scales with the job count, see `batch_timeout`), so a new video costs one scrub launch, failure included.
 pub(crate) fn ffmpeg_extract_frames(
     video_path: &Path,
     color: &ColorInfo,
@@ -900,7 +907,7 @@ pub(crate) fn ffmpeg_extract_frames(
     // takes a permit while holding one.
     let output = {
         let _permit = acquire_ffmpeg_permit();
-        cmd.output_timeout(crate::ffmpeg::FRAME_TIMEOUT)
+        cmd.output_timeout(batch_timeout(jobs.len()))
     }
     .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to run ffmpeg: {}", e)));
     let result = match output {
@@ -1400,6 +1407,54 @@ mod cache_tests {
         assert!(launches(&log) <= 2, "launches: {}", launches(&log));
         assert!(cache.join("vid_large.jpg").exists());
         assert!(cache.join("vid_scrub_9.jpg").exists());
+    }
+
+    /// The large still is requested with scale=min(800,iw), and the large
+    /// output is min(800, source width) wide (never an upscale of a 400 px frame).
+    #[cfg(unix)]
+    #[test]
+    fn large_thumbnail_is_extracted_at_800_and_decodes_800_wide() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let args_log = dir.path().join("args.log");
+        let jpg = dir.path().join("src.jpg");
+        // The fake honours the requested scale cap like ffmpeg would, from a 1600 px source.
+        image::RgbImage::from_pixel(1600, 900, image::Rgb([10, 120, 200])).save(&jpg).unwrap();
+        let small = dir.path().join("small.jpg");
+        image::RgbImage::from_pixel(800, 450, image::Rgb([10, 120, 200])).save(&small).unwrap();
+        let fake = dir.path().join("fake-ffmpeg");
+        std::fs::write(
+            &fake,
+            format!(
+                "#!/bin/sh\necho \"$*\" >> '{}'\nfor a; do case \"$a\" in *.jpg) cp '{}' \"$a\";; esac; done\nexit 0\n",
+                args_log.display(),
+                small.display()
+            ),
+        )
+        .unwrap();
+        std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let cache = dir.path().join("cache");
+        std::fs::create_dir(&cache).unwrap();
+        let src = dir.path().join("clip.mov");
+        std::fs::write(&src, b"not a video").unwrap();
+        crate::ffmpeg::TEST_FFMPEG.with(|c| *c.borrow_mut() = Some(fake));
+        let r = ThumbnailGenerator::generate_default_sizes(&MediaSource::path(&src), "vid", &cache, 60.0);
+        crate::ffmpeg::TEST_FFMPEG.with(|c| *c.borrow_mut() = None);
+        r.unwrap();
+        let args = std::fs::read_to_string(&args_log).unwrap();
+        assert!(args.contains("scale=min(800\\,iw)"), "still must be extracted at 800: {args}");
+        let (w, _) = image::image_dimensions(cache.join("vid_large.jpg")).unwrap();
+        assert_eq!(w, 800);
+    }
+
+    #[test]
+    fn scrub_batch_deadline_scales_with_job_count_and_is_capped() {
+        let one = crate::ffmpeg::FRAME_TIMEOUT;
+        assert_eq!(batch_timeout(1), one);
+        assert_eq!(batch_timeout(10), one * 10);
+        assert!(batch_timeout(10) > batch_timeout(5));
+        assert_eq!(batch_timeout(50), one * 10);
+        assert_eq!(batch_timeout(0), one);
     }
 
     /// ffmpeg that exits 0 but writes only the first output.
