@@ -1051,7 +1051,7 @@ impl MetadataExtractor {
     /// Unix ms → `YYYY-MM-DDTHH:MM:SS.sssZ` (UTC); `None` if out of range.
     pub(crate) fn format_creation_time_iso(timestamp_ms: i64) -> Option<String> {
         let dt = time::OffsetDateTime::from_unix_timestamp_nanos(timestamp_ms as i128 * 1_000_000).ok()?;
-        let desc = time::format_description::parse(
+        let desc = time::format_description::parse_borrowed::<2>(
             "[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]Z",
         )
         .ok()?;
@@ -1674,7 +1674,7 @@ mod tests {
         assert_eq!(MetadataExtractor::format_creation_time_iso(i64::MAX), None);
         let mut tags = std::collections::HashMap::new();
         tags.insert("creation_time".to_string(), "2024-01-15T10:30:00.000000Z".to_string());
-        assert_eq!(MetadataExtractor::extract_creation_date(&Some(tags)), Some(1705314600000));
+        assert_eq!(MetadataExtractor::extract_creation_date(&Some(FFProbeTagMap(tags))), Some(1705314600000));
     }
     use std::collections::HashMap;
 

@@ -22,7 +22,7 @@ pub(crate) fn unix_ms(dt: time::OffsetDateTime) -> i64 {
 /// Parse a naive `PrimitiveDateTime` with a runtime format description,
 /// interpreted as UTC, returning Unix milliseconds.
 pub(crate) fn parse_naive_utc_ms(s: &str, fmt: &str) -> Option<i64> {
-    let desc = time::format_description::parse(fmt).ok()?;
+    let desc = time::format_description::parse_borrowed::<2>(fmt).ok()?;
     let p = time::PrimitiveDateTime::parse(s, &desc).ok()?;
     Some(unix_ms(p.assume_utc()))
 }
