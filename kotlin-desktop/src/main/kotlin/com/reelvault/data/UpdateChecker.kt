@@ -20,7 +20,7 @@ object UpdateChecker {
     suspend fun checkLatestRelease(owner: String, repo: String): ReleaseInfo? =
         withContext(Dispatchers.IO) {
             try {
-                val url = URL("https://api.github.com/repos/$owner/$repo/releases/latest")
+                val url = java.net.URI("https://api.github.com/repos/$owner/$repo/releases/latest").toURL()
                 val conn = url.openConnection() as HttpURLConnection
                 conn.setRequestProperty("Accept", "application/vnd.github+json")
                 conn.setRequestProperty("User-Agent", "ReelVault/${AppVersion.CURRENT}")

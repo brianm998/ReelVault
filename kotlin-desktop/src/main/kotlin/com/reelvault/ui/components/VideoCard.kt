@@ -216,24 +216,6 @@ fun VideoCard(
 
     val isInExpandedStack = isStackExpanded || isStackChild
 
-    // Border priority:
-    //   anchor (multi-select anchor) > primary > multi-selection > hover > stack > default
-    val borderColor = when {
-        isAnchor -> MaterialTheme.colorScheme.tertiary
-        isSelected -> MaterialTheme.colorScheme.primary
-        isInMultiSelection -> MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
-        isHovered -> MaterialTheme.colorScheme.outlineVariant
-        // Cards in an expanded stack share a subtle primary-tinted border so the
-        // group is visually cohesive even when none of them is selected.
-        isInExpandedStack -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-    }
-    val borderWidth = when {
-        isAnchor || isSelected || isInMultiSelection -> 3.dp
-        isInExpandedStack -> 2.dp
-        else -> 1.dp
-    }
-
     // Lightroom-style three-tone card. Top band is lighter than the
     // photo area; bottom band sits a touch darker than the top. ONLY
     // the photo area takes the colour-label tint — the bands stay
@@ -276,11 +258,6 @@ fun VideoCard(
     // opaque so the selection border reads as a solid white stroke.
     val selectionBorderColor = Color.White
     val gridLineColor = Color.Black.copy(alpha = 0.4f)
-    // Backwards-compat aliases — old call sites use these names.
-    @Suppress("UnusedVariable") val bandBackground = topBandColor
-    @Suppress("UnusedVariable") val cardBackground = photoAreaBackground
-    @Suppress("UnusedVariable") val cardBackgroundColor = photoAreaBackground
-    @Suppress("UnusedVariable") val showCornerLabelBadge = false
 
     // AWT window for drag-out support. Provided via LocalAppWindow (defined in
     // App.kt and passed through CompositionLocalProvider in main()).
