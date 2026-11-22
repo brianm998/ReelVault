@@ -1,0 +1,20 @@
+{
+  "negatePrefix": "\u001E",
+  "valueSeparator": "\u001F",
+  "wire": [
+    {"name": "plain_single", "values": ["A"], "negate": false, "wire": "A"},
+    {"name": "negated_single", "values": ["A"], "negate": true, "wire": "\u001EA"},
+    {"name": "multi_joined_by_unit_separator", "values": ["100", "200"], "negate": false, "wire": "100\u001F200"},
+    {"name": "negated_multi", "values": ["100", "200"], "negate": true, "wire": "\u001E100\u001F200"},
+    {"name": "empty_values", "values": [], "negate": false, "wire": ""}
+  ],
+  "derived": [
+    {"name": "any_any", "hasAudio": "any", "orientation": "any", "filters": []},
+    {"name": "audio_yes", "hasAudio": "yes", "orientation": "any", "filters": [["has_audio", "yes"]]},
+    {"name": "audio_no", "hasAudio": "no", "orientation": "any", "filters": [["has_audio", "no"]]},
+    {"name": "portrait", "hasAudio": "any", "orientation": "portrait", "filters": [["orientation", "portrait"]]},
+    {"name": "landscape", "hasAudio": "any", "orientation": "landscape", "filters": [["orientation", "landscape"]]},
+    {"name": "both_in_order", "hasAudio": "yes", "orientation": "landscape",
+     "filters": [["has_audio", "yes"], ["orientation", "landscape"]]}
+  ]
+}

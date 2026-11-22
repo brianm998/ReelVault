@@ -70,6 +70,11 @@ class ReelVaultApp : Application() {
      * so repeated app restarts don't reset the countdown.
      */
     private fun scheduleAutoSync() {
+        if (!com.reelvault.sync.CatalogSyncFeature.ENABLED) {
+            // Cancel any job a previous build registered.
+            WorkManager.getInstance(this).cancelUniqueWork("reelvault_auto_sync")
+            return
+        }
         val request = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
             .setConstraints(
                 Constraints.Builder()

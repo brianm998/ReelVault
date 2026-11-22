@@ -60,6 +60,10 @@ public final class SyncManager: ObservableObject {
 
     public func startSync(profile: SyncProfile) async {
         guard !isRunning else { return }
+        guard CatalogSyncFeature.isEnabled else {
+            lastResult = SyncRunResult(errors: [SyncError.notAvailable.localizedDescription])
+            return
+        }
         isRunning = true
         defer { isRunning = false }
         jobs = []
@@ -178,6 +182,10 @@ public final class SyncManager: ObservableObject {
     }
 
     private func pushEntry(entry: Reelvault_SyncManifestEntry, profile: SyncProfile) async throws {
+        // The upload is not implemented: never report success for a transfer that
+        // did not happen. (Real fix: audit item O2.)
+        throw SyncError.notAvailable
+        #if false
         var job = SyncJob(videoId: entry.videoID, filename: entry.filename, direction: .toRemote)
         jobs.append(job)
 
@@ -200,6 +208,7 @@ public final class SyncManager: ObservableObject {
             jobs[idx].progress = 1.0
         }
         _ = job  // suppress unused warning until fully wired
+        #endif
     }
 
     // MARK: - Pull (remote -> local)
@@ -288,6 +297,11 @@ public final class SyncManager: ObservableObject {
     }
 
     private func pullEntry(entry: Reelvault_SyncManifestEntry, profile: SyncProfile) async throws {
+        // /media/<id>/original does not exist on the server and the download used
+        // an unpinned session; ingest and catalog apply are TODO. Never report
+        // success. (Real fix: audit item O2.)
+        throw SyncError.notAvailable
+        #if false
         var job = SyncJob(videoId: entry.videoID, filename: entry.filename, direction: .fromRemote)
         jobs.append(job)
 
@@ -329,49 +343,10 @@ public final class SyncManager: ObservableObject {
             jobs[idx].progress = 1.0
         }
         _ = job  // suppress unused warning until fully wired
+        #endif
     }
 
     // MARK: - Smart-collection tag-UUID rewrite
-
-    /// Rewrites tag UUIDs in a smart-collection filter_json string from
-    /// source-catalog IDs to destination-catalog IDs, matched by tag name.
-    /// Tags with no name match on the destination are dropped silently.
-    ///
-    /// - Parameters:
-    ///   - filterJson: The raw filter_json string from a smart collection
-    ///     (e.g. `{"tagIds":["uuid-a","uuid-b"],"operator":"AND"}`).
-    ///   - srcTags: id → name mapping for all tags in the SOURCE catalog.
-    ///   - dstTags: id → name mapping for all tags in the DESTINATION catalog.
-    /// - Returns: A new JSON string with the tagIds array replaced by
-    ///   destination-side UUIDs. Returns the original string unchanged if it
-    ///   cannot be parsed or contains no tagIds.
-    nonisolated private func rewriteFilterJson(
-        _ filterJson: String,
-        srcTags: [String: String],
-        dstTags: [String: String]
-    ) -> String {
-        guard !filterJson.isEmpty,
-              let data = filterJson.data(using: .utf8),
-              var dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let tagIds = dict["tagIds"] as? [String]
-        else { return filterJson }
-
-        // Build name → dst-id lookup so we can resolve each source UUID to a name,
-        // then find the matching UUID on the destination side.
-        let nameToDst = Dictionary(uniqueKeysWithValues: dstTags.map { ($0.value, $0.key) })
-
-        let remapped: [String] = tagIds.compactMap { srcId in
-            guard let name = srcTags[srcId],
-                  let dstId = nameToDst[name] else { return nil }
-            return dstId
-        }
-        dict["tagIds"] = remapped
-
-        guard let out = try? JSONSerialization.data(withJSONObject: dict, options: [.sortedKeys]),
-              let str = String(data: out, encoding: .utf8)
-        else { return filterJson }
-        return str
-    }
 
     /// Fetches all tags from a live gRPC client and returns an id → name map.
     /// Uses the existing `ListTags` RPC (Reelvault_ListTagsRequest).
@@ -420,7 +395,7 @@ public final class SyncManager: ObservableObject {
         // 3 + 4. For each smart collection, rewrite filter_json and create on dst.
         var syncedCount = 0
         for collection in smartCollections {
-            let rewrittenFilter = rewriteFilterJson(
+            let rewrittenFilter = rewriteSmartFilterTagIds(
                 collection.filterJson,
                 srcTags: srcTags,
                 dstTags: dstTags
@@ -534,6 +509,7 @@ public enum SyncError: LocalizedError {
     case invalidURL(String)
     case insufficientStorage(needed: Int64)
     case prepareFailed(String)
+    case notAvailable
 
     public var errorDescription: String? {
         switch self {
@@ -541,6 +517,8 @@ public enum SyncError: LocalizedError {
             return "Invalid URL: \(url)"
         case .insufficientStorage(let needed):
             return "Insufficient storage: need \(needed / 1_000_000) MB"
+        case .notAvailable:
+            return "Catalog sync is not available yet"
         case .prepareFailed(let detail):
             return "PrepareRendition failed: \(detail)"
         }

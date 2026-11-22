@@ -1,0 +1,514 @@
+{
+ "videoDefaults": {
+  "width": 1920,
+  "height": 1080,
+  "tags": [],
+  "proxyCount": 0,
+  "codecAudio": "aac",
+  "rating": 0,
+  "colorLabel": "",
+  "lat": 0.0,
+  "lon": 0.0,
+  "fullResolution": "unspecified"
+ },
+ "cases": [
+  {
+   "name": "default_matches_everything",
+   "video": {},
+   "state": {},
+   "matches": true
+  },
+  {
+   "name": "location_yes_with_gps",
+   "video": {
+    "lat": 1.0,
+    "lon": 2.0
+   },
+   "state": {
+    "hasLocation": "yes"
+   },
+   "matches": true
+  },
+  {
+   "name": "location_yes_without_gps",
+   "video": {},
+   "state": {
+    "hasLocation": "yes"
+   },
+   "matches": false
+  },
+  {
+   "name": "location_no_with_gps",
+   "video": {
+    "lat": 1.0,
+    "lon": 2.0
+   },
+   "state": {
+    "hasLocation": "no"
+   },
+   "matches": false
+  },
+  {
+   "name": "location_no_without_gps",
+   "video": {},
+   "state": {
+    "hasLocation": "no"
+   },
+   "matches": true
+  },
+  {
+   "name": "keywords_yes_tagged",
+   "video": {
+    "tags": [
+     "x"
+    ]
+   },
+   "state": {
+    "hasKeywords": "yes"
+   },
+   "matches": true
+  },
+  {
+   "name": "keywords_yes_untagged",
+   "video": {},
+   "state": {
+    "hasKeywords": "yes"
+   },
+   "matches": false
+  },
+  {
+   "name": "keywords_no_tagged",
+   "video": {
+    "tags": [
+     "x"
+    ]
+   },
+   "state": {
+    "hasKeywords": "no"
+   },
+   "matches": false
+  },
+  {
+   "name": "keywords_no_untagged",
+   "video": {},
+   "state": {
+    "hasKeywords": "no"
+   },
+   "matches": true
+  },
+  {
+   "name": "proxies_yes_with",
+   "video": {
+    "proxyCount": 2
+   },
+   "state": {
+    "hasProxies": "yes"
+   },
+   "matches": true
+  },
+  {
+   "name": "proxies_yes_without",
+   "video": {},
+   "state": {
+    "hasProxies": "yes"
+   },
+   "matches": false
+  },
+  {
+   "name": "proxies_no_with",
+   "video": {
+    "proxyCount": 2
+   },
+   "state": {
+    "hasProxies": "no"
+   },
+   "matches": false
+  },
+  {
+   "name": "proxies_no_without",
+   "video": {},
+   "state": {
+    "hasProxies": "no"
+   },
+   "matches": true
+  },
+  {
+   "name": "full_res_yes_full",
+   "video": {
+    "fullResolution": "full"
+   },
+   "state": {
+    "fullResolution": "yes"
+   },
+   "matches": true
+  },
+  {
+   "name": "full_res_yes_notfull",
+   "video": {
+    "fullResolution": "notFull"
+   },
+   "state": {
+    "fullResolution": "yes"
+   },
+   "matches": false
+  },
+  {
+   "name": "full_res_yes_unspecified_counts_as_not_full",
+   "video": {},
+   "state": {
+    "fullResolution": "yes"
+   },
+   "matches": false
+  },
+  {
+   "name": "full_res_no_unspecified",
+   "video": {},
+   "state": {
+    "fullResolution": "no"
+   },
+   "matches": true
+  },
+  {
+   "name": "full_res_no_full",
+   "video": {
+    "fullResolution": "full"
+   },
+   "state": {
+    "fullResolution": "no"
+   },
+   "matches": false
+  },
+  {
+   "name": "audio_yes_with",
+   "video": {},
+   "state": {
+    "hasAudio": "yes"
+   },
+   "matches": true
+  },
+  {
+   "name": "audio_yes_without",
+   "video": {
+    "codecAudio": ""
+   },
+   "state": {
+    "hasAudio": "yes"
+   },
+   "matches": false
+  },
+  {
+   "name": "audio_no_without",
+   "video": {
+    "codecAudio": ""
+   },
+   "state": {
+    "hasAudio": "no"
+   },
+   "matches": true
+  },
+  {
+   "name": "audio_no_with",
+   "video": {},
+   "state": {
+    "hasAudio": "no"
+   },
+   "matches": false
+  },
+  {
+   "name": "portrait_accepts_tall",
+   "video": {
+    "width": 1080,
+    "height": 1920
+   },
+   "state": {
+    "orientation": "portrait"
+   },
+   "matches": true
+  },
+  {
+   "name": "portrait_rejects_wide",
+   "video": {},
+   "state": {
+    "orientation": "portrait"
+   },
+   "matches": false
+  },
+  {
+   "name": "landscape_accepts_wide",
+   "video": {},
+   "state": {
+    "orientation": "landscape"
+   },
+   "matches": true
+  },
+  {
+   "name": "landscape_rejects_tall",
+   "video": {
+    "width": 1080,
+    "height": 1920
+   },
+   "state": {
+    "orientation": "landscape"
+   },
+   "matches": false
+  },
+  {
+   "name": "square_is_landscape",
+   "video": {
+    "width": 100,
+    "height": 100
+   },
+   "state": {
+    "orientation": "landscape"
+   },
+   "matches": true
+  },
+  {
+   "name": "square_is_not_portrait",
+   "video": {
+    "width": 100,
+    "height": 100
+   },
+   "state": {
+    "orientation": "portrait"
+   },
+   "matches": false
+  },
+  {
+   "name": "zero_dims_not_landscape",
+   "video": {
+    "width": 0,
+    "height": 0
+   },
+   "state": {
+    "orientation": "landscape"
+   },
+   "matches": false
+  },
+  {
+   "name": "zero_dims_not_portrait",
+   "video": {
+    "width": 0,
+    "height": 0
+   },
+   "state": {
+    "orientation": "portrait"
+   },
+   "matches": false
+  },
+  {
+   "name": "zero_width_with_height_is_portrait",
+   "video": {
+    "width": 0,
+    "height": 10
+   },
+   "state": {
+    "orientation": "portrait"
+   },
+   "matches": true
+  },
+  {
+   "name": "min_rating_met",
+   "video": {
+    "rating": 3
+   },
+   "state": {
+    "minRating": 3
+   },
+   "matches": true
+  },
+  {
+   "name": "min_rating_not_met",
+   "video": {
+    "rating": 2
+   },
+   "state": {
+    "minRating": 3
+   },
+   "matches": false
+  },
+  {
+   "name": "min_rating_zero",
+   "video": {
+    "rating": 0
+   },
+   "state": {
+    "minRating": 0
+   },
+   "matches": true
+  },
+  {
+   "name": "color_label_match",
+   "video": {
+    "colorLabel": "red"
+   },
+   "state": {
+    "colorLabel": "red"
+   },
+   "matches": true
+  },
+  {
+   "name": "color_label_mismatch",
+   "video": {
+    "colorLabel": "blue"
+   },
+   "state": {
+    "colorLabel": "red"
+   },
+   "matches": false
+  },
+  {
+   "name": "color_label_missing",
+   "video": {},
+   "state": {
+    "colorLabel": "red"
+   },
+   "matches": false
+  },
+  {
+   "name": "geo_inside",
+   "video": {
+    "lat": 40.01,
+    "lon": -74.01
+   },
+   "state": {
+    "location": [
+     40.0,
+     -74.0,
+     10.0
+    ]
+   },
+   "matches": true
+  },
+  {
+   "name": "geo_outside_lat",
+   "video": {
+    "lat": 41.0,
+    "lon": -74.0
+   },
+   "state": {
+    "location": [
+     40.0,
+     -74.0,
+     10.0
+    ]
+   },
+   "matches": false
+  },
+  {
+   "name": "geo_outside_lon",
+   "video": {
+    "lat": 40.0,
+    "lon": -72.0
+   },
+   "state": {
+    "location": [
+     40.0,
+     -74.0,
+     10.0
+    ]
+   },
+   "matches": false
+  },
+  {
+   "name": "geo_requires_location",
+   "video": {},
+   "state": {
+    "location": [
+     0.0,
+     0.0,
+     1000.0
+    ]
+   },
+   "matches": false
+  },
+  {
+   "name": "geo_lon_delta_widens_with_latitude_inside",
+   "video": {
+    "lat": 60.0,
+    "lon": 11.9
+   },
+   "state": {
+    "location": [
+     60.0,
+     10.0,
+     111.0
+    ]
+   },
+   "matches": true
+  },
+  {
+   "name": "geo_lon_delta_widens_with_latitude_outside",
+   "video": {
+    "lat": 60.0,
+    "lon": 12.1
+   },
+   "state": {
+    "location": [
+     60.0,
+     10.0,
+     111.0
+    ]
+   },
+   "matches": false
+  },
+  {
+   "name": "geo_cos_clamp_near_pole_inside",
+   "video": {
+    "lat": 89.5,
+    "lon": 99.0
+   },
+   "state": {
+    "location": [
+     90.0,
+     0.0,
+     111.0
+    ]
+   },
+   "matches": true
+  },
+  {
+   "name": "geo_cos_clamp_near_pole_outside",
+   "video": {
+    "lat": 89.5,
+    "lon": 101.0
+   },
+   "state": {
+    "location": [
+     90.0,
+     0.0,
+     111.0
+    ]
+   },
+   "matches": false
+  },
+  {
+   "name": "combined_fails_when_one_fails",
+   "video": {
+    "tags": [
+     "t"
+    ],
+    "rating": 1
+   },
+   "state": {
+    "hasKeywords": "yes",
+    "minRating": 2
+   },
+   "matches": false
+  },
+  {
+   "name": "combined_passes_when_all_pass",
+   "video": {
+    "tags": [
+     "t"
+    ],
+    "rating": 2
+   },
+   "state": {
+    "hasKeywords": "yes",
+    "minRating": 2
+   },
+   "matches": true
+  }
+ ]
+}
