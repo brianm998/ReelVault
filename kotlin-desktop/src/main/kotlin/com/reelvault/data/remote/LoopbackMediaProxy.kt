@@ -94,6 +94,10 @@ class LoopbackMediaProxy(private val endpoint: RemoteConnection.Endpoint) {
     private fun handle(exchange: HttpExchange) {
         try {
             val uri = exchange.requestURI
+            if (!isAllowedRequest(exchange.requestMethod, uri)) {
+                exchange.sendResponseHeaders(400, -1)
+                return
+            }
             val path = uri.rawPath + (uri.rawQuery?.let { "?$it" } ?: "")
             val url = "https://${endpoint.host}:${endpoint.mediaPort}$path"
             val req = Request.Builder().url(url)
@@ -132,5 +136,22 @@ class LoopbackMediaProxy(private val endpoint: RemoteConnection.Endpoint) {
         }
     } catch (e: Exception) {
         null
+    }
+
+    companion object {
+        /**
+         * The proxy attaches the bearer token, so only `GET` of origin-form
+         * `/hls/…` and `/video/…` paths is forwarded; absolute-form targets or
+         * traversal get 400.
+         */
+        fun isAllowedRequest(method: String, uri: java.net.URI): Boolean {
+            if (method != "GET") return false
+            if (uri.scheme != null || uri.rawAuthority != null) return false
+            val path = uri.rawPath ?: return false
+            if (!(path.startsWith("/hls/") || path.startsWith("/video/"))) return false
+            val lower = path.lowercase()
+            if (lower.contains("%2e") || lower.contains("%2f") || lower.contains("\\")) return false
+            return path.split('/').none { it == ".." }
+        }
     }
 }
