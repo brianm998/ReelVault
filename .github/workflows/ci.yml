@@ -112,6 +112,24 @@ jobs:
         run: swift build
         working-directory: macos
 
+  # ── ReelVaultKit: shared Swift unit tests (fixtures in testdata/) ────────
+  kit-tests:
+    name: ReelVaultKit tests
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: kit/.build
+          key: ci-kit-${{ hashFiles('kit/Package.resolved') }}
+          restore-keys: ci-kit-
+
+      - name: Test
+        run: swift test
+        working-directory: kit
+
   # ── SwiftUI iOS: simulator build check (no signing) ──────────────────────
   ios:
     name: iOS Swift build
