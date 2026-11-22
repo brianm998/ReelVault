@@ -138,7 +138,14 @@ impl ReelVaultService {
             ThumbnailGenerator::register_catalog(&cache, &catalog_path);
             let (ids, since) = match ThumbnailGenerator::shared_known_ids(&cache) {
                 Some((ids, since)) => (ids, Some(since)),
-                None => return,
+                None => {
+                    tracing::warn!(
+                        "thumbnail sweep skipped: a catalog registered for {} cannot be read (current catalog {})",
+                        cache.display(),
+                        catalog_path.display()
+                    );
+                    return;
+                }
             };
             let n = ThumbnailGenerator::sweep_orphans_since(
                 &cache,
@@ -1502,6 +1509,17 @@ impl ReelVaultTrait for ReelVaultService {
         // the requested one. Without this the card shows the film-icon
         // placeholder forever — GetThumbnail returns NOT_FOUND, which tells the
         // client to stop asking — even though only scrub frames self-healed.
+        // A still made by an older pipeline version (blurry upscaled large) is
+        // regenerated lazily on access; the old bytes stay as a fallback if
+        // regeneration fails (e.g. the source volume is offline).
+        let mut stale_fallback = None;
+        if req.max_width == 0
+            && thumbnail_data.is_some()
+            && matches!(req.size.as_str(), "small" | "medium" | "large")
+            && !ThumbnailGenerator::stills_current(&self.config.thumbnail_cache_path, &req.video_id)
+        {
+            stale_fallback = thumbnail_data.take();
+        }
         if req.max_width == 0 && thumbnail_data.is_none() && !req.size.starts_with("scrub_") {
             let lock = self.scrub_lock_for(&req.video_id).await;
             let _gen_guard = lock.lock().await;
@@ -1561,6 +1579,9 @@ impl ReelVaultTrait for ReelVaultService {
                 }
             }
 
+            if thumbnail_data.is_none() {
+                thumbnail_data = stale_fallback.take();
+            }
             drop(_gen_guard);
             if Arc::strong_count(&lock) == 2 {
                 let mut map = self.scrub_locks.lock().await;

@@ -27,3 +27,16 @@
 - Publishing uses `rename`, atomic on Linux/macOS; on Windows a rename over a file a reader has open can fail
   with a sharing violation, in which case generation fails for that attempt and is retried on the next request.
 - Probes (ffprobe) are not counted among "ffmpeg launches".
+- Cache version: each video gets `{id}_thumbv.ok` (content = `STILL_VERSION`, now "2") written after its stills.
+  Stills without a current marker (made by the old pipeline: blurry upscaled large) are regenerated lazily: on
+  the next index, or on the next small/medium/large GetThumbnail (old bytes are served if regeneration fails).
+  No startup job. Bump `STILL_VERSION` to force regeneration after future output changes. Markers are swept and
+  cleaned up like jpgs.
+- The sweep logs one WARN naming the catalog when it is skipped because a registered catalog cannot be read.
+- Known limits (owner-accepted): orphans older than the registry (`.catalogs_since`) are not swept; `prune_photos`
+  stays soft-delete only and keeps thumbnails, so "cleanup on prune" is deliberately only "cleanup on hard
+  delete" (location removal); `remove_library_location` now matches paths case-sensitively (`substr`, not LIKE),
+  so on a case-insensitive filesystem a differently-cased root string no longer matches stored paths (library
+  paths are stored as the scanner emitted them, and the UI passes back the stored string, so normal use is
+  unaffected; a mismatched case removes nothing rather than too much).
+- "Large still" criterion means: source width, capped at 800 px, never upscaled.

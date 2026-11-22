@@ -437,8 +437,7 @@ impl IndexingEngine {
         let duration_secs = probe_output.format.duration.unwrap_or(0.0);
 
         // Generate thumbnail (skip if already exists, ffmpeg overwrite would be redundant)
-        let thumb_path = thumbnail_cache.join(format!("{}_medium.jpg", video_id));
-        if !thumb_path.exists() {
+        if !ThumbnailGenerator::stills_current(thumbnail_cache, &video_id) {
             match ThumbnailGenerator::generate(db, &source, &video_id, thumbnail_cache, duration_secs) {
                 Ok(_) => {
                     tracing::debug!("Generated thumbnail for {}", video_id);
@@ -512,8 +511,7 @@ impl IndexingEngine {
         )?;
 
         let duration_secs = probe_output.format.duration.unwrap_or(0.0);
-        let thumb_path = thumbnail_cache.join(format!("{}_medium.jpg", video_id));
-        if !thumb_path.exists() {
+        if !ThumbnailGenerator::stills_current(thumbnail_cache, &video_id) {
             if let Err(e) =
                 ThumbnailGenerator::generate(db, source, &video_id, thumbnail_cache, duration_secs)
             {

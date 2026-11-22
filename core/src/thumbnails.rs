@@ -9,6 +9,11 @@ use crate::media_backend::{backend, MediaSource};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
+/// Version of the still-thumbnail pipeline. Bump when output changes so
+/// existing caches regenerate. v2: large from an 800 px source (v1 upscaled
+/// a 400 px frame).
+const STILL_VERSION: &str = "2";
+
 pub struct ThumbnailGenerator;
 
 impl ThumbnailGenerator {
@@ -54,7 +59,23 @@ impl ThumbnailGenerator {
         let thumbnail_frame = Self::extract_frame(source, cache_dir, video_id, duration_secs)?;
         let result = Self::derive_sizes(&thumbnail_frame, video_id, cache_dir);
         let _ = std::fs::remove_file(&thumbnail_frame);
-        result
+        result?;
+        // Marker last: it asserts all three stills are of the current version.
+        write_atomic(&cache_dir.join(Self::version_marker_name(video_id)), STILL_VERSION.as_bytes())
+    }
+
+    fn version_marker_name(video_id: &str) -> String {
+        format!("{}_thumbv.ok", video_id)
+    }
+
+    /// True when the video's stills exist and were made by the current
+    /// pipeline. Caches from older versions (no marker, or a different
+    /// version) report false so the stills are regenerated lazily.
+    pub fn stills_current(cache_dir: &Path, video_id: &str) -> bool {
+        cache_dir.join(format!("{}_medium.jpg", video_id)).exists()
+            && std::fs::read(cache_dir.join(Self::version_marker_name(video_id)))
+                .map(|b| b == STILL_VERSION.as_bytes())
+                .unwrap_or(false)
     }
 
     /// Publish `frame` (already up to `LARGE_WIDTH` wide) as the large still and
@@ -164,7 +185,7 @@ impl ThumbnailGenerator {
             }
             let name = entry.file_name();
             let Some(name) = name.to_str() else { continue };
-            if !name.ends_with(".jpg") || name.starts_with('.') {
+            if !(name.ends_with(".jpg") || name.ends_with("_thumbv.ok")) || name.starts_with('.') {
                 continue;
             }
             let Some((id, _)) = name.split_once('_') else { continue };
@@ -1165,6 +1186,25 @@ mod cache_tests {
         assert_eq!(dims("large"), (800, 450));
         assert_eq!(dims("medium"), (400, 225));
         assert_eq!(dims("small"), (200, 112));
+    }
+
+    #[test]
+    fn old_version_cache_is_stale_and_current_is_left_alone() {
+        let dir = tempfile::tempdir().unwrap();
+        let id = "55555555-5555-5555-5555-555555555555";
+        // Cache from the old pipeline: stills but no marker.
+        std::fs::write(dir.path().join(format!("{id}_medium.jpg")), b"x").unwrap();
+        assert!(!ThumbnailGenerator::stills_current(dir.path(), id));
+        // Marker from a different version is stale too.
+        let marker = dir.path().join(format!("{id}_thumbv.ok"));
+        std::fs::write(&marker, b"1").unwrap();
+        assert!(!ThumbnailGenerator::stills_current(dir.path(), id));
+        // Current marker: left alone.
+        std::fs::write(&marker, STILL_VERSION).unwrap();
+        assert!(ThumbnailGenerator::stills_current(dir.path(), id));
+        // Marker without stills is not current.
+        std::fs::remove_file(dir.path().join(format!("{id}_medium.jpg"))).unwrap();
+        assert!(!ThumbnailGenerator::stills_current(dir.path(), id));
     }
 
     #[test]
