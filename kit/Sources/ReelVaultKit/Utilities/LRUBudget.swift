@@ -57,8 +57,18 @@ public struct LRUBudget: Sendable {
 }
 
 extension PlatformImage {
-    /// Approximate decoded size in bytes (RGBA).
+    /// Approximate decoded size in bytes (RGBA), from pixel dimensions. Uses the
+    /// CGImage because `size` is in points (scaled on iOS) and is `.zero` for
+    /// images wrapped by `fromCGImage` on macOS.
     var approxBytes: Int {
-        max(1, Int(size.width * size.height * 4))
+        #if canImport(AppKit)
+        var rect = CGRect(origin: .zero, size: size)
+        if let cg = cgImage(forProposedRect: &rect, context: nil, hints: nil) {
+            return max(1, cg.width * cg.height * 4)
+        }
+        #else
+        if let cg = cgImage { return max(1, cg.width * cg.height * 4) }
+        #endif
+        return max(1, Int(size.width * size.height * 4))
     }
 }

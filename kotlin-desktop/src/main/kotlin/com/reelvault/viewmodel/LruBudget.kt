@@ -31,3 +31,35 @@ class LruBudget(private val maxCount: Int, private val maxBytes: Long) {
 
     @Synchronized fun clear() { costs.clear(); totalBytes = 0L }
 }
+
+/**
+ * A cache map exposed through a StateFlow without copying on each change.
+ * Writers mutate the shared concurrent [backing] map and emit a new O(1)
+ * wrapper with a bumped [version]; equality is (same backing, same version), so
+ * collectors see exactly one emission per change.
+ */
+class VersionedMap<V>(
+    private val backing: java.util.concurrent.ConcurrentHashMap<String, V>,
+    val version: Long,
+) : Map<String, V> by backing {
+    /** Insert [key] and drop [evict]; returns the next snapshot (O(1) + evictions). */
+    fun with(key: String, value: V, evict: Collection<String>): VersionedMap<V> {
+        backing[key] = value
+        evict.forEach { backing.remove(it) }
+        return VersionedMap(backing, version + 1)
+    }
+
+    fun cleared(): VersionedMap<V> {
+        backing.clear()
+        return VersionedMap(backing, version + 1)
+    }
+
+    override fun equals(other: Any?) =
+        other is VersionedMap<*> && other.backing === backing && other.version == version
+    override fun hashCode() = System.identityHashCode(backing) * 31 + version.hashCode()
+    override fun toString() = "VersionedMap(v$version, size=$size)"
+
+    companion object {
+        fun <V> empty() = VersionedMap<V>(java.util.concurrent.ConcurrentHashMap(), 0)
+    }
+}

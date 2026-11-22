@@ -3001,16 +3001,16 @@ class GridViewModel(
     val scanStatus: StateFlow<String?> = _scanStatus.asStateFlow()
 
     // Thumbnail cache: video_id -> bytes
-    private val _thumbnails = MutableStateFlow<Map<String, ByteArray>>(emptyMap())
+    private val _thumbnails = MutableStateFlow<VersionedMap<ByteArray>>(VersionedMap.empty())
     // Bounded caches: least recently requested entries are evicted past budget
-    // (so the map copied per insert stays bounded too).
+    // (inserts mutate a shared concurrent map and bump a version; no per-insert copy).
     private val thumbnailLru = LruBudget(4000, 128L * 1024 * 1024)
     private val scrubLru = LruBudget(150, 128L * 1024 * 1024)
     val thumbnails: StateFlow<Map<String, ByteArray>> = _thumbnails.asStateFlow()
 
     // Scrub-frame cache: video_id -> list of N frames (index 0..N-1).
     // Loaded lazily on first hover over each card.
-    private val _scrubFrames = MutableStateFlow<Map<String, List<ByteArray?>>>(emptyMap())
+    private val _scrubFrames = MutableStateFlow<VersionedMap<List<ByteArray?>>>(VersionedMap.empty())
     val scrubFrames: StateFlow<Map<String, List<ByteArray?>>> = _scrubFrames.asStateFlow()
 
     // Limits concurrent thumbnail fetches. A large grid can have 30-50+
@@ -3034,7 +3034,7 @@ class GridViewModel(
     // upgraded static (non-hover) frame. Both fill incrementally so each scrub
     // location upgrades as soon as its frame arrives, and survive a cancel so
     // returning to the video resumes rather than refetches.
-    private val _hiResScrubFrames = MutableStateFlow<Map<String, List<ByteArray?>>>(emptyMap())
+    private val _hiResScrubFrames = MutableStateFlow<VersionedMap<List<ByteArray?>>>(VersionedMap.empty())
     val hiResScrubFrames: StateFlow<Map<String, List<ByteArray?>>> = _hiResScrubFrames.asStateFlow()
     private val _hiResPoster = MutableStateFlow<Map<String, ByteArray?>>(emptyMap())
     val hiResPoster: StateFlow<Map<String, ByteArray?>> = _hiResPoster.asStateFlow()
@@ -3251,7 +3251,7 @@ class GridViewModel(
                     }
                     if (data != null) {
                         val evict = thumbnailLru.insert(videoId, data.size.toLong())
-                        _thumbnails.update { (it + (videoId to data)) - evict.toSet() }
+                        _thumbnails.update { it.with(videoId, data, evict) }
                     }
                     // Success stored above; null is a definitive miss. Either
                     // way, stop.
@@ -3297,7 +3297,7 @@ class GridViewModel(
                 val frames = repository.getScrubFrames(videoId, count = count)
                 if (frames.any { it != null }) {
                     val evict = scrubLru.insert(videoId, frames.sumOf { (it?.size ?: 0).toLong() })
-                    _scrubFrames.update { (it + (videoId to frames)) - evict.toSet() }
+                    _scrubFrames.update { it.with(videoId, frames, evict) }
                 }
             } finally {
                 scrubLoading.remove(videoId)
@@ -3931,8 +3931,8 @@ class GridViewModel(
         _filterMinRating.value = 0
         _filterColorLabel.value = ""
         _topSlots.value = com.reelvault.data.models.defaultGridTopSlots
-        _thumbnails.value = emptyMap()
-        _scrubFrames.value = emptyMap()
+        _thumbnails.update { it.cleared() }
+        _scrubFrames.update { it.cleared() }
         thumbnailLru.clear()
         scrubLru.clear()
         hiResJobs.values.forEach { it.cancel() }
