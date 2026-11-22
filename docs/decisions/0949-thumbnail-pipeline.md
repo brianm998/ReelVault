@@ -3,13 +3,15 @@
 - Extract one frame at up to 800 px (never upscaled); it is the large still verbatim. Small and medium are
   resized from it with the `image` crate (all platforms), so no double JPEG encode of large and no resize launches.
 - Scrub frames: one ffmpeg launch with N fast-seeked inputs and N outputs; the normal path is 2 launches per new
-  video (1 frame + 1 scrub). If the batch fails nothing is published, temp files are removed and there is no retry:
-  the bound of 2 launches holds on failure too, and the missing scrub frames regenerate on demand.
+  video (1 frame + 1 scrub), counting every launch: availability is checked by resolving ffmpeg on PATH, never by
+  launching `ffmpeg -version`. If the batch fails nothing is published; the caller then salvages frames one launch
+  each, in order, stopping at the first failure (so one bad seek keeps the other frames, a wholly bad file costs one
+  extra launch, and only failure adds launches). Any failure records the 24 h backoff.
   The backend trait gets `extract_frames` (default loops `extract_frame`).
 - All cache writes go to a unique `{id}_..tmpPID-N.jpg` sibling and are renamed into place.
 - Cleanup: `remove_library_location` (hard delete) deletes the video's files; `sweep_orphans` runs once at
-  service start (max 5000 files, files younger than 10 min skipped). `prune_photos` only soft-deletes the row
-  (`deleted_at`) and deliberately KEEPS its thumbnails, so a restored row still has them. The sweep treats
+  service start (max 5000 files, files younger than 10 min skipped). `prune_photos` soft-deletes the row
+  and also removes its thumbnails (they regenerate if the row returns). The sweep treats
   soft-deleted rows as known, so it never deletes their files; files go only when the row is really removed.
 - The sweep runs at service start and on `OpenCatalog` (desktop daemons start with no catalog). A catalog-specific
   `thumbnail_cache_path` is swept against that catalog's ids. The shared per-user default dir keeps a registry
@@ -34,12 +36,8 @@
 - Registry entries whose catalog file no longer exists (its directory does) are skipped in memory on each sweep (and
   duplicates deduped); the sweep never rewrites `.catalogs`, so it cannot race `register_catalog`'s O_APPEND writes.
   A missing directory (unmounted drive) still skips the sweep.
-- Known gap vs the task text: prune stays soft-delete, so it keeps thumbnails; only hard delete and the orphan sweep
-  remove files.
 - The sweep logs one WARN naming the catalog when it is skipped because a registered catalog cannot be read.
-- Known limits (owner-accepted): orphans older than the registry (`.catalogs_since`) are not swept; `prune_photos`
-  stays soft-delete only and keeps thumbnails, so "cleanup on prune" is deliberately only "cleanup on hard
-  delete" (location removal); `remove_library_location` now matches paths case-sensitively (`substr`, not LIKE),
+- Known limits (owner-accepted): orphans older than the registry (`.catalogs_since`) are not swept; `remove_library_location` now matches paths case-sensitively (`substr`, not LIKE),
   so on a case-insensitive filesystem a differently-cased root string no longer matches stored paths (library
   paths are stored as the scanner emitted them, and the UI passes back the stored string, so normal use is
   unaffected; a mismatched case removes nothing rather than too much).

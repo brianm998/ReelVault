@@ -480,8 +480,27 @@ impl ThumbnailGenerator {
         match backend().extract_frames(source, &color_info, &jobs, Self::SCRUB_WIDTH, 6) {
             Ok(()) => clear_failure(cache_dir, video_id, SCRUB_FAIL),
             Err(e) => {
-                tracing::warn!("Scrub frames for {} failed: {}", video_id, e);
-                record_failure(cache_dir, video_id, SCRUB_FAIL, source, now);
+                tracing::warn!("Scrub frames for {} failed as a batch: {}", video_id, e);
+                // One bad seek (e.g. past EOF) fails the whole batch. Salvage
+                // the good frames one launch each, in order, stopping at the
+                // first failure: a wholly bad file costs 1 extra launch, and
+                // only a batch failure ever adds launches.
+                let mut all_ok = true;
+                for job in &jobs {
+                    let one = std::slice::from_ref(job);
+                    if backend()
+                        .extract_frames(source, &color_info, one, Self::SCRUB_WIDTH, 6)
+                        .is_err()
+                    {
+                        all_ok = false;
+                        break;
+                    }
+                }
+                if all_ok {
+                    clear_failure(cache_dir, video_id, SCRUB_FAIL);
+                } else {
+                    record_failure(cache_dir, video_id, SCRUB_FAIL, source, now);
+                }
             }
         }
         Ok(())
@@ -786,8 +805,8 @@ fn ffmpeg_extract_frame_to(
 /// `(seek, output)` job as a separate fast-seeked input and each is mapped to its
 /// own output with one frame. Outputs are written to temp names and renamed into
 /// place only if ffmpeg succeeded. If the batch fails nothing is published, the
-/// temp files are removed and the error is returned; there is no retry, so a
-/// new video never costs more than one scrub launch.
+/// temp files are removed and the error is returned; the caller decides on any
+/// per-frame fallback, so a successful new video costs one scrub launch.
 pub(crate) fn ffmpeg_extract_frames(
     video_path: &Path,
     color: &ColorInfo,
@@ -1213,7 +1232,7 @@ mod cache_tests {
         assert_eq!(std::fs::read_dir(&out_dir).unwrap().count(), 0, "no files or temps left");
     }
 
-    /// Installs a fake ffmpeg that logs every launch except `-version`, then
+    /// Installs a fake ffmpeg that logs every launch, then
     /// fails. Returns (tempdir, log path, cache dir, real source file).
     #[cfg(unix)]
     fn failing_ffmpeg_fixture() -> (tempfile::TempDir, PathBuf, PathBuf, PathBuf) {
@@ -1224,7 +1243,7 @@ mod cache_tests {
         std::fs::write(
             &fake,
             format!(
-                "#!/bin/sh\nif [ \"$1\" = \"-version\" ]; then exit 0; fi\necho call >> '{}'\necho boom >&2\nexit 1\n",
+                "#!/bin/sh\necho call >> '{}'\necho boom >&2\nexit 1\n",
                 log.display()
             ),
         )
@@ -1252,15 +1271,53 @@ mod cache_tests {
         for i in 0..5 {
             ThumbnailGenerator::generate_scrub_thumbnails_at(&source, "vid", &cache, 60.0, t0 + i).unwrap();
         }
-        assert_eq!(launches(&log), 1, "repeated scrub requests launch ffmpeg once");
+        // Each failing request: the batch plus one per-frame salvage attempt.
+        assert_eq!(launches(&log), 2, "repeated scrub requests launch ffmpeg once");
         // Expiry retries.
         ThumbnailGenerator::generate_scrub_thumbnails_at(&source, "vid", &cache, 60.0, t0 + FAILURE_BACKOFF_SECS + 1).unwrap();
-        assert_eq!(launches(&log), 2);
+        assert_eq!(launches(&log), 4);
         // A changed source retries immediately.
         std::fs::write(&src, b"a different, longer file").unwrap();
         ThumbnailGenerator::generate_scrub_thumbnails_at(&source, "vid", &cache, 60.0, t0 + FAILURE_BACKOFF_SECS + 2).unwrap();
-        assert_eq!(launches(&log), 3);
+        assert_eq!(launches(&log), 6);
         crate::ffmpeg::TEST_FFMPEG.with(|c| *c.borrow_mut() = None);
+    }
+
+    /// A whole new video on the ffmpeg path: stills + scrub frames launch
+    /// ffmpeg at most twice in total (every launch is counted).
+    #[cfg(unix)]
+    #[test]
+    fn new_video_generation_launches_ffmpeg_at_most_twice() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let log = dir.path().join("calls.log");
+        let jpg = dir.path().join("src.jpg");
+        image::RgbImage::from_pixel(900, 500, image::Rgb([10, 120, 200])).save(&jpg).unwrap();
+        let fake = dir.path().join("fake-ffmpeg");
+        std::fs::write(
+            &fake,
+            format!(
+                "#!/bin/sh\necho call >> '{}'\nfor a; do case \"$a\" in *.jpg) cp '{}' \"$a\";; esac; done\nexit 0\n",
+                log.display(),
+                jpg.display()
+            ),
+        )
+        .unwrap();
+        std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let cache = dir.path().join("cache");
+        std::fs::create_dir(&cache).unwrap();
+        let src = dir.path().join("clip.mov");
+        std::fs::write(&src, b"not a video").unwrap();
+        crate::ffmpeg::TEST_FFMPEG.with(|c| *c.borrow_mut() = Some(fake));
+        let source = MediaSource::path(&src);
+        let r1 = ThumbnailGenerator::generate_default_sizes(&source, "vid", &cache, 60.0);
+        let r2 = ThumbnailGenerator::generate_scrub_thumbnails(&source, "vid", &cache, 60.0);
+        crate::ffmpeg::TEST_FFMPEG.with(|c| *c.borrow_mut() = None);
+        r1.unwrap();
+        r2.unwrap();
+        assert!(launches(&log) <= 2, "launches: {}", launches(&log));
+        assert!(cache.join("vid_large.jpg").exists());
+        assert!(cache.join("vid_scrub_9.jpg").exists());
     }
 
     #[cfg(unix)]

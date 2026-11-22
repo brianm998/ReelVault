@@ -254,10 +254,21 @@ impl MediaBackend for CliMediaBackend {
     }
 
     fn is_available(&self) -> bool {
-        crate::ffmpeg::ffmpeg_command()
-            .arg("-version")
-            .output_timeout(crate::ffmpeg::PROBE_TIMEOUT)
-            .map(|o| o.status.success())
+        // Resolve the binary without launching it: a `-version` launch costs
+        // ~50 ms of process startup, and a missing/broken ffmpeg fails the
+        // real call anyway.
+        let cmd = crate::ffmpeg::ffmpeg_command();
+        let prog = std::path::PathBuf::from(cmd.get_program());
+        if prog.components().count() > 1 {
+            return prog.is_file();
+        }
+        std::env::var_os("PATH")
+            .map(|paths| {
+                std::env::split_paths(&paths).any(|d| {
+                    let p = d.join(&prog);
+                    p.is_file() || (cfg!(windows) && p.with_extension("exe").is_file())
+                })
+            })
             .unwrap_or(false)
     }
 }
