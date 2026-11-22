@@ -133,8 +133,6 @@ pub(crate) const REPRESENTATIVE_FILTER: &str = "v.proxy_of IS NULL \
         AND v.id = (SELECT MIN(v2.id) FROM videos v2 \
                     WHERE v2.group_id = v.group_id AND v2.deleted_at IS NULL)))";
 
-
-
 /// Separator joining a metadata column's multiple selected facet tokens into a
 /// single `MetadataFilter.value` over the wire. ASCII Unit Separator (0x1F),
 /// which never appears in real metadata values; [`Database::build_filter_clauses`]
@@ -1793,6 +1791,7 @@ impl Database {
                 "SELECT c.id, c.name, c.is_smart, c.filter_json, COUNT(cm.video_id) \
                  FROM collections c \
                  LEFT JOIN collection_members cm ON cm.collection_id = c.id \
+                 AND cm.video_id IN (SELECT id FROM videos WHERE deleted_at IS NULL) \
                  GROUP BY c.id \
                  ORDER BY c.name",
             )
@@ -2549,7 +2548,7 @@ impl Database {
         // Count remaining members
         let remaining: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM videos WHERE group_id = ?",
+                "SELECT COUNT(*) FROM videos WHERE group_id = ? AND deleted_at IS NULL",
                 [&group_id],
                 |row| row.get(0),
             )
@@ -2602,7 +2601,7 @@ impl Database {
     pub fn list_group_member_ids(&self, group_id: &str) -> Result<Vec<String>> {
         let conn = self.get_connection()?;
         let mut stmt = conn
-            .prepare("SELECT id FROM videos WHERE group_id = ? ORDER BY group_position, filename")
+            .prepare("SELECT id FROM videos WHERE group_id = ? AND deleted_at IS NULL ORDER BY group_position, filename")
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let ids = stmt
             .query_map([group_id], |row| row.get::<_, String>(0))
@@ -2616,7 +2615,7 @@ impl Database {
         let conn = self.get_connection()?;
         let count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM videos WHERE group_id = ?",
+                "SELECT COUNT(*) FROM videos WHERE group_id = ? AND deleted_at IS NULL",
                 [group_id],
                 |row| row.get(0),
             )
@@ -3362,7 +3361,7 @@ impl Database {
 
             let remaining: i64 = conn
                 .query_row(
-                    "SELECT COUNT(*) FROM videos WHERE group_id = ?",
+                    "SELECT COUNT(*) FROM videos WHERE group_id = ? AND deleted_at IS NULL",
                     [&gid],
                     |row| row.get(0),
                 )
@@ -3570,7 +3569,7 @@ impl Database {
                  FROM proxy_links pl
                  JOIN videos v ON pl.proxy_id = v.id
                  LEFT JOIN metadata m ON v.id = m.video_id
-                 WHERE pl.master_id = ?
+                 WHERE pl.master_id = ? AND v.deleted_at IS NULL
                  ORDER BY (COALESCE(m.width,0) * COALESCE(m.height,0)) DESC",
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
@@ -3607,7 +3606,7 @@ impl Database {
                  FROM proxy_links pl
                  JOIN videos v ON pl.master_id = v.id
                  LEFT JOIN metadata m ON v.id = m.video_id
-                 WHERE pl.proxy_id = ?
+                 WHERE pl.proxy_id = ? AND v.deleted_at IS NULL
                  ORDER BY (COALESCE(m.width,0) * COALESCE(m.height,0)) DESC",
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
@@ -4000,7 +3999,7 @@ impl Database {
                         COALESCE(m.camera_model, ''),
                         COALESCE(strftime('%s', v.modified_at) * 1000, 0)
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
-                 WHERE v.id = ? AND v.proxy_of IS NULL",
+                 WHERE v.id = ? AND v.proxy_of IS NULL AND v.deleted_at IS NULL",
                 [video_id],
                 |row| {
                     let path: String = row.get(2)?;
