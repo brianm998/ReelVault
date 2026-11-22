@@ -22,6 +22,7 @@
 //! except `/healthz` and `/fingerprint` requires a paired bearer token on the
 //! LAN bind (loopback is exempt).
 
+use crate::ffmpeg::CommandTimeout;
 use anyhow::{Context, Result};
 use axum::{
     body::Body,
@@ -1103,7 +1104,7 @@ fn run_hls_transcode(dir: &Path, src: &str, height: i32, copy: bool, from_origin
         cmd.arg("-hls_segment_filename").arg(&seg).arg(&index);
         cmd.stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::piped());
-        match cmd.output() {
+        match cmd.output_timeout(crate::ffmpeg::TRANSCODE_TIMEOUT) {
             Ok(o) if o.status.success() => {
                 ensure_endlist(&index);
                 let _ = std::fs::write(dir.join(".complete"), MEDIA_CACHE_VERSION);
@@ -1187,7 +1188,7 @@ fn promote_hls_to_proxy(state: &MediaState, id: &str, height: i32, hls_dir: &Pat
             .arg(&out)
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::piped());
-        match cmd.output() {
+        match cmd.output_timeout(crate::ffmpeg::REMUX_TIMEOUT) {
             Ok(o) if o.status.success() => {}
             Ok(o) => {
                 let stderr = String::from_utf8_lossy(&o.stderr);
@@ -1359,7 +1360,7 @@ async fn ensure_downscaled(state: &MediaState, id: &str, src: &str, height: i32)
             // the only signal is a bare exit code and the client just sees
             // "can't be played on this device".
             .stderr(std::process::Stdio::piped())
-            .output()
+            .output_timeout(crate::ffmpeg::TRANSCODE_TIMEOUT)
     })
     .await;
 
@@ -1503,7 +1504,7 @@ fn probe_video_track(path: &str) -> Option<(String, String)> {
             "-of", "default=noprint_wrappers=1:nokey=1",
             path,
         ])
-        .output()
+        .output_timeout(crate::ffmpeg::PROBE_TIMEOUT)
         .ok()?;
     if !out.status.success() {
         return None;
