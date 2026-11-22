@@ -243,6 +243,39 @@ public class GridViewModel: ObservableObject {
     /// recently requested entries are evicted past the budgets.
     private var thumbnailLRU = LRUBudget(maxCount: 4000, maxBytes: 192 * 1024 * 1024)
     private var scrubLRU = LRUBudget(maxCount: 150, maxBytes: 192 * 1024 * 1024)
+    /// Videos whose cards are currently on screen (reference-counted: a video
+    /// can appear in several views). Never evicted from the caches.
+    private var visibleCounts: [String: Int] = [:]
+    private var visibleIds: Set<String> { Set(visibleCounts.keys) }
+
+    /// A card for `videoId` appeared; pins its cached images against eviction
+    /// and refreshes their recency. Pair with `cardDisappeared`.
+    public func cardAppeared(videoId: String) {
+        visibleCounts[videoId, default: 0] += 1
+        thumbnailLRU.touch(videoId)
+        scrubLRU.touch(videoId)
+    }
+
+    public func cardDisappeared(videoId: String) {
+        guard let n = visibleCounts[videoId] else { return }
+        if n <= 1 { visibleCounts.removeValue(forKey: videoId) } else { visibleCounts[videoId] = n - 1 }
+        thumbnailLRU.touch(videoId)
+        scrubLRU.touch(videoId)
+    }
+
+    /// Cache insertion points, exposed for tests (the load paths need a daemon).
+    func storeThumbnail(_ image: PlatformImage, videoId: String) {
+        thumbnails[videoId] = image
+        for old in thumbnailLRU.insert(videoId, cost: image.approxBytes, protecting: visibleIds) {
+            thumbnails.removeValue(forKey: old)
+        }
+    }
+    func configureCacheBudgetsForTesting(thumbnails: LRUBudget, scrub: LRUBudget) {
+        thumbnailLRU = thumbnails
+        scrubLRU = scrub
+    }
+    var thumbnailLRUCount: Int { thumbnailLRU.count }
+    var scrubLRUCount: Int { scrubLRU.count }
 
     // Scrub frames per video, loaded lazily on first hover.
     @Published public var scrubFrames: [String: [PlatformImage?]] = [:]
@@ -2566,10 +2599,7 @@ public class GridViewModel: ObservableObject {
                     let image = try await repository.getThumbnail(videoId: videoId, size: "medium")
                     await thumbnailSemaphore.release()
                     if let image {
-                        thumbnails[videoId] = image
-                        for old in thumbnailLRU.insert(videoId, cost: image.approxBytes) {
-                            thumbnails.removeValue(forKey: old)
-                        }
+                        storeThumbnail(image, videoId: videoId)
                     }
                     // Success stored above; nil is a definitive miss. Either
                     // way, stop.
@@ -2683,10 +2713,10 @@ public class GridViewModel: ObservableObject {
         }
     }
 
-    private func storeScrubFrames(_ frames: [PlatformImage?], videoId: String) {
+    func storeScrubFrames(_ frames: [PlatformImage?], videoId: String) {
         scrubFrames[videoId] = frames
         let cost = frames.reduce(0) { $0 + ($1?.approxBytes ?? 0) }
-        for old in scrubLRU.insert(videoId, cost: cost) {
+        for old in scrubLRU.insert(videoId, cost: cost, protecting: visibleIds) {
             scrubFrames.removeValue(forKey: old)
         }
     }

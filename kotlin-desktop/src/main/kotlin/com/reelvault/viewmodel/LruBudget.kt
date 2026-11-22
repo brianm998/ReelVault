@@ -14,14 +14,17 @@ class LruBudget(private val maxCount: Int, private val maxBytes: Long) {
 
     @Synchronized fun touch(key: String) { costs[key] }
 
-    @Synchronized fun insert(key: String, cost: Long): List<String> {
+    fun contains(key: String): Boolean = synchronized(this) { costs.containsKey(key) }
+
+    /** Keys in [protect] (on-screen cards) and [key] itself are never evicted. */
+    @Synchronized fun insert(key: String, cost: Long, protect: Set<String> = emptySet()): List<String> {
         totalBytes -= costs.put(key, cost) ?: 0L
         totalBytes += cost
         val evicted = mutableListOf<String>()
         val it = costs.entries.iterator()
         while ((costs.size > maxCount || totalBytes > maxBytes) && it.hasNext()) {
             val e = it.next()
-            if (e.key == key) continue
+            if (e.key == key || e.key in protect) continue
             totalBytes -= e.value
             it.remove()
             evicted.add(e.key)

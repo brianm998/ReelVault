@@ -283,7 +283,8 @@ struct MapLocationPanel: View {
                                 }
                             })
                         )
-                        .onAppear { grid.loadThumbnail(videoId: video.id) }
+                        .onAppear { grid.cardAppeared(videoId: video.id); grid.loadThumbnail(videoId: video.id) }
+                        .onDisappear { grid.cardDisappeared(videoId: video.id) }
                     }
                 }
                 .padding(8)

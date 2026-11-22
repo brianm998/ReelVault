@@ -2986,6 +2986,30 @@ class GridViewModel(
     // (inserts mutate a shared concurrent map and bump a version; no per-insert copy).
     private val thumbnailLru = LruBudget(4000, 128L * 1024 * 1024)
     private val scrubLru = LruBudget(150, 128L * 1024 * 1024)
+    // Videos whose cards are on screen (ref-counted); never evicted.
+    private val visibleCounts = java.util.concurrent.ConcurrentHashMap<String, Int>()
+    private fun visibleIds(): Set<String> = visibleCounts.keys.toSet()
+
+    /** A card for [videoId] appeared: pin its cached images, refresh recency. Pair with [cardDisappeared]. */
+    fun cardAppeared(videoId: String) {
+        visibleCounts.merge(videoId, 1, Int::plus)
+        thumbnailLru.touch(videoId); scrubLru.touch(videoId)
+    }
+
+    fun cardDisappeared(videoId: String) {
+        visibleCounts.computeIfPresent(videoId) { _, n -> if (n <= 1) null else n - 1 }
+        thumbnailLru.touch(videoId); scrubLru.touch(videoId)
+    }
+
+    internal fun storeThumbnail(videoId: String, data: ByteArray) {
+        val evict = thumbnailLru.insert(videoId, data.size.toLong(), visibleIds())
+        _thumbnails.update { it.with(videoId, data, evict) }
+    }
+
+    internal fun storeScrubFrames(videoId: String, frames: List<ByteArray?>) {
+        val evict = scrubLru.insert(videoId, frames.sumOf { (it?.size ?: 0).toLong() }, visibleIds())
+        _scrubFrames.update { it.with(videoId, frames, evict) }
+    }
     val thumbnails: StateFlow<Map<String, ByteArray>> = _thumbnails.asStateFlow()
 
     // Scrub-frame cache: video_id -> list of N frames (index 0..N-1).
@@ -3230,8 +3254,7 @@ class GridViewModel(
                         continue
                     }
                     if (data != null) {
-                        val evict = thumbnailLru.insert(videoId, data.size.toLong())
-                        _thumbnails.update { it.with(videoId, data, evict) }
+                        storeThumbnail(videoId, data)
                     }
                     // Success stored above; null is a definitive miss. Either
                     // way, stop.
@@ -3276,8 +3299,7 @@ class GridViewModel(
                 val count = uiPrefs.getInt("scrubFrameCount", 10)
                 val frames = repository.getScrubFrames(videoId, count = count)
                 if (frames.any { it != null }) {
-                    val evict = scrubLru.insert(videoId, frames.sumOf { (it?.size ?: 0).toLong() })
-                    _scrubFrames.update { it.with(videoId, frames, evict) }
+                    storeScrubFrames(videoId, frames)
                 }
             } finally {
                 scrubLoading.remove(videoId)

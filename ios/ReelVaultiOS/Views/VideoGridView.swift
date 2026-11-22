@@ -141,7 +141,9 @@ struct VideoGridView: View {
                                     onRemoveFromStack: { grid.removeFromStack(videoId: video.id, groupId: video.groupId) },
                                     onUnstack: { grid.unstackGroup(groupId: video.groupId) }
                                 )
+                                .onDisappear { grid.cardDisappeared(videoId: video.id) }
                                 .onAppear {
+                                    grid.cardAppeared(videoId: video.id)
                                     grid.loadThumbnail(videoId: video.id)
                                     // Page in the next batch as the user nears the
                                     // end — without this the grid is stuck at the

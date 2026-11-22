@@ -30,8 +30,10 @@ public struct LRUBudget: Sendable {
     }
 
     /// Record `key` (replacing any prior cost) and return keys to evict. The
-    /// just-inserted key is never evicted.
-    public mutating func insert(_ key: String, cost: Int) -> [String] {
+    /// just-inserted key and any key in `protecting` (cards currently on
+    /// screen) are never evicted, so the budget may be exceeded only by the
+    /// protected set.
+    public mutating func insert(_ key: String, cost: Int, protecting: Set<String> = []) -> [String] {
         totalBytes -= costs[key] ?? 0
         costs[key] = cost
         totalBytes += cost
@@ -41,13 +43,15 @@ public struct LRUBudget: Sendable {
         var evicted: [String] = []
         for (k, _) in stamps.sorted(by: { $0.value < $1.value }) {
             if costs.count <= maxCount && totalBytes <= maxBytes { break }
-            if k == key { continue }
+            if k == key || protecting.contains(k) { continue }
             totalBytes -= costs.removeValue(forKey: k) ?? 0
             stamps.removeValue(forKey: k)
             evicted.append(k)
         }
         return evicted
     }
+
+    public func contains(_ key: String) -> Bool { costs[key] != nil }
 
     public mutating func removeAll() {
         stamps = [:]
