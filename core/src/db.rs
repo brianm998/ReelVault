@@ -5641,36 +5641,79 @@ mod tests {
         assert_eq!(db.count_videos_in_path("/l").unwrap(), 1);
     }
 
-    #[test]
-    fn deleted_rows_excluded_from_facet_map_and_keyword_counts() {
-        let tmp = tempfile::tempdir().unwrap();
-        let db = open_db(&tmp);
-        let a = seed_gps(&db, "/l/a.mov", "a.mov");
-        let b = seed_gps(&db, "/l/b.mov", "b.mov");
+    fn seeded_pair_with_b_deleted(db: &Database) -> (String, String, String) {
+        let a = seed_gps(db, "/l/a.mov", "a.mov");
+        let b = seed_gps(db, "/l/b.mov", "b.mov");
         let tag = db.create_tag("k", None).unwrap();
         db.tag_video(&a, &tag).unwrap();
         db.tag_video(&b, &tag).unwrap();
-
         db.delete_video(&b).unwrap();
+        (a, b, tag)
+    }
 
+    #[test]
+    fn deleted_rows_excluded_from_facet_counts() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        seeded_pair_with_b_deleted(&db);
         let cams = db
             .distinct_facet_values("camera", &FilterSpec::default())
             .unwrap();
         assert_eq!(cams.len(), 1);
-        assert_eq!(cams[0].count, 1, "facet count excludes deleted");
-        assert_eq!(db.count_videos_in_path("/l").unwrap(), 1, "library count");
-        assert_eq!(db.list_videos_with_locations().unwrap().len(), 1, "map");
-        assert_eq!(db.count_videos_for_tag(&tag).unwrap(), 1, "keyword count");
-        assert!(db
-            .list_for_proxy_detection()
-            .unwrap()
-            .iter()
-            .all(|c| c.id != b));
-        assert!(db
-            .list_for_auto_grouping()
-            .unwrap()
-            .iter()
-            .all(|c| c.id != b));
+        assert_eq!(cams[0].count, 1);
+    }
+
+    #[test]
+    fn deleted_rows_excluded_from_library_counts() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        seeded_pair_with_b_deleted(&db);
+        assert_eq!(db.count_videos_in_path("/l").unwrap(), 1);
+    }
+
+    #[test]
+    fn deleted_rows_excluded_from_map() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        seeded_pair_with_b_deleted(&db);
+        assert_eq!(db.list_videos_with_locations().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn deleted_rows_excluded_from_keyword_counts() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let (_a, _b, tag) = seeded_pair_with_b_deleted(&db);
+        assert_eq!(db.count_videos_for_tag(&tag).unwrap(), 1);
+    }
+
+    #[test]
+    fn deleted_rows_excluded_from_candidates() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let (_a, b, _t) = seeded_pair_with_b_deleted(&db);
+        assert!(db.list_for_proxy_detection().unwrap().iter().all(|c| c.id != b));
+        assert!(db.list_for_auto_grouping().unwrap().iter().all(|c| c.id != b));
+    }
+
+    #[test]
+    fn deleted_rows_excluded_from_search() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        seeded_pair_with_b_deleted(&db);
+        let (r, total) =
+            crate::search::SearchEngine::search(&db, ".mov", 50, 0, &[]).unwrap();
+        assert_eq!(r.len(), 1);
+        assert_eq!(total, 1);
+        let (r, total) = crate::search::SearchEngine::advanced_search(
+            &db,
+            &crate::search::SearchFilters::default(),
+            50,
+            0,
+        )
+        .unwrap();
+        assert_eq!(r.len(), 1);
+        assert_eq!(total, 1);
     }
 
     #[test]

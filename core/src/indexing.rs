@@ -671,7 +671,7 @@ mod tests {
     fn photos_reingest_clears_deleted_at() {
         let tmp = tempfile::tempdir().unwrap();
         let Some(clip) = make_clip(tmp.path()) else {
-            return;
+            panic!("ffmpeg is required for this test but was not found");
         };
         let db = Database::new_empty();
         db.set_path(&tmp.path().join("t.db")).unwrap();
@@ -710,7 +710,7 @@ mod tests {
     fn file_path_video_stays_deleted_after_index_video() {
         let tmp = tempfile::tempdir().unwrap();
         let Some(clip) = make_clip(tmp.path()) else {
-            return;
+            panic!("ffmpeg is required for this test but was not found");
         };
         let db = Database::new_empty();
         db.set_path(&tmp.path().join("t.db")).unwrap();
