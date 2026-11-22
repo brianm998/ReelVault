@@ -64,6 +64,7 @@ struct ReelVaultApp: App {
 /// filters to those with `autoSync == true`, and drives a one-shot SyncManager.
 @MainActor
 private func triggerAutoSync(router: AppRouter) async {
+    guard CatalogSyncFeature.isEnabled else { return }
     guard let data = UserDefaults.standard.data(forKey: "reelvault.syncProfiles"),
           let profiles = try? JSONDecoder().decode([SyncProfile].self, from: data)
     else { return }
