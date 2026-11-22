@@ -2452,11 +2452,14 @@ impl Database {
 
         // Delete all videos whose path lives inside this library root.
         // Use a path prefix with a trailing slash so "/home/user/Videos"
-        // doesn't accidentally match "/home/user/Videos2".
+        // doesn't accidentally match "/home/user/Videos2". A byte range is
+        // used instead of LIKE: LIKE treats `_`/`%` in the root as wildcards
+        // and is ASCII case-insensitive, which would over-delete.
         let prefix = format!("{}/", path.trim_end_matches('/'));
+        let (lo, hi) = path_prefix_range(&prefix);
         let deleted = conn.execute(
-            "DELETE FROM videos WHERE path LIKE ? || '%'",
-            [&prefix],
+            "DELETE FROM videos WHERE path >= ?1 AND path < ?2",
+            params![lo, hi],
         ).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         conn.execute("DELETE FROM library_locations WHERE path = ?", [path])
@@ -4998,6 +5001,42 @@ mod tests {
             .unwrap()
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap()
+    }
+
+    #[test]
+    fn remove_library_location_deletes_only_exact_prefix() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().join("c.db");
+        let db = Database::new_empty();
+        db.set_path(&p).unwrap();
+        for path in [
+            "/lib/Project_007/a.mov",
+            "/lib/ProjectX007/b.mov",
+            "/lib/project_007/c.mov",
+            "/lib/Project_007/sub/d.mov",
+            "/lib/Project_0070/e.mov",
+        ] {
+            let name = path.rsplit('/').next().unwrap();
+            db.add_video(path, name, None, None, Some(1)).unwrap();
+        }
+        db.add_library_location("/lib/Project_007", true).unwrap();
+        let deleted = db.remove_library_location("/lib/Project_007").unwrap();
+        assert_eq!(deleted, 2);
+        let conn = Connection::open(&p).unwrap();
+        let mut stmt = conn.prepare("SELECT path FROM videos ORDER BY path").unwrap();
+        let left: Vec<String> = stmt
+            .query_map([], |r| r.get(0))
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect();
+        assert_eq!(
+            left,
+            vec!["/lib/ProjectX007/b.mov", "/lib/Project_0070/e.mov", "/lib/project_007/c.mov"]
+        );
+        let locs: i64 = conn
+            .query_row("SELECT COUNT(*) FROM library_locations WHERE path = '/lib/Project_007'", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(locs, 0);
     }
 
     #[test]
