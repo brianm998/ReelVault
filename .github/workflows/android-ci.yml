@@ -35,3 +35,6 @@ jobs:
 
       - name: Compile Android debug Kotlin
         run: ./gradlew :android:compileDebugKotlin --no-daemon
+
+      - name: Android unit tests
+        run: ./gradlew :android:testDebugUnitTest --no-daemon
