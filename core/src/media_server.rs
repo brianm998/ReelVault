@@ -25,7 +25,7 @@
 use anyhow::{Context, Result};
 use axum::{
     body::Body,
-    extract::{DefaultBodyLimit, Path as AxPath, Query as AxQuery, State},
+    extract::{ConnectInfo, DefaultBodyLimit, Path as AxPath, Query as AxQuery, State},
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -69,6 +69,8 @@ pub struct MediaState {
     /// The current pending pairing code — shared with the gRPC service so a code
     /// minted by a desktop client (StartPairing) is redeemable here.
     pairing: crate::pairing::PairingState,
+    /// Per-client limiter shared by `/pair/start`, `/pair/request` and `/pair`.
+    pair_limiter: Arc<crate::pairing::RateLimiter>,
 }
 
 impl MediaState {
@@ -93,6 +95,10 @@ impl MediaState {
             proxy_target_height,
             events,
             pairing,
+            pair_limiter: Arc::new(crate::pairing::RateLimiter::new(
+                20,
+                std::time::Duration::from_secs(60),
+            )),
         }
     }
 }
@@ -111,7 +117,21 @@ pub async fn serve(
     key_pem: String,
     state: MediaState,
 ) -> Result<()> {
-    let app = Router::new()
+    let app = router(state);
+
+    let config = RustlsConfig::from_pem(cert_pem.into_bytes(), key_pem.into_bytes())
+        .await
+        .context("load media-server TLS cert")?;
+
+    axum_server::bind_rustls(addr, config)
+        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
+        .await
+        .context("media server failed")?;
+    Ok(())
+}
+
+fn router(state: MediaState) -> Router {
+    Router::new()
         .route("/healthz", get(|| async { "ok" }))
         .route("/fingerprint", get(fingerprint))
         .route("/pair/start", post(pair_start))
@@ -123,17 +143,26 @@ pub async fn serve(
         .route("/upload/:video_id/catalog-data", post(upload_catalog_data))
         .route("/video/:id", get(video))
         .route("/hls/:id/:height/*file", get(hls_file))
-        .with_state(state);
+        .with_state(state)
+}
 
-    let config = RustlsConfig::from_pem(cert_pem.into_bytes(), key_pem.into_bytes())
-        .await
-        .context("load media-server TLS cert")?;
+/// `None` when authorized; otherwise the 401 (not paired) or 503 (database
+/// unreadable) response to return.
+fn auth_gate(db: &Database, authz: Option<&str>) -> Option<Response> {
+    match crate::auth::check(db, authz) {
+        crate::auth::AuthResult::Authorized => None,
+        crate::auth::AuthResult::Unauthorized => Some(StatusCode::UNAUTHORIZED.into_response()),
+        crate::auth::AuthResult::Unavailable => {
+            Some(StatusCode::SERVICE_UNAVAILABLE.into_response())
+        }
+    }
+}
 
-    axum_server::bind_rustls(addr, config)
-        .serve(app.into_make_service())
-        .await
-        .context("media server failed")?;
-    Ok(())
+/// Rate-limit key for a request: the peer IP (absent under in-process tests).
+fn client_key(addr: &Option<ConnectInfo<SocketAddr>>) -> String {
+    addr.as_ref()
+        .map(|c| c.0.ip().to_string())
+        .unwrap_or_else(|| "local".to_string())
 }
 
 async fn fingerprint(State(state): State<MediaState>) -> String {
@@ -143,8 +172,20 @@ async fn fingerprint(State(state): State<MediaState>) -> String {
 /// Begin pairing from the device side: mint a 6-digit code (5-min TTL) and
 /// surface it (daemon log + `<data_dir>/pairing.txt`). A desktop client can also
 /// mint one via the `StartPairing` gRPC RPC — both share the same pending cell.
-async fn pair_start(State(state): State<MediaState>) -> StatusCode {
-    crate::pairing::issue_code(&state.pairing, &state.data_dir).await;
+async fn pair_start(
+    State(state): State<MediaState>,
+    addr: Option<ConnectInfo<SocketAddr>>,
+) -> StatusCode {
+    if !state.pair_limiter.allow(&client_key(&addr)) {
+        return StatusCode::TOO_MANY_REQUESTS;
+    }
+    // A pending code is left alone (no replacing it from an unauthenticated peer).
+    if crate::pairing::issue_code_if_none(&state.pairing, &state.data_dir)
+        .await
+        .is_none()
+    {
+        tracing::info!("pair: /pair/start ignored — a code is already pending");
+    }
     StatusCode::OK
 }
 
@@ -159,11 +200,15 @@ struct PairRequestNotify {
 /// user clicks Allow on the desktop, which calls `StartPairing` and shows the
 /// code to type back into the device. Unauthenticated by design (the device has
 /// no token yet); it only emits a UI prompt, grants nothing.
-async fn pair_request(State(state): State<MediaState>, Json(req): Json<PairRequestNotify>) -> StatusCode {
-    let name = req
-        .device_name
-        .map(|n| n.trim().to_string())
-        .filter(|n| !n.is_empty())
+async fn pair_request(
+    State(state): State<MediaState>,
+    addr: Option<ConnectInfo<SocketAddr>>,
+    Json(req): Json<PairRequestNotify>,
+) -> StatusCode {
+    if !state.pair_limiter.allow(&client_key(&addr)) {
+        return StatusCode::TOO_MANY_REQUESTS;
+    }
+    let name = crate::pairing::sanitize_device_name(req.device_name.as_deref())
         .unwrap_or_else(|| "A device".to_string());
     tracing::info!("pair: {name} requested pairing (notifying desktop clients)");
     let _ = state
@@ -215,48 +260,39 @@ struct PairResponse {
 
 /// Complete pairing: validate the PIN and, on success, mint a long-lived bearer
 /// token (only its hash is stored) for the device to use on all future calls.
-async fn pair(State(state): State<MediaState>, Json(req): Json<PairRequest>) -> Response {
+async fn pair(
+    State(state): State<MediaState>,
+    addr: Option<ConnectInfo<SocketAddr>>,
+    Json(req): Json<PairRequest>,
+) -> Response {
+    use crate::pairing::Redeem;
+    if !state.pair_limiter.allow(&client_key(&addr)) {
+        return (StatusCode::TOO_MANY_REQUESTS, "too many pairing attempts").into_response();
+    }
     let entered = req.pin.trim();
-    tracing::info!(
-        "pair: attempt from {:?} ({} digit code)",
-        req.device_name.as_deref().unwrap_or("device"),
-        entered.len()
-    );
-    let valid = {
-        let mut p = state.pairing.lock().await;
-        match p.as_ref() {
-            Some(pp) if pp.code == entered && pp.expires > Instant::now() => {
-                *p = None; // single-use
-                true
-            }
-            // Distinguish the failure modes so a bad pairing is diagnosable.
-            Some(pp) if pp.expires <= Instant::now() => {
-                tracing::warn!("pair: rejected — code expired (regenerate it on the desktop)");
-                false
-            }
-            Some(_) => {
-                tracing::warn!("pair: rejected — code mismatch");
-                false
-            }
-            None => {
-                tracing::warn!(
-                    "pair: rejected — no pending code (it's single-use; \
-                     already consumed by another device, or never generated). \
-                     Generate a fresh code per device."
-                );
-                false
-            }
+    match crate::pairing::redeem(&state.pairing, entered).await {
+        Redeem::Ok => {}
+        Redeem::Wrong { remaining } => {
+            tracing::warn!("pair: rejected — code mismatch ({remaining} attempts left)");
+            return (StatusCode::UNAUTHORIZED, "invalid or expired pairing code").into_response();
         }
-    };
-    if !valid {
-        return (StatusCode::UNAUTHORIZED, "invalid or expired pairing code").into_response();
+        Redeem::Invalidated => {
+            tracing::warn!("pair: code invalidated after too many wrong attempts");
+            let _ = std::fs::remove_file(state.data_dir.join("pairing.txt"));
+            return (StatusCode::UNAUTHORIZED, "invalid or expired pairing code").into_response();
+        }
+        Redeem::Expired | Redeem::NoCode => {
+            tracing::warn!("pair: rejected — no valid pending code");
+            return (StatusCode::UNAUTHORIZED, "invalid or expired pairing code").into_response();
+        }
     }
     let token = format!(
         "{}{}",
         uuid::Uuid::new_v4().simple(),
         uuid::Uuid::new_v4().simple()
     );
-    let name = req.device_name.unwrap_or_else(|| "device".to_string());
+    let name = crate::pairing::sanitize_device_name(req.device_name.as_deref())
+        .unwrap_or_else(|| "device".to_string());
     if let Err(e) = state.db.add_paired_device(&crate::auth::token_hash(&token), &name) {
         tracing::warn!("pair: add_paired_device failed: {e}");
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
@@ -304,8 +340,8 @@ async fn upload(
     let authz = headers
         .get(header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok());
-    if !crate::auth::is_authorized(&state.db, authz) {
-        return StatusCode::UNAUTHORIZED.into_response();
+    if let Some(r) = auth_gate(&state.db, authz) {
+        return r;
     }
     let import_dir = match &state.import_dir {
         Some(d) => d.clone(),
@@ -525,8 +561,8 @@ async fn upload_status(
     headers: HeaderMap,
 ) -> Response {
     let authz = headers.get(header::AUTHORIZATION).and_then(|v| v.to_str().ok());
-    if !crate::auth::is_authorized(&state.db, authz) {
-        return StatusCode::UNAUTHORIZED.into_response();
+    if let Some(r) = auth_gate(&state.db, authz) {
+        return r;
     }
     // Find the .part file and return its current size.
     let part_path = match &state.import_dir {
@@ -546,8 +582,8 @@ async fn upload_catalog_data(
     body: String,
 ) -> Response {
     let authz = headers.get(header::AUTHORIZATION).and_then(|v| v.to_str().ok());
-    if !crate::auth::is_authorized(&state.db, authz) {
-        return StatusCode::UNAUTHORIZED.into_response();
+    if let Some(r) = auth_gate(&state.db, authz) {
+        return r;
     }
     let data: serde_json::Value = match serde_json::from_str(&body) {
         Ok(v) => v,
@@ -610,8 +646,8 @@ async fn video(
     let authz = headers
         .get(header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok());
-    if !crate::auth::is_authorized(&state.db, authz) {
-        return StatusCode::UNAUTHORIZED.into_response();
+    if let Some(r) = auth_gate(&state.db, authz) {
+        return r;
     }
     let record = match state.db.get_video(&id) {
         Ok(Some(v)) => v,
@@ -655,8 +691,8 @@ async fn hls_file(
     let authz = headers
         .get(header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok());
-    if !crate::auth::is_authorized(&state.db, authz) {
-        return StatusCode::UNAUTHORIZED.into_response();
+    if let Some(r) = auth_gate(&state.db, authz) {
+        return r;
     }
     let height = height.clamp(144, 2160);
     // Progress for the client's readiness gate. This also *starts* the session,
@@ -1640,5 +1676,112 @@ mod tests {
         assert_eq!(full.headers().get(header::CONTENT_LENGTH).unwrap(), "1000");
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // ----- pairing / auth hardening -----
+
+    use axum::http::Request;
+    use tower::ServiceExt;
+
+    async fn test_state(dir: &Path) -> (MediaState, Arc<Database>) {
+        let db = Arc::new(Database::new(&dir.join("t.db")).unwrap());
+        db.initialize().await.unwrap();
+        let (tx, _rx) = tokio::sync::broadcast::channel(4);
+        let st = MediaState::new(
+            Arc::clone(&db),
+            "fp".into(),
+            dir.to_path_buf(),
+            dir.to_path_buf(),
+            None,
+            720,
+            tx,
+            crate::pairing::new_state(),
+        );
+        (st, db)
+    }
+
+    async fn post_pair(app: &Router, pin: &str) -> StatusCode {
+        let req = Request::builder()
+            .method("POST")
+            .uri("/pair")
+            .header("content-type", "application/json")
+            .body(Body::from(format!(r#"{{"pin":"{pin}","device_name":"t"}}"#)))
+            .unwrap();
+        app.clone().oneshot(req).await.unwrap().status()
+    }
+
+    #[tokio::test]
+    async fn sixth_wrong_pin_invalidates_code() {
+        let dir = tempfile::tempdir().unwrap();
+        let (st, _db) = test_state(dir.path()).await;
+        let (code, _) = crate::pairing::issue_code(&st.pairing, &st.data_dir).await;
+        let wrong = if code == "000000" { "000001" } else { "000000" };
+        let app = router(st.clone());
+        for _ in 0..5 {
+            assert_eq!(post_pair(&app, wrong).await, StatusCode::UNAUTHORIZED);
+        }
+        // The code is gone: even the correct PIN is now refused.
+        assert_eq!(post_pair(&app, &code).await, StatusCode::UNAUTHORIZED);
+        assert!(st.pairing.lock().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn correct_pin_pairs_and_token_works() {
+        let dir = tempfile::tempdir().unwrap();
+        let (st, db) = test_state(dir.path()).await;
+        let (code, _) = crate::pairing::issue_code(&st.pairing, &st.data_dir).await;
+        let app = router(st);
+        let req = Request::builder()
+            .method("POST")
+            .uri("/pair")
+            .header("content-type", "application/json")
+            .body(Body::from(format!(r#"{{"pin":"{code}"}}"#)))
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let bytes = http_body_util::BodyExt::collect(resp.into_body()).await.unwrap().to_bytes();
+        let v: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        let hdr = format!("Bearer {}", v["token"].as_str().unwrap());
+        assert!(crate::auth::is_authorized(&db, Some(&hdr)));
+    }
+
+    #[tokio::test]
+    async fn pair_start_keeps_pending_code() {
+        let dir = tempfile::tempdir().unwrap();
+        let (st, _db) = test_state(dir.path()).await;
+        let (code, _) = crate::pairing::issue_code(&st.pairing, &st.data_dir).await;
+        let app = router(st.clone());
+        let req = Request::builder().method("POST").uri("/pair/start").body(Body::empty()).unwrap();
+        assert_eq!(app.oneshot(req).await.unwrap().status(), StatusCode::OK);
+        assert_eq!(st.pairing.lock().await.as_ref().unwrap().code, code);
+    }
+
+    #[tokio::test]
+    async fn pair_endpoints_are_rate_limited() {
+        let dir = tempfile::tempdir().unwrap();
+        let (st, _db) = test_state(dir.path()).await;
+        let app = router(st);
+        let mut last = StatusCode::OK;
+        for _ in 0..25 {
+            last = post_pair(&app, "123456").await;
+        }
+        assert_eq!(last, StatusCode::TOO_MANY_REQUESTS);
+    }
+
+    #[tokio::test]
+    async fn token_check_does_not_write_and_db_error_is_unavailable() {
+        let dir = tempfile::tempdir().unwrap();
+        let db = Database::new(&dir.path().join("t.db")).unwrap();
+        db.initialize().await.unwrap();
+        db.add_paired_device(&crate::auth::token_hash("tok"), "d").unwrap();
+        let before = db.list_paired_devices().unwrap()[0].2;
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+        assert_eq!(crate::auth::check(&db, Some("Bearer tok")), crate::auth::AuthResult::Authorized);
+        assert_eq!(db.list_paired_devices().unwrap()[0].2, before, "no write on check");
+        assert_eq!(crate::auth::check(&db, Some("Bearer nope")), crate::auth::AuthResult::Unauthorized);
+        assert_eq!(db.flush_last_seen().unwrap(), 1);
+        assert!(db.list_paired_devices().unwrap()[0].2 > before);
+        let empty = Database::new_empty();
+        assert_eq!(crate::auth::check(&empty, Some("Bearer tok")), crate::auth::AuthResult::Unavailable);
     }
 }
