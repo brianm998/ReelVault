@@ -195,6 +195,10 @@ async fn push_and_pull_between_two_daemons() {
     assert_eq!(got, pull_bytes);
 
     // Land it on A through the same upload route a client would use for ingest.
+    // NOTE: the rendition here is seeded byte-identical to the original, so the
+    // hash matches. A real transcoded rendition would NOT match the original's
+    // hash; the client must then link by id (record a sync link) rather than by
+    // hash. That path is not covered here and is why pull stays flagged off.
     let a_new = push(&app_a, &a_hdr, "second.mp4", &got, &phash, 4096).await;
     a.db.set_content_hash(&a_new, &phash).unwrap();
     let data = b.db.get_video_catalog_data(&b2).unwrap().unwrap();

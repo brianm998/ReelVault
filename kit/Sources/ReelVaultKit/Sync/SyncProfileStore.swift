@@ -26,7 +26,29 @@ public final class SyncProfileStore: ObservableObject {
 
     // MARK: - Load
 
+    /// Legacy key: profiles were once persisted whole in UserDefaults.
+    private static let legacyKey = "reelvault.syncProfiles"
+
+    /// One-time move of pre-core-store profiles into the core. The legacy key
+    /// is only cleared once every profile was accepted, so a failure retries.
+    private func migrateLegacyProfiles() async {
+        guard let data = UserDefaults.standard.data(forKey: Self.legacyKey),
+              let saved = try? JSONDecoder().decode([SyncProfile].self, from: data)
+        else { return }
+        do {
+            for p in saved {
+                let req = Reelvault_UpsertSyncProfileRequest.with { $0.profile = Self.proto(from: p) }
+                _ = try await withLocalClient { try await $0.upsertSyncProfile(req) }
+                Self.setAutoSync(p.autoSync, for: p.id)
+            }
+            UserDefaults.standard.removeObject(forKey: Self.legacyKey)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
     public func load() async {
+        await migrateLegacyProfiles()
         do {
             let response = try await withLocalClient { try await $0.listSyncProfiles(Reelvault_ListSyncProfilesRequest()) }
             let auto = Self.autoSyncIds()

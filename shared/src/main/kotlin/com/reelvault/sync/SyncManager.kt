@@ -201,6 +201,7 @@ class SyncManager(
             val file = File(path)
             if (!file.isFile) throw Exception("${entry.filename}: original is not a local file ($path)")
             val total = file.length()
+            if (total == 0L) throw Exception("${entry.filename}: original is empty (0 bytes); nothing to push")
             if (entry.contentHash.isEmpty()) throw Exception("${entry.filename}: content hash not computed yet")
 
             val client = com.reelvault.data.remote.PinnedTls.pinnedHttpClient(fingerprint)

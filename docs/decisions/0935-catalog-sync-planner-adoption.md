@@ -21,3 +21,5 @@ Still not done (task 918 remains open), so `CatalogSyncFeature` (kit and shared)
 - Swift `SyncManager` push/pull are still the `notAvailable` scaffold (a port of the Kotlin push is mechanical but unverified here).
 - No real-daemon verification on an Apple and a Kotlin client was possible in this environment (no GUI/device runs allowed); nothing was flipped on on the strength of the in-process test alone.
 Platform deviation: none intended; Kotlin got the push fix first and Swift remains scaffolded behind the flag.
+
+Follow-up (review fixes): legacy `reelvault.syncProfiles` UserDefaults profiles are migrated into the core on first `SyncProfileStore.load()`; a zero-byte Kotlin push now fails with a specific error. The pull leg of `sync_e2e.rs` seeds a byte-identical rendition, so it does not cover transcoded pulls (hash mismatch); noted in the test. Acceptance criteria 2 and 3 remain unmet; this change lands as partial progress and #918 needs follow-ups: reconcile/record-link RPC, ingest returning the video id, Swift SyncManager transfer, real-client verification, then flag removal.
