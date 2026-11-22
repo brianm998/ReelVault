@@ -1,0 +1,66 @@
+{
+  "defaults": {
+    "columns": [], "minRating": 0, "colorLabel": "", "tagIds": [], "searchQuery": "",
+    "geoLat": 0.0, "geoLon": 0.0, "geoRadiusKm": 0.0, "locationPaths": [],
+    "hasLocation": "any", "hasKeywords": "any", "hasProxies": "any",
+    "fullResolution": "any", "hasAudio": "any", "orientation": "any"
+  },
+  "parse": [
+    {"name": "blank_gives_defaults", "json": "", "expected": {}},
+    {"name": "empty_object_gives_defaults", "json": "{}", "expected": {}},
+    {"name": "garbage_gives_defaults", "json": "not json", "expected": {}},
+    {"name": "negated_column", "json": "{\"columns\":[\"!codec=h264\"]}",
+     "expected": {"columns": [{"key": "codec", "values": ["h264"], "negate": true}]}},
+    {"name": "plain_column", "json": "{\"columns\":[\"codec=h264\"]}",
+     "expected": {"columns": [{"key": "codec", "values": ["h264"], "negate": false}]}},
+    {"name": "multi_value_column", "json": "{\"columns\":[\"iso=100\u001F200\"]}",
+     "expected": {"columns": [{"key": "iso", "values": ["100", "200"], "negate": false}]}},
+    {"name": "malformed_columns_dropped", "json": "{\"columns\":[\"noequals\",\"=x\",\"!=y\"]}", "expected": {}},
+    {"name": "legacy_scalars_become_columns",
+     "json": "{\"camera\":\"Sony\",\"lens\":\"50mm\",\"codec\":\"prores\",\"captureYear\":2021}",
+     "expected": {"columns": [
+       {"key": "camera", "values": ["Sony"], "negate": false},
+       {"key": "lens", "values": ["50mm"], "negate": false},
+       {"key": "codec", "values": ["prores"], "negate": false},
+       {"key": "year", "values": ["2021"], "negate": false}]}},
+    {"name": "legacy_ignored_when_columns_present",
+     "json": "{\"columns\":[\"iso=100\"],\"camera\":\"Sony\"}",
+     "expected": {"columns": [{"key": "iso", "values": ["100"], "negate": false}]}},
+    {"name": "tag_ids_do_not_leak_key_name", "json": "{\"tagIds\":[\"t1\",\"t2\"]}",
+     "expected": {"tagIds": ["t1", "t2"]}},
+    {"name": "empty_tag_ids", "json": "{\"tagIds\":[]}", "expected": {}},
+    {"name": "unknown_tokens_fall_back_to_any",
+     "json": "{\"hasAudio\":\"maybe\",\"orientation\":\"square\"}", "expected": {}},
+    {"name": "attribute_tokens",
+     "json": "{\"hasLocation\":\"yes\",\"hasKeywords\":\"no\",\"hasProxies\":\"yes\",\"fullResolution\":\"no\",\"hasAudio\":\"yes\",\"orientation\":\"portrait\"}",
+     "expected": {"hasLocation": "yes", "hasKeywords": "no", "hasProxies": "yes",
+                  "fullResolution": "no", "hasAudio": "yes", "orientation": "portrait"}},
+    {"name": "negative_geo",
+     "json": "{\"geoLat\":-33.9,\"geoLon\":-151.2,\"geoRadiusKm\":2.5}",
+     "expected": {"geoLat": -33.9, "geoLon": -151.2, "geoRadiusKm": 2.5}},
+    {"name": "rating_color_search",
+     "json": "{\"minRating\":3,\"colorLabel\":\"red\",\"searchQuery\":\"sunset\"}",
+     "expected": {"minRating": 3, "colorLabel": "red", "searchQuery": "sunset"}},
+    {"name": "escaped_quotes_and_backslashes",
+     "json": "{\"searchQuery\":\"say \\\"hi\\\"\",\"tagIds\":[\"a\\\"b\",\"c\\\\d\"]}",
+     "expected": {"searchQuery": "say \"hi\"", "tagIds": ["a\"b", "c\\d"]}},
+    {"name": "location_paths", "json": "{\"locationPaths\":[\"/a\",\"/b\"]}",
+     "expected": {"locationPaths": ["/a", "/b"]}}
+  ],
+  "roundtrip": [
+    {"name": "defaults", "filters": {}},
+    {"name": "all_fields", "filters": {
+      "columns": [{"key": "camera", "values": ["A", "B"], "negate": false},
+                  {"key": "lens", "values": ["L"], "negate": true}],
+      "minRating": 3, "colorLabel": "red", "tagIds": ["t1", "t2"], "searchQuery": "sunset",
+      "geoLat": 12.5, "geoLon": -45.25, "geoRadiusKm": 30.0, "locationPaths": ["/a", "/b"],
+      "hasLocation": "yes", "hasKeywords": "no", "hasProxies": "yes",
+      "fullResolution": "no", "hasAudio": "yes", "orientation": "portrait"}},
+    {"name": "quotes_and_backslashes", "filters": {
+      "tagIds": ["a\"b", "c\\d", "plain"], "searchQuery": "say \"hi\""}},
+    {"name": "negative_geo", "filters": {"geoLat": -33.9, "geoLon": -151.2, "geoRadiusKm": 2.5}},
+    {"name": "negated_multi_value_column", "filters": {
+      "columns": [{"key": "iso", "values": ["100", "200"], "negate": true}]}},
+    {"name": "landscape_any_audio", "filters": {"orientation": "landscape", "hasAudio": "no"}}
+  ]
+}
