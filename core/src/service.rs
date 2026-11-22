@@ -921,7 +921,7 @@ impl ReelVaultService {
                 let ph = sql_placeholders(chunk.len());
 
                 if let Ok(mut stmt) = conn.prepare(&format!(
-                    "SELECT group_id, COUNT(*) FROM videos WHERE group_id IN ({ph}) GROUP BY group_id"
+                    "SELECT group_id, COUNT(*) FROM videos WHERE deleted_at IS NULL AND group_id IN ({ph}) GROUP BY group_id"
                 )) {
                     if let Ok(rows) = stmt.query_map(
                         rusqlite::params_from_iter(chunk.iter()),

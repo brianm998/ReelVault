@@ -496,7 +496,18 @@ pub(crate) fn prune_photos(present_ids_json: String) -> i32 {
             Ok(v) => v.into_iter().collect(),
             Err(_) => return -2,
         };
-    let rows = match ctx.db.list_videos_by_source_kind("photo") {
+    prune_photos_in(&ctx.db, &ctx.events, &present)
+}
+
+/// Body of [`prune_photos`], split out so it can run against a plain database.
+/// Only live rows are listed, so a second run removes nothing and emits no
+/// duplicate `VideoRemoved` events.
+fn prune_photos_in(
+    db: &Database,
+    events: &tokio::sync::broadcast::Sender<crate::watcher::CatalogChange>,
+    present: &std::collections::HashSet<String>,
+) -> i32 {
+    let rows = match db.list_videos_by_source_kind("photo") {
         Ok(r) => r,
         Err(e) => {
             tracing::warn!("prune_photos: list failed: {e}");
@@ -508,9 +519,9 @@ pub(crate) fn prune_photos(present_ids_json: String) -> i32 {
         if present.contains(&source_id) {
             continue;
         }
-        if ctx.db.delete_video(&video_id).is_ok() {
+        if db.delete_video(&video_id).is_ok() {
             // Soft delete only: thumbnails are kept so a restored row still has them.
-            let _ = ctx.events.send(crate::watcher::CatalogChange::VideoRemoved {
+            let _ = events.send(crate::watcher::CatalogChange::VideoRemoved {
                 video_id: Some(video_id),
                 path: PathBuf::from(format!("photos://{source_id}")),
             });
@@ -521,4 +532,39 @@ pub(crate) fn prune_photos(present_ids_json: String) -> i32 {
         tracing::info!("prune_photos: removed {removed} deleted asset(s)");
     }
     removed
+}
+
+#[cfg(test)]
+mod prune_tests {
+    use super::*;
+
+    #[test]
+    fn prune_twice_changes_nothing_second_time() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = Database::new_empty();
+        db.set_path(&tmp.path().join("t.db")).unwrap();
+        let id = db
+            .add_video("photos://gone", "gone.mov", None, None, Some(1))
+            .unwrap();
+        db.add_video_location(&id, "photos://gone", "gone.mov", Some(1))
+            .unwrap();
+        db.get_connection()
+            .unwrap()
+            .execute(
+                "UPDATE videos SET source_kind='photo', source_id='gone' WHERE id=?",
+                [&id],
+            )
+            .unwrap();
+        let (tx, mut rx) = tokio::sync::broadcast::channel(16);
+        let present = std::collections::HashSet::new();
+        let first = prune_photos_in(&db, &tx, &present);
+        let second = prune_photos_in(&db, &tx, &present);
+        assert_eq!(first, 1);
+        assert_eq!(second, 0);
+        let mut events = 0;
+        while rx.try_recv().is_ok() {
+            events += 1;
+        }
+        assert_eq!(events, 1);
+    }
 }

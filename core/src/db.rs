@@ -130,13 +130,20 @@ impl Drop for PooledConnection {
 /// otherwise that whole stack would match no clause and silently disappear
 /// from the grid. Kept as one const so the grid and its facets count
 /// identically.
+///
+/// Soft-deleted rows (`deleted_at` set) are never representatives, and a deleted
+/// preferred member (or MIN id) is skipped: the representative is chosen among
+/// live members only, so deleting a stack's top card promotes the next member.
 pub(crate) const REPRESENTATIVE_FILTER: &str = "v.proxy_of IS NULL \
+     AND v.deleted_at IS NULL \
      AND (v.group_id IS NULL \
      OR v.id = (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) \
      OR (NOT EXISTS (SELECT 1 FROM videos vp \
                      WHERE vp.id = (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) \
-                       AND vp.group_id = v.group_id) \
-        AND v.id = (SELECT MIN(v2.id) FROM videos v2 WHERE v2.group_id = v.group_id)))";
+                       AND vp.group_id = v.group_id \
+                       AND vp.deleted_at IS NULL) \
+        AND v.id = (SELECT MIN(v2.id) FROM videos v2 \
+                    WHERE v2.group_id = v.group_id AND v2.deleted_at IS NULL)))";
 
 /// Separator joining a metadata column's multiple selected facet tokens into a
 /// single `MetadataFilter.value` over the wire. ASCII Unit Separator (0x1F),
@@ -366,6 +373,10 @@ pub struct SyncRunItem {
     pub last_error: Option<String>,
 }
 
+/// Current schema version stored in `PRAGMA user_version`. 1 = baseline
+/// schema + column/index/trigger migrations; 2 = one-time backfills.
+const SCHEMA_VERSION: i64 = 2;
+
 impl Database {
     /// Build a `Database` that already points at `path`. Callers should still
     /// invoke [`Database::initialize`] before serving traffic so the schema
@@ -449,13 +460,15 @@ impl Database {
         let _ = conn.pragma_update(None, "synchronous", "NORMAL");
         let _ = conn.pragma_update(None, "foreign_keys", "ON");
 
-        let schema = include_str!("../schema.sql");
-        conn.execute_batch(schema)
-            .map_err(|e| ReelVaultError::DatabaseError(format!("Failed to initialize schema: {}", e)))?;
-
         // Migration: add columns to existing tables. SQLite has no
         // `ALTER TABLE ADD COLUMN IF NOT EXISTS`, so we try and ignore the
         // "duplicate column" error.
+        //
+        // FROZEN BASELINE (schema v1): this list only runs when
+        // `user_version < 1`. Existing catalogs are already at v2+, so an entry
+        // added here would NEVER reach them. New schema work (columns, tables,
+        // indexes, triggers, backfills) must instead be a new
+        // `if current < N { ... }` step below, with `SCHEMA_VERSION` bumped to N.
         let migrations: &[(&str, &str)] = &[
             ("videos.group_id", "ALTER TABLE videos ADD COLUMN group_id TEXT"),
             // Per-member order within a stack (drag-to-reorder). 0 for every
@@ -497,14 +510,6 @@ impl Database {
             )"),
             ("idx_proxy_links_proxy", "CREATE INDEX IF NOT EXISTS idx_proxy_links_proxy ON proxy_links(proxy_id)"),
             ("idx_proxy_links_master", "CREATE INDEX IF NOT EXISTS idx_proxy_links_master ON proxy_links(master_id)"),
-            // Backfill: for catalogs whose single-column relation
-            // pre-dates the junction table, mirror every (proxy,
-            // master) pair into proxy_links. INSERT OR IGNORE keeps
-            // this idempotent across re-runs of `initialize`.
-            ("proxy_links backfill", "INSERT OR IGNORE INTO proxy_links (master_id, proxy_id, confidence, auto_detected)
-                SELECT proxy_of, id, proxy_confidence, COALESCE(proxy_auto_detected, 0)
-                FROM videos
-                WHERE proxy_of IS NOT NULL"),
             // Lightroom-style star rating + color label. Stored in a
             // separate table from `metadata` (machine-extracted) so user
             // marks remain visually and operationally distinct from
@@ -657,13 +662,6 @@ impl Database {
             )"),
             ("idx_video_locations_video_id", "CREATE INDEX IF NOT EXISTS idx_video_locations_video_id ON video_locations(video_id)"),
             ("idx_video_locations_filename_size", "CREATE INDEX IF NOT EXISTS idx_video_locations_filename_size ON video_locations(filename, file_size_bytes)"),
-            // Backfill: mirror every existing videos row into video_locations so
-            // the new lookup path works for pre-existing catalog entries. The
-            // synthetic id (`<video_id>_p`) is stable across re-runs thanks to
-            // INSERT OR IGNORE.
-            ("video_locations backfill", "INSERT OR IGNORE INTO video_locations (id, video_id, path, filename, file_size_bytes, is_online, indexed_at)
-                SELECT id || '_p', id, path, filename, COALESCE(file_size_bytes, 0), COALESCE(is_online, 1), COALESCE(indexed_at, 0)
-                FROM videos"),
             // ── Catalog Sync (Phase 0-5) ──────────────────────────────────────
             // Sparse blake3 hash for content-based identity across peers.
             ("videos.content_hash", "ALTER TABLE videos ADD COLUMN content_hash TEXT"),
@@ -772,17 +770,76 @@ impl Database {
     UPDATE videos SET marks_rev = marks_rev + 1 WHERE id = OLD.video_id;
   END"),
         ];
-        for (label, sql) in migrations {
-            match conn.execute(sql, []) {
-                Ok(_) => tracing::info!("Migration: added {}", label),
-                Err(e) => {
-                    let msg = e.to_string();
-                    if !msg.contains("duplicate column") {
-                        tracing::warn!("Migration for {} failed (likely already applied): {}", label, msg);
-                    }
+        let backfills: &[(&str, &str)] = &[
+            // Backfill: for catalogs whose single-column relation
+            // pre-dates the junction table, mirror every (proxy,
+            // master) pair into proxy_links. INSERT OR IGNORE keeps
+            // this idempotent across re-runs of `initialize`.
+            ("proxy_links backfill", "INSERT OR IGNORE INTO proxy_links (master_id, proxy_id, confidence, auto_detected)
+                SELECT proxy_of, id, proxy_confidence, COALESCE(proxy_auto_detected, 0)
+                FROM videos
+                WHERE proxy_of IS NOT NULL"),
+            // Backfill: mirror every existing videos row into video_locations so
+            // the new lookup path works for pre-existing catalog entries. The
+            // synthetic id (`<video_id>_p`) is stable across re-runs thanks to
+            // INSERT OR IGNORE.
+            ("video_locations backfill", "INSERT OR IGNORE INTO video_locations (id, video_id, path, filename, file_size_bytes, is_online, indexed_at)
+                SELECT id || '_p', id, path, filename, COALESCE(file_size_bytes, 0), COALESCE(is_online, 1), COALESCE(indexed_at, 0)
+                FROM videos"),
+        ];
+
+        // One transaction: any failure rolls everything back and fails the
+        // open, so a catalog is never left half-migrated.
+        let fail = |what: &str, e: rusqlite::Error| {
+            ReelVaultError::DatabaseError(format!("Migration failed ({}): {}", what, e))
+        };
+        // Fast path: an up-to-date catalog needs no write lock at all, so a
+        // busy writer (e.g. a scan) can't block opening it.
+        let peek: i64 = conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .map_err(|e| fail("read schema version", e))?;
+        if peek == SCHEMA_VERSION {
+            return Ok(());
+        }
+        // IMMEDIATE takes the write lock up front, and the version is re-read
+        // inside it, so a concurrent opener can't also see an old version and
+        // re-run the backfills.
+        let tx = rusqlite::Transaction::new_unchecked(conn, rusqlite::TransactionBehavior::Immediate)
+            .map_err(|e| fail("begin", e))?;
+        let current: i64 = tx
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .map_err(|e| fail("read schema version", e))?;
+        if current > SCHEMA_VERSION {
+            return Err(ReelVaultError::DatabaseError(format!(
+                "Catalog schema version {} is newer than this build supports ({})",
+                current, SCHEMA_VERSION
+            )));
+        }
+        if current == SCHEMA_VERSION {
+            return Ok(());
+        }
+        if current < 1 {
+            tx.execute_batch(include_str!("../schema.sql"))
+                .map_err(|e| fail("schema.sql", e))?;
+            for (label, sql) in migrations {
+                match tx.execute(sql, []) {
+                    Ok(_) => {}
+                    // Legacy catalogs may already have some columns.
+                    Err(e) if e.to_string().contains("duplicate column") => {}
+                    Err(e) => return Err(fail(label, e)),
                 }
             }
         }
+        if current < 2 {
+            // Whole-table backfills: run once, not on every open.
+            for (label, sql) in backfills {
+                tx.execute(sql, []).map_err(|e| fail(label, e))?;
+            }
+        }
+        tx.pragma_update(None, "user_version", SCHEMA_VERSION)
+            .map_err(|e| fail("user_version", e))?;
+        tx.commit().map_err(|e| fail("commit", e))?;
+        tracing::info!("Catalog schema migrated from v{} to v{}", current, SCHEMA_VERSION);
         Ok(())
     }
 
@@ -1050,9 +1107,10 @@ impl Database {
         let conn = self.get_connection()?;
         let result = conn
             .query_row(
-                "SELECT video_id FROM video_locations \
-                 WHERE filename = ?1 AND file_size_bytes = ?2 AND path != ?3 \
-                 ORDER BY is_online DESC \
+                "SELECT vl.video_id FROM video_locations vl \
+                 JOIN videos v ON v.id = vl.video_id AND v.deleted_at IS NULL \
+                 WHERE vl.filename = ?1 AND vl.file_size_bytes = ?2 AND vl.path != ?3 \
+                 ORDER BY vl.is_online DESC \
                  LIMIT 1",
                 params![filename, file_size, exclude_path],
                 |row| row.get(0),
@@ -1470,7 +1528,7 @@ impl Database {
         let conn = self.get_connection()?;
         let exists: bool = conn
             .query_row(
-                "SELECT EXISTS(SELECT 1 FROM videos v JOIN metadata m ON m.video_id = v.id WHERE v.path = ?1)",
+                "SELECT EXISTS(SELECT 1 FROM videos v JOIN metadata m ON m.video_id = v.id WHERE v.path = ?1 AND v.deleted_at IS NULL)",
                 [path],
                 |r| r.get(0),
             )
@@ -1561,11 +1619,39 @@ impl Database {
         let conn = self.get_connection()?;
         let now_ms = chrono::Utc::now().timestamp_millis();
         conn.execute(
-            "UPDATE videos SET deleted_at = ?1 WHERE id = ?2",
+            "UPDATE videos SET deleted_at = ?1 WHERE id = ?2 AND deleted_at IS NULL",
             rusqlite::params![now_ms, video_id],
         )
         .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(())
+    }
+
+    /// True when the video row exists and is soft-deleted.
+    pub fn is_video_deleted(&self, video_id: &str) -> bool {
+        self.get_connection()
+            .ok()
+            .and_then(|conn| {
+                conn.query_row(
+                    "SELECT deleted_at IS NOT NULL FROM videos WHERE id = ?1",
+                    [video_id],
+                    |r| r.get::<_, bool>(0),
+                )
+                .ok()
+            })
+            .unwrap_or(false)
+    }
+
+    /// Clear the soft-delete mark (e.g. a Photos asset restored from Recently
+    /// Deleted that is being re-ingested).
+    pub fn undelete_video(&self, video_id: &str) -> Result<bool> {
+        let conn = self.get_connection()?;
+        let n = conn
+            .execute(
+                "UPDATE videos SET deleted_at = NULL WHERE id = ?1 AND deleted_at IS NOT NULL",
+                rusqlite::params![video_id],
+            )
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(n > 0)
     }
 
     /// Soft-delete a video that was deleted on the sync source: marks it
@@ -1798,7 +1884,8 @@ impl Database {
         let conn = self.get_connection()?;
         let count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM video_tags WHERE tag_id = ?",
+                "SELECT COUNT(*) FROM video_tags vt JOIN videos v ON v.id = vt.video_id \
+                 WHERE vt.tag_id = ? AND v.deleted_at IS NULL",
                 [tag_id],
                 |row| row.get(0),
             )
@@ -1831,6 +1918,7 @@ impl Database {
                 "SELECT c.id, c.name, c.is_smart, c.filter_json, COUNT(cm.video_id) \
                  FROM collections c \
                  LEFT JOIN collection_members cm ON cm.collection_id = c.id \
+                 AND cm.video_id IN (SELECT id FROM videos WHERE deleted_at IS NULL) \
                  GROUP BY c.id \
                  ORDER BY c.name",
             )
@@ -1938,7 +2026,7 @@ impl Database {
     pub fn list_videos_by_source_kind(&self, kind: &str) -> Result<Vec<(String, String)>> {
         let conn = self.get_connection()?;
         let mut stmt = conn
-            .prepare("SELECT id, source_id FROM videos WHERE source_kind = ?1 AND source_id IS NOT NULL")
+            .prepare("SELECT id, source_id FROM videos WHERE source_kind = ?1 AND source_id IS NOT NULL AND deleted_at IS NULL")
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let rows = stmt
             .query_map([kind], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))
@@ -2112,7 +2200,8 @@ impl Database {
                  JOIN metadata m ON m.video_id = v.id \
                  WHERE m.gps_latitude IS NOT NULL \
                    AND m.gps_longitude IS NOT NULL \
-                   AND NOT (m.gps_latitude = 0 AND m.gps_longitude = 0)",
+                   AND NOT (m.gps_latitude = 0 AND m.gps_longitude = 0) \
+                   AND v.deleted_at IS NULL",
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
@@ -2638,7 +2727,7 @@ impl Database {
         // Count remaining members
         let remaining: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM videos WHERE group_id = ?",
+                "SELECT COUNT(*) FROM videos WHERE group_id = ? AND deleted_at IS NULL",
                 [&group_id],
                 |row| row.get(0),
             )
@@ -2691,7 +2780,7 @@ impl Database {
     pub fn list_group_member_ids(&self, group_id: &str) -> Result<Vec<String>> {
         let conn = self.get_connection()?;
         let mut stmt = conn
-            .prepare("SELECT id FROM videos WHERE group_id = ? ORDER BY group_position, filename")
+            .prepare("SELECT id FROM videos WHERE group_id = ? AND deleted_at IS NULL ORDER BY group_position, filename")
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let ids = stmt
             .query_map([group_id], |row| row.get::<_, String>(0))
@@ -2705,7 +2794,7 @@ impl Database {
         let conn = self.get_connection()?;
         let count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM videos WHERE group_id = ?",
+                "SELECT COUNT(*) FROM videos WHERE group_id = ? AND deleted_at IS NULL",
                 [group_id],
                 |row| row.get(0),
             )
@@ -3451,7 +3540,7 @@ impl Database {
 
             let remaining: i64 = conn
                 .query_row(
-                    "SELECT COUNT(*) FROM videos WHERE group_id = ?",
+                    "SELECT COUNT(*) FROM videos WHERE group_id = ? AND deleted_at IS NULL",
                     [&gid],
                     |row| row.get(0),
                 )
@@ -3659,7 +3748,7 @@ impl Database {
                  FROM proxy_links pl
                  JOIN videos v ON pl.proxy_id = v.id
                  LEFT JOIN metadata m ON v.id = m.video_id
-                 WHERE pl.master_id = ?
+                 WHERE pl.master_id = ? AND v.deleted_at IS NULL
                  ORDER BY (COALESCE(m.width,0) * COALESCE(m.height,0)) DESC",
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
@@ -3696,7 +3785,7 @@ impl Database {
                  FROM proxy_links pl
                  JOIN videos v ON pl.master_id = v.id
                  LEFT JOIN metadata m ON v.id = m.video_id
-                 WHERE pl.proxy_id = ?
+                 WHERE pl.proxy_id = ? AND v.deleted_at IS NULL
                  ORDER BY (COALESCE(m.width,0) * COALESCE(m.height,0)) DESC",
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
@@ -3800,7 +3889,8 @@ impl Database {
                         COALESCE(v.file_size_bytes, 0),
                         COALESCE(m.audio_channels, 0),
                         v.proxy_of IS NOT NULL
-                 FROM videos v LEFT JOIN metadata m ON v.id = m.video_id",
+                 FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
+                 WHERE v.deleted_at IS NULL",
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let rows = stmt
@@ -3861,14 +3951,16 @@ impl Database {
                         COALESCE(m.audio_channels, 0),
                         v.proxy_of IS NOT NULL
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
-                 WHERE (v.path >= ?1 AND v.path < ?2)
+                 WHERE v.deleted_at IS NULL
+                   AND ((v.path >= ?1 AND v.path < ?2)
                     OR (v.group_id IS NOT NULL
                         AND v.group_id IN (
                             SELECT DISTINCT v2.group_id
                             FROM videos v2
                             WHERE v2.group_id IS NOT NULL
+                              AND v2.deleted_at IS NULL
                               AND v2.path >= ?1 AND v2.path < ?2
-                        ))",
+                        )))",
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let rows = stmt
@@ -3979,6 +4071,7 @@ impl Database {
                         v.proxy_of IS NOT NULL
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
                  WHERE v.id != ?
+                   AND v.deleted_at IS NULL
                    AND v.path >= ? AND v.path < ?",
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
@@ -4038,6 +4131,7 @@ impl Database {
                         v.proxy_of IS NOT NULL
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
                  WHERE v.group_id = ?
+                   AND v.deleted_at IS NULL
                    AND v.id != ?",
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
@@ -4084,7 +4178,7 @@ impl Database {
                         COALESCE(m.camera_model, ''),
                         COALESCE(strftime('%s', v.modified_at) * 1000, 0)
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
-                 WHERE v.id = ? AND v.proxy_of IS NULL",
+                 WHERE v.id = ? AND v.proxy_of IS NULL AND v.deleted_at IS NULL",
                 [video_id],
                 |row| {
                     let path: String = row.get(2)?;
@@ -4139,6 +4233,7 @@ impl Database {
                         COALESCE(strftime('%s', v.modified_at) * 1000, 0)
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
                  WHERE v.proxy_of IS NULL
+                   AND v.deleted_at IS NULL
                    AND v.id != ?
                    AND v.path >= ? AND v.path < ?",
             )
@@ -4235,7 +4330,7 @@ impl Database {
                         COALESCE(m.camera_model, ''),
                         COALESCE(strftime('%s', v.modified_at) * 1000, 0)
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
-                 WHERE v.proxy_of IS NULL",
+                 WHERE v.proxy_of IS NULL AND v.deleted_at IS NULL",
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
@@ -4354,7 +4449,7 @@ impl Database {
             "SELECT v.content_hash, v.id, v.marks_rev, m.duration_ms, m.creation_date
              FROM videos v
              LEFT JOIN metadata m ON m.video_id = v.id
-             WHERE v.content_hash IN ({}) AND v.is_derived = 0 AND v.proxy_of IS NULL",
+             WHERE v.content_hash IN ({}) AND v.is_derived = 0 AND v.proxy_of IS NULL AND v.deleted_at IS NULL",
             placeholders.join(",")
         );
         let mut stmt = conn.prepare(&sql).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
@@ -4897,6 +4992,121 @@ pub struct AutoGroupCandidate {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn user_version(path: &Path) -> i64 {
+        Connection::open(path)
+            .unwrap()
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap()
+    }
+
+    #[test]
+    fn fresh_catalog_is_versioned_and_reopen_is_noop() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().join("c.db");
+        let db = Database::new_empty();
+        db.set_path(&p).unwrap();
+        assert_eq!(user_version(&p), SCHEMA_VERSION);
+        // Re-open: marker row survives and nothing is re-run.
+        let conn = Connection::open(&p).unwrap();
+        conn.execute("CREATE TABLE reopen_marker (x)", []).unwrap();
+        drop(conn);
+        db.set_path(&p).unwrap();
+        assert_eq!(user_version(&p), SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn legacy_catalog_migrates_and_backfills_once() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().join("c.db");
+        let db = Database::new_empty();
+        db.set_path(&p).unwrap();
+        db.add_video("/lib/a.mov", "a.mov", None, None, Some(1)).unwrap();
+        // Simulate a pre-backfill catalog at version 1.
+        let conn = Connection::open(&p).unwrap();
+        conn.execute("DELETE FROM video_locations", []).unwrap();
+        conn.pragma_update(None, "user_version", 1).unwrap();
+        drop(conn);
+        db.set_path(&p).unwrap();
+        let n = |p: &Path| -> i64 {
+            Connection::open(p)
+                .unwrap()
+                .query_row("SELECT COUNT(*) FROM video_locations", [], |r| r.get(0))
+                .unwrap()
+        };
+        assert_eq!(n(&p), 1);
+        assert_eq!(user_version(&p), SCHEMA_VERSION);
+        // At the current version the backfill does not run again.
+        Connection::open(&p).unwrap().execute("DELETE FROM video_locations", []).unwrap();
+        db.set_path(&p).unwrap();
+        assert_eq!(n(&p), 0);
+    }
+
+    #[test]
+    fn pre_versioning_catalog_at_v0_is_migrated_and_backfilled() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().join("c.db");
+        // A legacy catalog: old-shape tables missing most later columns.
+        let conn = Connection::open(&p).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE videos (id TEXT PRIMARY KEY, path TEXT UNIQUE NOT NULL,
+               filename TEXT NOT NULL, hash TEXT, indexed_at TIMESTAMP, group_id TEXT,
+               file_size_bytes INTEGER, is_online INTEGER DEFAULT 1);
+             CREATE TABLE metadata (video_id TEXT PRIMARY KEY, duration_ms INTEGER,
+               width INTEGER, height INTEGER, fps REAL, codec_video TEXT);
+             INSERT INTO videos (id, path, filename, indexed_at) VALUES ('v1', '/lib/a.mov', 'a.mov', 5);",
+        )
+        .unwrap();
+        drop(conn);
+        assert_eq!(user_version(&p), 0);
+        Database::new_empty().set_path(&p).unwrap();
+        assert_eq!(user_version(&p), SCHEMA_VERSION);
+        let conn = Connection::open(&p).unwrap();
+        // Columns added by migrations.
+        conn.prepare("SELECT group_position, proxy_of FROM videos").unwrap();
+        conn.prepare("SELECT frame_count FROM metadata").unwrap();
+        // Tables from schema.sql, and the backfilled row.
+        let loc: String = conn
+            .query_row("SELECT id FROM video_locations WHERE video_id = 'v1'", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(loc, "v1_p");
+    }
+
+    #[test]
+    fn failing_migration_fails_open_and_rolls_back() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().join("c.db");
+        Database::new_empty().set_path(&p).unwrap();
+        // Rewind to v1 and break the *second* backfill (video_locations
+        // missing) after the first one (proxy_links) has already written.
+        let conn = Connection::open(&p).unwrap();
+        conn.execute_batch(
+            "INSERT INTO videos (id, path, filename) VALUES ('m', '/m', 'm');
+             INSERT INTO videos (id, path, filename, proxy_of) VALUES ('p', '/p', 'p', 'm');
+             DELETE FROM proxy_links;
+             DROP TABLE video_locations;",
+        )
+        .unwrap();
+        conn.pragma_update(None, "user_version", 1).unwrap();
+        drop(conn);
+        assert!(Database::new_empty().set_path(&p).is_err());
+        assert_eq!(user_version(&p), 1);
+        let conn = Connection::open(&p).unwrap();
+        let n: i64 = conn
+            .query_row("SELECT COUNT(*) FROM proxy_links", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(n, 0, "first backfill must be rolled back");
+    }
+
+    #[test]
+    fn newer_schema_version_is_refused() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().join("c.db");
+        let conn = Connection::open(&p).unwrap();
+        conn.pragma_update(None, "user_version", SCHEMA_VERSION + 1).unwrap();
+        drop(conn);
+        assert!(Database::new_empty().set_path(&p).is_err());
+    }
 
     /// Regression guard for the watcher re-index loop: the poll-fallback
     /// re-queues any file whose stored `videos.file_size_bytes` differs from
@@ -5600,6 +5810,200 @@ mod tests {
             .count();
         assert_eq!(group_reps, 1, "dangling stack still shows one representative");
         assert_eq!(total, 2, "v1 plus the stack's fallback representative");
+    }
+
+    fn seed_gps(db: &Database, path: &str, filename: &str) -> String {
+        let id = seed_meta(db, path, filename, Some("Cam"), None, None);
+        db.get_connection()
+            .unwrap()
+            .execute(
+                "UPDATE metadata SET gps_latitude = 10.0, gps_longitude = 20.0 WHERE video_id = ?",
+                [&id],
+            )
+            .unwrap();
+        id
+    }
+
+    #[test]
+    fn deleting_stack_preferred_member_promotes_next_member() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let v1 = db
+            .add_video("/l/v1.mov", "v1.mov", None, None, Some(1))
+            .unwrap();
+        let v2 = db
+            .add_video("/l/v2.mov", "v2.mov", None, None, Some(1))
+            .unwrap();
+        let v3 = db
+            .add_video("/l/v3.mov", "v3.mov", None, None, Some(1))
+            .unwrap();
+        db.create_group(
+            None,
+            None,
+            &[v1.clone(), v2.clone(), v3.clone()],
+            Some(v1.as_str()),
+        )
+        .unwrap();
+        db.delete_video(&v1).unwrap();
+
+        let (reps, total) = db
+            .list_videos_grouped(50, 0, "name", true, &FilterSpec::default())
+            .unwrap();
+        let ids: Vec<&str> = reps.iter().map(|r| r.id.as_str()).collect();
+        assert_eq!(total, 1);
+        assert_eq!(ids.len(), 1, "stack stays visible");
+        // Ids are random UUIDs: the fallback representative is the lowest live id.
+        let expected = std::cmp::min(v2.as_str(), v3.as_str());
+        assert_eq!(ids[0], expected, "next live member becomes the top card");
+        assert_eq!(db.count_videos_in_path("/l").unwrap(), 1);
+    }
+
+    fn seeded_pair_with_b_deleted(db: &Database) -> (String, String, String) {
+        let a = seed_gps(db, "/l/a.mov", "a.mov");
+        let b = seed_gps(db, "/l/b.mov", "b.mov");
+        let tag = db.create_tag("k", None).unwrap();
+        db.tag_video(&a, &tag).unwrap();
+        db.tag_video(&b, &tag).unwrap();
+        db.delete_video(&b).unwrap();
+        (a, b, tag)
+    }
+
+    #[test]
+    fn deleted_rows_excluded_from_facet_counts() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        seeded_pair_with_b_deleted(&db);
+        let cams = db
+            .distinct_facet_values("camera", &FilterSpec::default())
+            .unwrap();
+        assert_eq!(cams.len(), 1);
+        assert_eq!(cams[0].count, 1);
+    }
+
+    #[test]
+    fn deleted_rows_excluded_from_library_counts() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        seeded_pair_with_b_deleted(&db);
+        assert_eq!(db.count_videos_in_path("/l").unwrap(), 1);
+    }
+
+    #[test]
+    fn deleted_rows_excluded_from_map() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        seeded_pair_with_b_deleted(&db);
+        assert_eq!(db.list_videos_with_locations().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn deleted_rows_excluded_from_keyword_counts() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let (_a, _b, tag) = seeded_pair_with_b_deleted(&db);
+        assert_eq!(db.count_videos_for_tag(&tag).unwrap(), 1);
+    }
+
+    #[test]
+    fn deleted_rows_excluded_from_candidates() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let (_a, b, _t) = seeded_pair_with_b_deleted(&db);
+        assert!(db.list_for_proxy_detection().unwrap().iter().all(|c| c.id != b));
+        assert!(db.list_for_auto_grouping().unwrap().iter().all(|c| c.id != b));
+    }
+
+    #[test]
+    fn deleted_rows_excluded_from_search() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        seeded_pair_with_b_deleted(&db);
+        let (r, total) =
+            crate::search::SearchEngine::search(&db, ".mov", 50, 0, &[]).unwrap();
+        assert_eq!(r.len(), 1);
+        assert_eq!(total, 1);
+        let (r, total) = crate::search::SearchEngine::advanced_search(
+            &db,
+            &crate::search::SearchFilters::default(),
+            50,
+            0,
+        )
+        .unwrap();
+        assert_eq!(r.len(), 1);
+        assert_eq!(total, 1);
+    }
+
+    #[test]
+    fn prune_listing_skips_deleted_and_delete_keeps_first_timestamp() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let id = db
+            .add_video("photos://x", "x.mov", None, None, Some(1))
+            .unwrap();
+        db.get_connection()
+            .unwrap()
+            .execute(
+                "UPDATE videos SET source_kind='photo', source_id='x' WHERE id=?",
+                [&id],
+            )
+            .unwrap();
+        assert_eq!(db.list_videos_by_source_kind("photo").unwrap().len(), 1);
+        db.delete_video(&id).unwrap();
+        let ts = |db: &Database| -> i64 {
+            db.get_connection()
+                .unwrap()
+                .query_row("SELECT deleted_at FROM videos WHERE id=?", [&id], |r| {
+                    r.get(0)
+                })
+                .unwrap()
+        };
+        let first = ts(&db);
+        assert!(db.list_videos_by_source_kind("photo").unwrap().is_empty());
+        std::thread::sleep(std::time::Duration::from_millis(5));
+        db.delete_video(&id).unwrap();
+        assert_eq!(ts(&db), first, "original tombstone timestamp kept");
+    }
+
+    #[test]
+    fn undelete_makes_video_visible_and_reingestable() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let id = seed_meta(&db, "photos://x", "x.mov", None, None, None);
+        assert!(db.is_fully_indexed("photos://x").unwrap());
+        db.delete_video(&id).unwrap();
+        assert!(
+            !db.is_fully_indexed("photos://x").unwrap(),
+            "deleted → re-ingest"
+        );
+        assert!(db.is_video_deleted(&id));
+        assert!(db.undelete_video(&id).unwrap());
+        assert!(db.is_fully_indexed("photos://x").unwrap());
+        let (reps, _) = db
+            .list_videos_grouped(50, 0, "name", true, &FilterSpec::default())
+            .unwrap();
+        assert_eq!(reps.len(), 1);
+    }
+
+    #[test]
+    fn copy_detection_ignores_deleted_video() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let id = db
+            .add_video("/l/a.mov", "a.mov", None, None, Some(1000))
+            .unwrap();
+        db.add_video_location(&id, "/l/a.mov", "a.mov", Some(1000))
+            .unwrap();
+        assert_eq!(
+            db.find_location_by_filename_size("a.mov", 1000, "/m/a.mov")
+                .unwrap(),
+            Some(id.clone())
+        );
+        db.delete_video(&id).unwrap();
+        assert_eq!(
+            db.find_location_by_filename_size("a.mov", 1000, "/m/a.mov")
+                .unwrap(),
+            None
+        );
     }
 
     // ── marks_rev trigger tests ───────────────────────────────────────────────

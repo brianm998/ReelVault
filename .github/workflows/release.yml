@@ -20,9 +20,15 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # ── Gate: the full CI suite must pass before anything is built/published ──
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
   # ── Resolve the release version once; all other jobs read it ──────────────
   version:
     name: Resolve version
+    needs: ci
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.ver.outputs.version }}
@@ -60,7 +66,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.96.0
       - uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -69,7 +75,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: cargo-registry-${{ hashFiles('core/Cargo.toml') }}
+          key: cargo-registry-${{ hashFiles('core/Cargo.lock') }}
 
       # Windows only: NSIS must be on PATH before release-core.sh runs so that
       # makensis is found and the Setup.exe is built.
