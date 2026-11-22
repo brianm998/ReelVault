@@ -25,6 +25,9 @@ final class ServerLauncher {
     }
 
     private var process: Process?
+    /// Write end of the daemon's stdin pipe. Never written; the kernel closes
+    /// it if we die, which makes `--exit-with-parent` stop the daemon.
+    private var stdinPipe: Pipe?
 
     private init() {}
 
@@ -123,7 +126,7 @@ final class ServerLauncher {
 
         let proc = Process()
         proc.executableURL = bin
-        var args = ["--port", String(preferredPort)]
+        var args = ["--port", String(preferredPort), "--exit-with-parent"]
         if let db = dbPath, !db.isEmpty {
             args += ["--db-path", db]
         } else {
@@ -133,6 +136,9 @@ final class ServerLauncher {
 
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
+        let stdinP = Pipe()
+        proc.standardInput = stdinP
+        self.stdinPipe = stdinP
         proc.standardOutput = stdoutPipe
         proc.standardError = stderrPipe
 
@@ -186,6 +192,7 @@ final class ServerLauncher {
     func shutdown() {
         guard let p = process else { return }
         process = nil
+        stdinPipe = nil
         p.terminate()
         // Don't wait synchronously — the on-quit teardown can race with the
         // process exiting naturally.
