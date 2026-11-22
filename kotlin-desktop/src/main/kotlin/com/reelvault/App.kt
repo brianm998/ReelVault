@@ -5,6 +5,11 @@
 
 package com.reelvault
 
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.automirrored.filled.Label
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -1530,7 +1535,7 @@ fun ReelVaultApp(
                                 )
                                 Spacer(modifier = Modifier.width(ReelVaultSpacing.Small))
                                 Text(
-                                    text = effectiveScanText ?: "",
+                                    text = effectiveScanText,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
@@ -2058,7 +2063,7 @@ fun ReelVaultApp(
                         }
 
                         if (!detailFullscreen) {
-                            Divider(
+                            HorizontalDivider(
                                 modifier = Modifier
                                     .fillMaxHeight()
                                     .width(1.dp)
@@ -2249,7 +2254,7 @@ fun ReelVaultApp(
                         }
 
                         if (!detailFullscreen) {
-                            Divider(
+                            HorizontalDivider(
                                 modifier = Modifier
                                     .fillMaxHeight()
                                     .width(1.dp)
@@ -2880,7 +2885,7 @@ fun HelpDialog(onDismiss: () -> Unit) {
                         ))
                     }
 
-                    HelpSection(icon = Icons.Default.Label, title = "Tags & collections") {
+                    HelpSection(icon = Icons.AutoMirrored.Filled.Label, title = "Tags & collections") {
                         HelpPara("Tags and collections are catalog-only ways to organise clips — neither is ever written into the video file.")
                         HelpBullets(listOf(
                             "Tags are free-form labels. Add or remove them in the right panel while one or more clips are selected, then filter by the Keyword dropdown",
@@ -2889,7 +2894,7 @@ fun HelpDialog(onDismiss: () -> Unit) {
                         ))
                     }
 
-                    HelpSection(icon = Icons.Default.OpenInNew, title = "Hand off to an editor") {
+                    HelpSection(icon = Icons.AutoMirrored.Filled.OpenInNew, title = "Hand off to an editor") {
                         HelpBullets(listOf(
                             "Drag one or more cards from the grid or list directly into DaVinci Resolve, Final Cut Pro, Premiere Pro, or any app that accepts file drops",
                             "Double-click a row in List view to open it with the system's default media player",
@@ -3263,7 +3268,7 @@ fun ReelVaultTopBar(
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.LibraryBooks,
+                                imageVector = Icons.AutoMirrored.Filled.LibraryBooks,
                                 contentDescription = null,
                                 modifier = Modifier.size(14.dp)
                             )
@@ -3551,7 +3556,7 @@ fun ReelVaultTopBar(
                     ) {
                         IconButton(onClick = onShowHelp) {
                             Icon(
-                                imageVector = Icons.Default.HelpOutline,
+                                imageVector = Icons.AutoMirrored.Filled.HelpOutline,
                                 contentDescription = "Help"
                             )
                         }
@@ -3738,7 +3743,7 @@ fun ViewModeToggle(
 ) {
     val modes = listOf(
         Triple(ViewMode.GRID,   Icons.Default.GridView,          "Grid view (G)"),
-        Triple(ViewMode.LIST,   Icons.Default.ViewList,          "List view (L)"),
+        Triple(ViewMode.LIST,   Icons.AutoMirrored.Filled.ViewList,          "List view (L)"),
         Triple(ViewMode.DETAIL, Icons.Default.PlayCircleOutline, "Detail view (D)"),
         Triple(ViewMode.MAP,    Icons.Default.Map,               "Map view (M)")
     )

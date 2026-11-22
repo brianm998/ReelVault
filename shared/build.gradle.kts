@@ -47,6 +47,10 @@ java {
 
 kotlin {
     jvmToolchain(21)
+    // Keep the module warning-free: new warnings fail the build.
+    compilerOptions {
+        allWarningsAsErrors.set(true)
+    }
 }
 
 protobuf {

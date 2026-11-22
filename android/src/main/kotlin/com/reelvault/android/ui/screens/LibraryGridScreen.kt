@@ -5,6 +5,10 @@
 
 package com.reelvault.android.ui.screens
 
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -840,7 +844,7 @@ private fun LibraryTopAppBar(
             onActiveChange = { if (!it) onSearchActiveChange(false) },
             leadingIcon = {
                 IconButton(onClick = { onSearchActiveChange(false) }) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.grid_close_search))
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.grid_close_search))
                 }
             },
             placeholder = { Text(stringResource(R.string.grid_search_videos_hint)) },
@@ -952,7 +956,7 @@ private fun LibraryTopAppBar(
                     // Sort
                     Box {
                         IconButton(onClick = onShowSortMenu) {
-                            Icon(Icons.Default.Sort, contentDescription = stringResource(R.string.grid_sort))
+                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.grid_sort))
                         }
                         SortDropdownMenu(
                             expanded = showSortMenu,
@@ -963,7 +967,7 @@ private fun LibraryTopAppBar(
                     // Grid / List toggle
                     IconButton(onClick = onToggleViewMode) {
                         Icon(
-                            imageVector = if (viewMode == "grid") Icons.Default.ViewList else Icons.Default.GridView,
+                            imageVector = if (viewMode == "grid") Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
                             contentDescription = if (viewMode == "grid") stringResource(R.string.grid_switch_to_list_view) else stringResource(R.string.grid_switch_to_grid_view),
                         )
                     }
@@ -999,7 +1003,7 @@ private fun LibraryTopAppBar(
                             HorizontalDivider()
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.grid_disconnect)) },
-                                leadingIcon = { Icon(Icons.Default.ExitToApp, contentDescription = null) },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null) },
                                 onClick = { onDismissOverflowMenu(); onDisconnect() },
                             )
                         }
@@ -2456,6 +2460,7 @@ private fun SmallBadge(
 // ── Bottom status bar ─────────────────────────────────────────────────────────
 
 @Composable
+@Suppress("UNUSED_PARAMETER")
 private fun LibraryStatusBar(
     totalCount: Long,
     hasMore: Boolean,
@@ -2568,7 +2573,7 @@ private fun LibraryStatusBar(
 
             // View mode indicator
             Icon(
-                imageVector = if (viewMode == "grid") Icons.Default.GridView else Icons.Default.ViewList,
+                imageVector = if (viewMode == "grid") Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
                 contentDescription = null,
                 modifier = Modifier.size(16.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,

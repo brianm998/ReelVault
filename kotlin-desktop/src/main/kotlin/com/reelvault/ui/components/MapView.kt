@@ -203,8 +203,8 @@ fun MapView(
                             mapHolder.onPinClick?.invoke(hit.pin, additive)
                             return
                         }
-                        val onMapClick = mapHolder.onMapClick
-                        if (onMapClick != null) {
+                        val clickHandler = mapHolder.onMapClick
+                        if (clickHandler != null) {
                             val pos = v.tileFactory.pixelToGeo(
                                 java.awt.geom.Point2D.Double(
                                     e.x.toDouble() + v.viewportBounds.x,
@@ -212,7 +212,7 @@ fun MapView(
                                 ),
                                 v.zoom,
                             )
-                            onMapClick.invoke(pos.latitude, pos.longitude)
+                            clickHandler.invoke(pos.latitude, pos.longitude)
                         }
                     }
                 })
