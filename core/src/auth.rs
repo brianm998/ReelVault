@@ -17,12 +17,34 @@ pub fn token_hash(token: &str) -> String {
     hex::encode(Sha256::digest(token.as_bytes()))
 }
 
-/// True if an `Authorization` header value (`"Bearer <token>"`) belongs to a
-/// currently-paired device.
-pub fn is_authorized(db: &Database, authorization: Option<&str>) -> bool {
+/// Outcome of a token check.
+#[derive(Debug, PartialEq, Eq)]
+pub enum AuthResult {
+    Authorized,
+    Unauthorized,
+    /// The paired-device list couldn't be read (database busy/closed): the
+    /// caller must answer UNAVAILABLE / 503, not "not paired".
+    Unavailable,
+}
+
+/// Check an `Authorization` header value (`"Bearer <token>"`) against the
+/// paired devices (in-memory; no SQLite write).
+pub fn check(db: &Database, authorization: Option<&str>) -> AuthResult {
     let token = match authorization.and_then(|s| s.strip_prefix("Bearer ")) {
         Some(t) if !t.is_empty() => t,
-        _ => return false,
+        _ => return AuthResult::Unauthorized,
     };
-    db.is_paired_token(&token_hash(token)).unwrap_or(false)
+    match db.is_paired_token(&token_hash(token)) {
+        Ok(true) => AuthResult::Authorized,
+        Ok(false) => AuthResult::Unauthorized,
+        Err(e) => {
+            tracing::warn!("auth: paired-device lookup failed: {e}");
+            AuthResult::Unavailable
+        }
+    }
+}
+
+/// True if the header belongs to a currently-paired device.
+pub fn is_authorized(db: &Database, authorization: Option<&str>) -> bool {
+    check(db, authorization) == AuthResult::Authorized
 }
