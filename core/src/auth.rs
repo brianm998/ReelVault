@@ -147,8 +147,17 @@ mod admin_gate_tests {
             std::task::Poll::Ready(Ok(()))
         }
         fn call(&mut self, _: tonic::codegen::http::Request<()>) -> Self::Future {
-            std::future::ready(Ok(tonic::codegen::http::Response::new(tonic::body::empty_body())))
+            let mut r = tonic::codegen::http::Response::new(tonic::body::empty_body());
+            r.headers_mut().insert("x-reached-inner", "1".parse().unwrap());
+            std::future::ready(Ok(r))
         }
+    }
+
+    async fn reached(allow: bool, path: &str) -> bool {
+        let mut svc = tower::Layer::layer(&AdminGateLayer { allow_admin: allow }, Ok200);
+        let req = tonic::codegen::http::Request::builder().uri(path).body(()).unwrap();
+        let resp = svc.ready().await.unwrap().call(req).await.unwrap();
+        resp.headers().contains_key("x-reached-inner")
     }
 
     async fn status_of(allow: bool, path: &str) -> Option<String> {
@@ -170,7 +179,9 @@ mod admin_gate_tests {
     #[tokio::test]
     async fn read_and_mark_rpcs_pass() {
         for m in ["ListVideos", "GetMetadata", "TagVideos", "UpdateConfig"] {
-            assert_eq!(status_of(false, &format!("/reelvault.ReelVault/{m}")).await, None, "{m}");
+            let p = format!("/reelvault.ReelVault/{m}");
+            assert_eq!(status_of(false, &p).await, None, "{m}");
+            assert!(reached(false, &p).await, "{m} must reach the inner service");
         }
     }
 

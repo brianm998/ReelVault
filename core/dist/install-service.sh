@@ -122,6 +122,11 @@ install_macos() {
     chmod 755 "$log_dir"
     chmod 750 "$data_dir"
 
+    echo "NOTE: the daemon now runs as _reelvault, not root. Library roots and the"
+    echo "      --import-dir must be readable (import dir writable) by that account,"
+    echo "      e.g. chmod -R +a 'user:_reelvault allow read,list,search,readattr,readextattr' <dir>,"
+    echo "      and external volumes need 'Full Disk Access' if under protected folders."
+
     echo "==> Installing binary to ${install_bin}…"
     cp -f "$BINARY" "$install_bin"
     chmod 755 "$install_bin"

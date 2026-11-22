@@ -47,6 +47,17 @@
     <key>GroupName</key>
     <string>_reelvault</string>
 
+    <!--
+      _reelvault's home is /var/empty (not writable), so point HOME at its data
+      dir; the default thumbnail cache (~/Library/Caches/ReelVault) is created
+      beneath it.
+    -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Library/Application Support/ReelVault</string>
+    </dict>
+
     <!-- Start at boot and keep alive if it crashes. -->
     <key>RunAtLoad</key>
     <true/>

@@ -85,6 +85,7 @@ function Install-Service {
         & icacls.exe $d /grant "${svcAccount}:(OI)(CI)F" | Out-Null
     }
 
+    Write-Host "NOTE: the service runs as $svcAccount. Library roots and -ImportDir must be readable (ImportDir writable) by that account."
     & sc.exe description $ServiceName $Description | Out-Null
 
     # Configure failure recovery: restart after 5 s, up to 3 times per day.

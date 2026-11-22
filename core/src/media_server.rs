@@ -468,6 +468,7 @@ async fn upload(
         if let Err(e) = std::fs::rename(&part_path, &final_path) {
             tracing::warn!("upload(resumable): rename failed: {e}");
             let _ = std::fs::remove_file(&part_path);
+            let _ = std::fs::remove_file(&final_path);
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
         let db = Arc::clone(&state.db);
@@ -529,6 +530,7 @@ async fn upload(
     if let Err(e) = std::fs::rename(&tmp, &final_path) {
         tracing::warn!("upload: rename failed: {e}");
         let _ = std::fs::remove_file(&tmp);
+        let _ = std::fs::remove_file(&final_path);
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
 
@@ -1814,6 +1816,24 @@ mod reserve_tests {
         let b = reserve_path(&d, "clip.mp4");
         assert_ne!(a, b);
         assert!(a.exists() && b.exists());
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn concurrent_same_name_reservations_make_two_files() {
+        let d = std::env::temp_dir().join(format!("rv-reserve-{}", uuid::Uuid::new_v4().simple()));
+        std::fs::create_dir_all(&d).unwrap();
+        let hs: Vec<_> = (0..16)
+            .map(|_| {
+                let d = d.clone();
+                std::thread::spawn(move || reserve_path(&d, "clip.mp4"))
+            })
+            .collect();
+        let mut paths: Vec<PathBuf> = hs.into_iter().map(|h| h.join().unwrap()).collect();
+        paths.sort();
+        paths.dedup();
+        assert_eq!(paths.len(), 16);
+        assert_eq!(std::fs::read_dir(&d).unwrap().count(), 16);
         let _ = std::fs::remove_dir_all(&d);
     }
 
