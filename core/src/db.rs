@@ -3,7 +3,7 @@
 
 use crate::error::{Result, ReelVaultError};
 use crate::metadata_keys::{self, SqlVal};
-use chrono::Utc;
+
 use rusqlite::{params, Connection, OptionalExtension};
 use std::collections::{BTreeSet, HashSet};
 use std::ops::{Deref, DerefMut};
@@ -11,6 +11,29 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
 use uuid::Uuid;
+
+/// Current Unix time in whole seconds (UTC).
+pub(crate) fn now_secs() -> i64 {
+    time::OffsetDateTime::now_utc().unix_timestamp()
+}
+
+/// Current Unix time in milliseconds (UTC).
+pub(crate) fn now_ms() -> i64 {
+    unix_ms(time::OffsetDateTime::now_utc())
+}
+
+/// Unix milliseconds of `dt` (floored, matching the previous `timestamp_millis` behaviour).
+pub(crate) fn unix_ms(dt: time::OffsetDateTime) -> i64 {
+    dt.unix_timestamp_nanos().div_euclid(1_000_000) as i64
+}
+
+/// Parse a naive `PrimitiveDateTime` with a runtime format description,
+/// interpreted as UTC, returning Unix milliseconds.
+pub(crate) fn parse_naive_utc_ms(s: &str, fmt: &str) -> Option<i64> {
+    let desc = time::format_description::parse_borrowed::<2>(fmt).ok()?;
+    let p = time::PrimitiveDateTime::parse(s, &desc).ok()?;
+    Some(unix_ms(p.assume_utc()))
+}
 
 /// SQLite catalog the daemon currently serves. The pool is interior-mutable
 /// so the gRPC `OpenCatalog` / `CloseCatalog` RPCs can swap which file backs
@@ -908,7 +931,7 @@ impl Database {
     /// Record a paired device, storing only the token hash.
     pub fn add_paired_device(&self, token_hash: &str, device_name: &str) -> Result<()> {
         let conn = self.get_connection()?;
-        let now = chrono::Utc::now().timestamp();
+        let now = now_secs();
         conn.execute(
             "INSERT OR REPLACE INTO paired_devices (token_hash, device_name, paired_at, last_seen)
              VALUES (?1, ?2, ?3, ?3)",
@@ -977,7 +1000,7 @@ impl Database {
             return Ok(0);
         }
         let conn = self.get_connection()?;
-        let now = chrono::Utc::now().timestamp();
+        let now = now_secs();
         for h in &seen {
             conn.execute(
                 "UPDATE paired_devices SET last_seen = ?2 WHERE token_hash = ?1",
@@ -1040,7 +1063,7 @@ impl Database {
     ) -> Result<String> {
         let conn = self.get_connection()?;
         let video_id = Uuid::new_v4().to_string();
-        let now = Utc::now();
+        let now = now_ms();
 
         conn.execute(
             "INSERT INTO videos (id, path, filename, volume_id, hash, file_size_bytes, indexed_at)
@@ -1052,7 +1075,7 @@ impl Database {
                 volume_id,
                 hash,
                 file_size_bytes,
-                now.timestamp_millis()
+                now
             ],
         )
         .map_err(|e| {
@@ -1122,7 +1145,7 @@ impl Database {
     ) -> Result<String> {
         let conn = self.get_connection()?;
         let loc_id = Uuid::new_v4().to_string();
-        let now = Utc::now().timestamp_millis();
+        let now = now_ms();
         conn.execute(
             "INSERT OR IGNORE INTO video_locations (id, video_id, path, filename, file_size_bytes, is_online, indexed_at) \
              VALUES (?1, ?2, ?3, ?4, ?5, 1, ?6)",
@@ -1721,7 +1744,7 @@ impl Database {
 
     pub fn delete_video(&self, video_id: &str) -> Result<()> {
         let conn = self.get_connection()?;
-        let now_ms = chrono::Utc::now().timestamp_millis();
+        let now_ms = now_ms();
         conn.execute(
             "UPDATE videos SET deleted_at = ?1 WHERE id = ?2 AND deleted_at IS NULL",
             rusqlite::params![now_ms, video_id],
@@ -1913,7 +1936,7 @@ impl Database {
         };
 
         // Apply tag + record history in one transaction.
-        let now = chrono::Utc::now().timestamp();
+        let now = now_secs();
         conn.execute(
             "INSERT OR IGNORE INTO video_tags (video_id, tag_id) VALUES (?, ?)",
             params![video_id, &tag_id],
@@ -1926,6 +1949,44 @@ impl Database {
         )
         .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(true)
+    }
+
+    /// Tag every video in `video_ids` in ONE transaction: all or nothing.
+    pub fn tag_videos(&self, tag_id: &str, video_ids: &[String]) -> Result<()> {
+        let mut conn = self.get_connection()?;
+        let tx = conn
+            .transaction()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        {
+            let mut stmt = tx
+                .prepare_cached("INSERT OR IGNORE INTO video_tags (tag_id, video_id) VALUES (?, ?)")
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            for video_id in video_ids {
+                stmt.execute(params![tag_id, video_id])
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            }
+        }
+        tx.commit()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))
+    }
+
+    /// Untag every video in `video_ids` in one transaction.
+    pub fn untag_videos(&self, tag_id: &str, video_ids: &[String]) -> Result<()> {
+        let mut conn = self.get_connection()?;
+        let tx = conn
+            .transaction()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        {
+            let mut stmt = tx
+                .prepare_cached("DELETE FROM video_tags WHERE tag_id = ? AND video_id = ?")
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            for video_id in video_ids {
+                stmt.execute(params![tag_id, video_id])
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            }
+        }
+        tx.commit()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))
     }
 
     pub fn untag_video(&self, video_id: &str, tag_id: &str) -> Result<()> {
@@ -2066,6 +2127,44 @@ impl Database {
         Ok(())
     }
 
+    /// Add every video to the collection in one transaction.
+    pub fn add_videos_to_collection(&self, collection_id: &str, video_ids: &[String]) -> Result<()> {
+        let mut conn = self.get_connection()?;
+        let tx = conn
+            .transaction()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        {
+            let mut stmt = tx
+                .prepare_cached("INSERT OR IGNORE INTO collection_members (collection_id, video_id) VALUES (?, ?)")
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            for video_id in video_ids {
+                stmt.execute(params![collection_id, video_id])
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            }
+        }
+        tx.commit()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))
+    }
+
+    /// Remove every video from the collection in one transaction.
+    pub fn remove_videos_from_collection(&self, collection_id: &str, video_ids: &[String]) -> Result<()> {
+        let mut conn = self.get_connection()?;
+        let tx = conn
+            .transaction()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        {
+            let mut stmt = tx
+                .prepare_cached("DELETE FROM collection_members WHERE collection_id = ? AND video_id = ?")
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            for video_id in video_ids {
+                stmt.execute(params![collection_id, video_id])
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            }
+        }
+        tx.commit()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))
+    }
+
     pub fn remove_from_collection(&self, collection_id: &str, video_id: &str) -> Result<()> {
         let conn = self.get_connection()?;
 
@@ -2102,7 +2201,7 @@ impl Database {
         conn.execute(
             "INSERT INTO video_notes (video_id, notes, updated_at) VALUES (?, ?, ?)
              ON CONFLICT(video_id) DO UPDATE SET notes = ?, updated_at = ?",
-            params![video_id, notes, Utc::now().timestamp_millis(), notes, Utc::now().timestamp_millis()],
+            params![video_id, notes, now_ms(), notes, now_ms()],
         )
         .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
@@ -2245,6 +2344,54 @@ impl Database {
         )
         .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(())
+    }
+
+    /// Set the rating on every video in `video_ids` in ONE transaction:
+    /// all or nothing (an unknown id fails the FK and rolls everything back).
+    pub fn update_videos_rating(&self, video_ids: &[String], rating: i32) -> Result<()> {
+        let rating = rating.clamp(0, 5);
+        let mut conn = self.get_connection()?;
+        let tx = conn
+            .transaction()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        {
+            let mut stmt = tx
+                .prepare_cached(
+                    "INSERT INTO video_user_marks (video_id, rating, color_label, updated_at)
+                     VALUES (?1, ?2, COALESCE((SELECT color_label FROM video_user_marks WHERE video_id = ?1), ''), CURRENT_TIMESTAMP)
+                     ON CONFLICT(video_id) DO UPDATE SET rating = excluded.rating, updated_at = CURRENT_TIMESTAMP",
+                )
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            for id in video_ids {
+                stmt.execute(params![id, rating])
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            }
+        }
+        tx.commit()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))
+    }
+
+    /// Set the color label on every video in `video_ids` in ONE transaction.
+    pub fn update_videos_color_label(&self, video_ids: &[String], label: &str) -> Result<()> {
+        let mut conn = self.get_connection()?;
+        let tx = conn
+            .transaction()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        {
+            let mut stmt = tx
+                .prepare_cached(
+                    "INSERT INTO video_user_marks (video_id, rating, color_label, updated_at)
+                     VALUES (?1, COALESCE((SELECT rating FROM video_user_marks WHERE video_id = ?1), 0), ?2, CURRENT_TIMESTAMP)
+                     ON CONFLICT(video_id) DO UPDATE SET color_label = excluded.color_label, updated_at = CURRENT_TIMESTAMP",
+                )
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            for id in video_ids {
+                stmt.execute(params![id, label])
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            }
+        }
+        tx.commit()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))
     }
 
     /// Read the (rating, color_label) tuple for a single video. Returns
@@ -3470,6 +3617,38 @@ impl Database {
         Ok(rows)
     }
 
+    /// Grid-visible video count and "has nested subdirectory" flag for every
+    /// library location, computed in ONE grouped query (replaces a count +
+    /// probe query per location). Keyed by location path.
+    pub fn library_location_stats(&self) -> Result<std::collections::HashMap<String, (i64, bool)>> {
+        let conn = self.get_connection()?;
+        // `lo` is the location path with a trailing '/'; the exclusive upper
+        // bound swaps that '/' for the next byte, '0'.
+        let sql = format!(
+            "WITH loc AS (SELECT path, \
+                CASE WHEN substr(path, -1) = '/' THEN path ELSE path || '/' END AS lo \
+                FROM library_locations) \
+             SELECT loc.path, COUNT(v.id), \
+                    COALESCE(SUM(instr(substr(v.path, length(loc.lo) + 1), '/') > 0), 0) \
+             FROM loc LEFT JOIN videos v \
+               ON v.path >= loc.lo \
+              AND v.path < substr(loc.lo, 1, length(loc.lo) - 1) || '0' \
+              AND ({REPRESENTATIVE_FILTER}) \
+             GROUP BY loc.path"
+        );
+        let mut stmt = conn
+            .prepare(&sql)
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let rows = stmt
+            .query_map([], |r| {
+                Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?, r.get::<_, i64>(2)?))
+            })
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(rows.into_iter().map(|(p, c, n)| (p, (c, n > 0))).collect())
+    }
+
     /// Count videos whose path starts with the given directory (recursive).
     pub fn count_videos_in_path(&self, path: &str) -> Result<i64> {
         let conn = self.get_connection()?;
@@ -4480,7 +4659,7 @@ impl Database {
     pub fn add_sync_link(&self, params: &SyncLinkParams) -> Result<()> {
         let conn = self.get_connection()?;
         let id = uuid::Uuid::new_v4().to_string();
-        let now_ms = chrono::Utc::now().timestamp_millis();
+        let now_ms = now_ms();
         conn.execute(
             "INSERT INTO sync_links (id, local_video_id, peer_key, remote_video_id, origin_hash, is_derived, derived_height, last_synced_ms, local_rev_at_sync, remote_rev_at_sync)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
@@ -4854,7 +5033,7 @@ impl Database {
 
     pub fn upsert_sync_profile(&self, p: &SyncProfile) -> Result<()> {
         let conn = self.get_connection()?;
-        let now = chrono::Utc::now().timestamp_millis();
+        let now = now_ms();
         conn.execute(
             "INSERT INTO sync_profiles (id, name, peer_key, direction, filter_json, target_height, collection_resolutions, device_label, last_run_ms, created_ms, updated_ms)
              VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)
@@ -5103,6 +5282,73 @@ pub struct AutoGroupCandidate {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn batch_tagging_is_atomic_and_location_stats_match() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = Database::new_empty();
+        db.set_path(&tmp.path().join("c.db")).unwrap();
+        let mut ids = Vec::new();
+        for path in ["/lib/a.mov", "/lib/sub/b.mov", "/lib2/c.mov"] {
+            let name = path.rsplit('/').next().unwrap();
+            ids.push(db.add_video(path, name, None, None, Some(1)).unwrap());
+        }
+        let tag = db.create_tag("t", None).unwrap();
+        let mid = vec![ids[0].clone(), "no-such-video".to_string(), ids[1].clone()];
+        assert!(db.tag_videos(&tag, &mid).is_err());
+        assert_eq!(db.count_videos_for_tag(&tag).unwrap(), 0);
+        db.tag_videos(&tag, &ids).unwrap();
+        assert_eq!(db.count_videos_for_tag(&tag).unwrap(), 3);
+        db.untag_videos(&tag, &ids[..2]).unwrap();
+        assert_eq!(db.count_videos_for_tag(&tag).unwrap(), 1);
+
+        db.add_library_location("/lib", true).unwrap();
+        db.add_library_location("/lib2", false).unwrap();
+        let stats = db.library_location_stats().unwrap();
+        for l in db.list_library_locations().unwrap() {
+            let (c, sub) = stats[&l.path];
+            assert_eq!(c, db.count_videos_in_path(&l.path).unwrap());
+            assert_eq!(sub, db.location_has_subdirectories(&l.path).unwrap());
+        }
+        assert_eq!(stats["/lib"], (2, true));
+    }
+
+    #[test]
+    fn batch_collection_and_marks_edits_are_atomic() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = Database::new_empty();
+        db.set_path(&tmp.path().join("c.db")).unwrap();
+        let a = db.add_video("/lib/a.mov", "a.mov", None, None, Some(1)).unwrap();
+        let b = db.add_video("/lib/b.mov", "b.mov", None, None, Some(1)).unwrap();
+        let coll = db.create_collection("c", false, None).unwrap();
+        let bad = vec![a.clone(), "no-such-video".to_string(), b.clone()];
+
+        assert!(db.add_videos_to_collection(&coll, &bad).is_err());
+        let n: i64 = db
+            .get_connection()
+            .unwrap()
+            .query_row("SELECT COUNT(*) FROM collection_members", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(n, 0, "failed batch must leave no members");
+
+        assert!(db.update_videos_rating(&bad, 4).is_err());
+        assert_eq!(db.get_video_user_marks(&a).unwrap(), (0, String::new()));
+        assert!(db.update_videos_color_label(&bad, "red").is_err());
+        assert_eq!(db.get_video_user_marks(&a).unwrap(), (0, String::new()));
+
+        let ok = vec![a.clone(), b.clone()];
+        db.update_videos_rating(&ok, 4).unwrap();
+        db.update_videos_color_label(&ok, "red").unwrap();
+        assert_eq!(db.get_video_user_marks(&b).unwrap(), (4, "red".to_string()));
+        db.add_videos_to_collection(&coll, &ok).unwrap();
+        db.remove_videos_from_collection(&coll, &ok[..1]).unwrap();
+        let n: i64 = db
+            .get_connection()
+            .unwrap()
+            .query_row("SELECT COUNT(*) FROM collection_members", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(n, 1);
+    }
 
     fn user_version(path: &Path) -> i64 {
         Connection::open(path)
