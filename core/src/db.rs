@@ -118,13 +118,22 @@ impl Drop for PooledConnection {
 /// otherwise that whole stack would match no clause and silently disappear
 /// from the grid. Kept as one const so the grid and its facets count
 /// identically.
+///
+/// Soft-deleted rows (`deleted_at` set) are never representatives, and a deleted
+/// preferred member (or MIN id) is skipped: the representative is chosen among
+/// live members only, so deleting a stack's top card promotes the next member.
 pub(crate) const REPRESENTATIVE_FILTER: &str = "v.proxy_of IS NULL \
+     AND v.deleted_at IS NULL \
      AND (v.group_id IS NULL \
      OR v.id = (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) \
      OR (NOT EXISTS (SELECT 1 FROM videos vp \
                      WHERE vp.id = (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) \
-                       AND vp.group_id = v.group_id) \
-        AND v.id = (SELECT MIN(v2.id) FROM videos v2 WHERE v2.group_id = v.group_id)))";
+                       AND vp.group_id = v.group_id \
+                       AND vp.deleted_at IS NULL) \
+        AND v.id = (SELECT MIN(v2.id) FROM videos v2 \
+                    WHERE v2.group_id = v.group_id AND v2.deleted_at IS NULL)))";
+
+
 
 /// Separator joining a metadata column's multiple selected facet tokens into a
 /// single `MetadataFilter.value` over the wire. ASCII Unit Separator (0x1F),
@@ -973,9 +982,10 @@ impl Database {
         let conn = self.get_connection()?;
         let result = conn
             .query_row(
-                "SELECT video_id FROM video_locations \
-                 WHERE filename = ?1 AND file_size_bytes = ?2 AND path != ?3 \
-                 ORDER BY is_online DESC \
+                "SELECT vl.video_id FROM video_locations vl \
+                 JOIN videos v ON v.id = vl.video_id AND v.deleted_at IS NULL \
+                 WHERE vl.filename = ?1 AND vl.file_size_bytes = ?2 AND vl.path != ?3 \
+                 ORDER BY vl.is_online DESC \
                  LIMIT 1",
                 params![filename, file_size, exclude_path],
                 |row| row.get(0),
@@ -1393,7 +1403,7 @@ impl Database {
         let conn = self.get_connection()?;
         let exists: bool = conn
             .query_row(
-                "SELECT EXISTS(SELECT 1 FROM videos v JOIN metadata m ON m.video_id = v.id WHERE v.path = ?1)",
+                "SELECT EXISTS(SELECT 1 FROM videos v JOIN metadata m ON m.video_id = v.id WHERE v.path = ?1 AND v.deleted_at IS NULL)",
                 [path],
                 |r| r.get(0),
             )
@@ -1484,11 +1494,39 @@ impl Database {
         let conn = self.get_connection()?;
         let now_ms = chrono::Utc::now().timestamp_millis();
         conn.execute(
-            "UPDATE videos SET deleted_at = ?1 WHERE id = ?2",
+            "UPDATE videos SET deleted_at = ?1 WHERE id = ?2 AND deleted_at IS NULL",
             rusqlite::params![now_ms, video_id],
         )
         .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(())
+    }
+
+    /// True when the video row exists and is soft-deleted.
+    pub fn is_video_deleted(&self, video_id: &str) -> bool {
+        self.get_connection()
+            .ok()
+            .and_then(|conn| {
+                conn.query_row(
+                    "SELECT deleted_at IS NOT NULL FROM videos WHERE id = ?1",
+                    [video_id],
+                    |r| r.get::<_, bool>(0),
+                )
+                .ok()
+            })
+            .unwrap_or(false)
+    }
+
+    /// Clear the soft-delete mark (e.g. a Photos asset restored from Recently
+    /// Deleted that is being re-ingested).
+    pub fn undelete_video(&self, video_id: &str) -> Result<bool> {
+        let conn = self.get_connection()?;
+        let n = conn
+            .execute(
+                "UPDATE videos SET deleted_at = NULL WHERE id = ?1 AND deleted_at IS NOT NULL",
+                rusqlite::params![video_id],
+            )
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(n > 0)
     }
 
     /// Soft-delete a video that was deleted on the sync source: marks it
@@ -1721,7 +1759,8 @@ impl Database {
         let conn = self.get_connection()?;
         let count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM video_tags WHERE tag_id = ?",
+                "SELECT COUNT(*) FROM video_tags vt JOIN videos v ON v.id = vt.video_id \
+                 WHERE vt.tag_id = ? AND v.deleted_at IS NULL",
                 [tag_id],
                 |row| row.get(0),
             )
@@ -1861,7 +1900,7 @@ impl Database {
     pub fn list_videos_by_source_kind(&self, kind: &str) -> Result<Vec<(String, String)>> {
         let conn = self.get_connection()?;
         let mut stmt = conn
-            .prepare("SELECT id, source_id FROM videos WHERE source_kind = ?1 AND source_id IS NOT NULL")
+            .prepare("SELECT id, source_id FROM videos WHERE source_kind = ?1 AND source_id IS NOT NULL AND deleted_at IS NULL")
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let rows = stmt
             .query_map([kind], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))
@@ -2035,7 +2074,8 @@ impl Database {
                  JOIN metadata m ON m.video_id = v.id \
                  WHERE m.gps_latitude IS NOT NULL \
                    AND m.gps_longitude IS NOT NULL \
-                   AND NOT (m.gps_latitude = 0 AND m.gps_longitude = 0)",
+                   AND NOT (m.gps_latitude = 0 AND m.gps_longitude = 0) \
+                   AND v.deleted_at IS NULL",
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
@@ -3671,7 +3711,8 @@ impl Database {
                         COALESCE(v.file_size_bytes, 0),
                         COALESCE(m.audio_channels, 0),
                         v.proxy_of IS NOT NULL
-                 FROM videos v LEFT JOIN metadata m ON v.id = m.video_id",
+                 FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
+                 WHERE v.deleted_at IS NULL",
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let rows = stmt
@@ -3732,14 +3773,16 @@ impl Database {
                         COALESCE(m.audio_channels, 0),
                         v.proxy_of IS NOT NULL
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
-                 WHERE (v.path >= ?1 AND v.path < ?2)
+                 WHERE v.deleted_at IS NULL
+                   AND ((v.path >= ?1 AND v.path < ?2)
                     OR (v.group_id IS NOT NULL
                         AND v.group_id IN (
                             SELECT DISTINCT v2.group_id
                             FROM videos v2
                             WHERE v2.group_id IS NOT NULL
+                              AND v2.deleted_at IS NULL
                               AND v2.path >= ?1 AND v2.path < ?2
-                        ))",
+                        )))",
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let rows = stmt
@@ -3850,6 +3893,7 @@ impl Database {
                         v.proxy_of IS NOT NULL
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
                  WHERE v.id != ?
+                   AND v.deleted_at IS NULL
                    AND v.path >= ? AND v.path < ?",
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
@@ -3909,6 +3953,7 @@ impl Database {
                         v.proxy_of IS NOT NULL
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
                  WHERE v.group_id = ?
+                   AND v.deleted_at IS NULL
                    AND v.id != ?",
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
@@ -4010,6 +4055,7 @@ impl Database {
                         COALESCE(strftime('%s', v.modified_at) * 1000, 0)
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
                  WHERE v.proxy_of IS NULL
+                   AND v.deleted_at IS NULL
                    AND v.id != ?
                    AND v.path >= ? AND v.path < ?",
             )
@@ -4106,7 +4152,7 @@ impl Database {
                         COALESCE(m.camera_model, ''),
                         COALESCE(strftime('%s', v.modified_at) * 1000, 0)
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
-                 WHERE v.proxy_of IS NULL",
+                 WHERE v.proxy_of IS NULL AND v.deleted_at IS NULL",
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
@@ -4225,7 +4271,7 @@ impl Database {
             "SELECT v.content_hash, v.id, v.marks_rev, m.duration_ms, m.creation_date
              FROM videos v
              LEFT JOIN metadata m ON m.video_id = v.id
-             WHERE v.content_hash IN ({}) AND v.is_derived = 0 AND v.proxy_of IS NULL",
+             WHERE v.content_hash IN ({}) AND v.is_derived = 0 AND v.proxy_of IS NULL AND v.deleted_at IS NULL",
             placeholders.join(",")
         );
         let mut stmt = conn.prepare(&sql).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
@@ -5471,6 +5517,119 @@ mod tests {
             .count();
         assert_eq!(group_reps, 1, "dangling stack still shows one representative");
         assert_eq!(total, 2, "v1 plus the stack's fallback representative");
+    }
+
+    fn seed_gps(db: &Database, path: &str, filename: &str) -> String {
+        let id = seed_meta(db, path, filename, Some("Cam"), None, None);
+        db.get_connection()
+            .unwrap()
+            .execute(
+                "UPDATE metadata SET gps_latitude = 10.0, gps_longitude = 20.0 WHERE video_id = ?",
+                [&id],
+            )
+            .unwrap();
+        id
+    }
+
+    #[test]
+    fn deleting_stack_preferred_member_promotes_next_member() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let v1 = db.add_video("/l/v1.mov", "v1.mov", None, None, Some(1)).unwrap();
+        let v2 = db.add_video("/l/v2.mov", "v2.mov", None, None, Some(1)).unwrap();
+        let v3 = db.add_video("/l/v3.mov", "v3.mov", None, None, Some(1)).unwrap();
+        db.create_group(None, None, &[v1.clone(), v2.clone(), v3.clone()], Some(v1.as_str()))
+            .unwrap();
+        db.delete_video(&v1).unwrap();
+
+        let (reps, total) = db
+            .list_videos_grouped(50, 0, "name", true, &FilterSpec::default())
+            .unwrap();
+        let ids: Vec<&str> = reps.iter().map(|r| r.id.as_str()).collect();
+        assert_eq!(total, 1);
+        assert_eq!(ids.len(), 1, "stack stays visible");
+        assert!(
+            ids[0] == v2.as_str() || ids[0] == v3.as_str(),
+            "a live member is the new top card"
+        );
+        assert_eq!(db.count_videos_in_path("/l").unwrap(), 1);
+    }
+
+    #[test]
+    fn deleted_rows_excluded_from_facet_map_and_keyword_counts() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let a = seed_gps(&db, "/l/a.mov", "a.mov");
+        let b = seed_gps(&db, "/l/b.mov", "b.mov");
+        let tag = db.create_tag("k", None).unwrap();
+        db.tag_video(&a, &tag).unwrap();
+        db.tag_video(&b, &tag).unwrap();
+
+        db.delete_video(&b).unwrap();
+
+        let cams = db.distinct_facet_values("camera", &FilterSpec::default()).unwrap();
+        assert_eq!(cams.len(), 1);
+        assert_eq!(cams[0].count, 1, "facet count excludes deleted");
+        assert_eq!(db.count_videos_in_path("/l").unwrap(), 1, "library count");
+        assert_eq!(db.list_videos_with_locations().unwrap().len(), 1, "map");
+        assert_eq!(db.count_videos_for_tag(&tag).unwrap(), 1, "keyword count");
+        assert!(db.list_for_proxy_detection().unwrap().iter().all(|c| c.id != b));
+        assert!(db.list_for_auto_grouping().unwrap().iter().all(|c| c.id != b));
+    }
+
+    #[test]
+    fn prune_listing_skips_deleted_and_delete_keeps_first_timestamp() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let id = db.add_video("photos://x", "x.mov", None, None, Some(1)).unwrap();
+        db.get_connection()
+            .unwrap()
+            .execute("UPDATE videos SET source_kind='photo', source_id='x' WHERE id=?", [&id])
+            .unwrap();
+        assert_eq!(db.list_videos_by_source_kind("photo").unwrap().len(), 1);
+        db.delete_video(&id).unwrap();
+        let ts = |db: &Database| -> i64 {
+            db.get_connection()
+                .unwrap()
+                .query_row("SELECT deleted_at FROM videos WHERE id=?", [&id], |r| r.get(0))
+                .unwrap()
+        };
+        let first = ts(&db);
+        assert!(db.list_videos_by_source_kind("photo").unwrap().is_empty());
+        std::thread::sleep(std::time::Duration::from_millis(5));
+        db.delete_video(&id).unwrap();
+        assert_eq!(ts(&db), first, "original tombstone timestamp kept");
+    }
+
+    #[test]
+    fn undelete_makes_video_visible_and_reingestable() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let id = seed_meta(&db, "photos://x", "x.mov", None, None, None);
+        assert!(db.is_fully_indexed("photos://x").unwrap());
+        db.delete_video(&id).unwrap();
+        assert!(!db.is_fully_indexed("photos://x").unwrap(), "deleted → re-ingest");
+        assert!(db.is_video_deleted(&id));
+        assert!(db.undelete_video(&id).unwrap());
+        assert!(db.is_fully_indexed("photos://x").unwrap());
+        let (reps, _) = db
+            .list_videos_grouped(50, 0, "name", true, &FilterSpec::default())
+            .unwrap();
+        assert_eq!(reps.len(), 1);
+    }
+
+    #[test]
+    fn copy_detection_ignores_deleted_video() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let id = db.add_video("/l/a.mov", "a.mov", None, None, Some(1000)).unwrap();
+        db.add_video_location(&id, "/l/a.mov", "a.mov", Some(1000)).unwrap();
+        assert_eq!(
+            db.find_location_by_filename_size("a.mov", 1000, "/m/a.mov").unwrap(),
+            Some(id.clone())
+        );
+        db.delete_video(&id).unwrap();
+        assert_eq!(db.find_location_by_filename_size("a.mov", 1000, "/m/a.mov").unwrap(), None);
     }
 
     // ── marks_rev trigger tests ───────────────────────────────────────────────

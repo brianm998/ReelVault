@@ -367,7 +367,9 @@ impl IndexingEngine {
         // just refresh metadata. We now key on video_locations, not videos.path.
         let video_id = if let Some(loc) = db.get_location_by_path(video_path.to_str().unwrap_or(""))? {
             // Already a known location — sync file size on both the location and
-            // the master videos row.
+            // the master videos row. A tombstoned video that is re-ingested
+            // (e.g. restored from Recently Deleted) comes back to life.
+            db.undelete_video(&loc.video_id)?;
             if let Some(sz) = file_size {
                 db.update_location_size(&loc.id, sz)?;
                 db.update_video_file_size(&loc.video_id, sz)?;
@@ -556,7 +558,7 @@ impl IndexingEngine {
             .get_location_by_path(video_path.to_str().unwrap_or(""))
             .ok()
             .flatten()
-            .is_some();
+            .is_some_and(|loc| !db.is_video_deleted(&loc.video_id));
 
         let video_id = Self::index_video(db, video_path, thumbnail_cache, filename_date)?;
 
