@@ -119,7 +119,7 @@ where
             let resp = tonic::Status::permission_denied(
                 "catalog administration is not available to remote devices",
             )
-            .to_http();
+            .into_http();
             return Box::pin(std::future::ready(Ok(resp)));
         }
         // Swap so the instance that was poll_ready'd is the one that's called.

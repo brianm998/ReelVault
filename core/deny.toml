@@ -1,3 +1,8 @@
 # cargo-deny: CI runs `cargo deny check advisories` only.
 [advisories]
 version = 2
+# Unmaintained-crate notices only; no vulnerability advisory is ignored here.
+ignore = [
+  { id = "RUSTSEC-2026-0543", reason = "chrono is unmaintained; no patched release. Migration to jiff or time is a separate follow-up task." },
+  { id = "RUSTSEC-2025-0134", reason = "rustls-pemfile is unmaintained (a thin wrapper over rustls-pki-types); it is pulled in by tonic 0.12 and axum-server 0.7 and cannot be dropped until those move on." },
+]
