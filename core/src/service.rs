@@ -111,40 +111,7 @@ impl ReelVaultService {
             data_dir,
         };
 
-        // Bounded background cleanup: purge rows soft-deleted over 30 days ago
-        // (with their cached files), then sweep files whose video is gone. The
-        // orphan sweep only runs on a cache dir this catalog owns: the default
-        // per-user dir is shared by every catalog without its own
-        // `thumbnail_cache_path`, so another catalog's files look like orphans.
-        if service.db.current_path().is_some() {
-            let db = Arc::clone(&service.db);
-            let cache = service.config.thumbnail_cache_path.clone();
-            tokio::task::spawn_blocking(move || {
-                let cutoff = chrono::Utc::now().timestamp_millis() - 30 * 24 * 3600 * 1000;
-                if let Ok(ids) = db.purge_soft_deleted_before(cutoff) {
-                    for id in &ids {
-                        let _ = ThumbnailGenerator::cleanup_thumbnails(&cache, id);
-                    }
-                    if !ids.is_empty() {
-                        tracing::info!("purged {} long-deleted video(s)", ids.len());
-                    }
-                }
-                if crate::config::Config::is_default_cache_path(&cache) {
-                    return;
-                }
-                if let Ok(ids) = db.all_video_ids() {
-                    let n = ThumbnailGenerator::sweep_orphans(
-                        &cache,
-                        &ids,
-                        std::time::Duration::from_secs(600),
-                        5000,
-                    );
-                    if n > 0 {
-                        tracing::info!("thumbnail sweep removed {n} orphaned file(s)");
-                    }
-                }
-            });
-        }
+        service.spawn_cache_maintenance();
 
         // Boot the watcher if config says so and a catalog is open.
         // Done on a Tokio task so `new` stays synchronous.
@@ -156,6 +123,53 @@ impl ReelVaultService {
         }
 
         service
+    }
+
+    /// Bounded background cleanup for the open catalog: purge rows soft-deleted
+    /// over 30 days ago (with their cached files), then sweep cache files whose
+    /// video is gone. A custom `thumbnail_cache_path` belongs to this catalog; the
+    /// default per-user dir is shared, so there the sweep uses the registry of
+    /// catalogs that have used it and skips if any can't be read.
+    fn spawn_cache_maintenance(&self) {
+        let Some(catalog_path) = self.db.current_path() else { return };
+        let db = Arc::clone(&self.db);
+        let cache = self.config.thumbnail_cache_path.clone();
+        tokio::task::spawn_blocking(move || {
+            let shared = crate::config::Config::is_default_cache_path(&cache);
+            if shared {
+                ThumbnailGenerator::register_catalog(&cache, &catalog_path);
+            }
+            let cutoff = chrono::Utc::now().timestamp_millis() - 30 * 24 * 3600 * 1000;
+            if let Ok(ids) = db.purge_soft_deleted_before(cutoff) {
+                for id in &ids {
+                    let _ = ThumbnailGenerator::cleanup_thumbnails(&cache, id);
+                }
+                if !ids.is_empty() {
+                    tracing::info!("purged {} long-deleted video(s)", ids.len());
+                }
+            }
+            let (ids, since) = if shared {
+                match ThumbnailGenerator::shared_known_ids(&cache) {
+                    Some((ids, since)) => (ids, Some(since)),
+                    None => return,
+                }
+            } else {
+                match db.all_video_ids() {
+                    Ok(ids) => (ids, None),
+                    Err(_) => return,
+                }
+            };
+            let n = ThumbnailGenerator::sweep_orphans_since(
+                &cache,
+                &ids,
+                std::time::Duration::from_secs(600),
+                5000,
+                since,
+            );
+            if n > 0 {
+                tracing::info!("thumbnail sweep removed {n} orphaned file(s)");
+            }
+        });
     }
 
     /// A sender on the catalog-change broadcast bus. The media server holds one
@@ -3122,6 +3136,8 @@ impl ReelVaultTrait for ReelVaultService {
         // Restart the watcher so it observes those instead of the old set.
         let handle = self.clone_for_watcher();
         tokio::spawn(async move { handle.restart_watcher().await });
+
+        self.spawn_cache_maintenance();
 
         Ok(Response::new(catalog_info_from(self.db.as_ref(), opened)))
     }

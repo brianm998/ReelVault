@@ -143,6 +143,19 @@ impl ThumbnailGenerator {
         min_age: std::time::Duration,
         max_removals: usize,
     ) -> usize {
+        Self::sweep_orphans_since(cache_dir, known_ids, min_age, max_removals, None)
+    }
+
+    /// [`sweep_orphans`](Self::sweep_orphans) restricted to files modified at or
+    /// after `since` (when given). Used on the shared default cache dir, where
+    /// only files written after the catalog registry began are attributable.
+    pub fn sweep_orphans_since(
+        cache_dir: &Path,
+        known_ids: &std::collections::HashSet<String>,
+        min_age: std::time::Duration,
+        max_removals: usize,
+        since: Option<std::time::SystemTime>,
+    ) -> usize {
         let Ok(entries) = std::fs::read_dir(cache_dir) else { return 0 };
         let mut removed = 0;
         for entry in entries.flatten() {
@@ -158,10 +171,13 @@ impl ThumbnailGenerator {
             if id.len() < 32 || known_ids.contains(id) {
                 continue;
             }
-            let old_enough = entry
-                .metadata()
-                .and_then(|m| m.modified())
-                .ok()
+            let modified = entry.metadata().and_then(|m| m.modified()).ok();
+            if let (Some(since), Some(m)) = (since, modified) {
+                if m < since {
+                    continue;
+                }
+            }
+            let old_enough = modified
                 .and_then(|t| t.elapsed().ok())
                 .map(|age| age >= min_age)
                 .unwrap_or(false);
@@ -170,6 +186,56 @@ impl ThumbnailGenerator {
             }
         }
         removed
+    }
+
+    /// Record `catalog_path` in the shared cache dir's registry so a sweep run
+    /// from any catalog knows whose files live there. Starts the registry
+    /// (`.catalogs_since`) on first use.
+    pub fn register_catalog(cache_dir: &Path, catalog_path: &Path) {
+        let since = cache_dir.join(".catalogs_since");
+        if !since.exists() {
+            let _ = std::fs::write(&since, b"");
+        }
+        let reg = cache_dir.join(".catalogs");
+        let line = catalog_path.to_string_lossy().to_string();
+        let existing = std::fs::read_to_string(&reg).unwrap_or_default();
+        if existing.lines().any(|l| l == line) {
+            return;
+        }
+        let mut all = existing;
+        if !all.is_empty() && !all.ends_with('\n') {
+            all.push('\n');
+        }
+        all.push_str(&line);
+        all.push('\n');
+        let _ = write_atomic(&reg, all.as_bytes());
+    }
+
+    /// Union of video ids across every registered catalog plus the registry
+    /// start time, or `None` when any registered catalog can't be read (e.g. its
+    /// drive is unmounted) — then nothing in the shared dir may be called an
+    /// orphan.
+    pub fn shared_known_ids(
+        cache_dir: &Path,
+    ) -> Option<(std::collections::HashSet<String>, std::time::SystemTime)> {
+        let since = std::fs::metadata(cache_dir.join(".catalogs_since"))
+            .and_then(|m| m.modified())
+            .ok()?;
+        let reg = std::fs::read_to_string(cache_dir.join(".catalogs")).ok()?;
+        let mut ids = std::collections::HashSet::new();
+        for line in reg.lines().filter(|l| !l.is_empty()) {
+            let conn = rusqlite::Connection::open_with_flags(
+                line,
+                rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+            )
+            .ok()?;
+            let mut stmt = conn.prepare("SELECT id FROM videos").ok()?;
+            let rows = stmt.query_map([], |r| r.get::<_, String>(0)).ok()?;
+            for r in rows {
+                ids.insert(r.ok()?);
+            }
+        }
+        Some((ids, since))
     }
 
     /// Generate evenly-spaced scrub frames (for the Lightroom-style hover
@@ -238,7 +304,11 @@ impl ThumbnailGenerator {
                 for i in 0..count {
                     let out = cache_dir.join(format!("{}_scrub_{}.jpg", video_id, i));
                     if !out.exists() {
-                        let _ = std::fs::copy(&poster, &out);
+                        let _ = publish_via_tmp(&out, |tmp| {
+                            std::fs::copy(&poster, tmp)
+                                .map(|_| ())
+                                .map_err(ReelVaultError::IoError)
+                        });
                     }
                 }
                 let _ = std::fs::remove_file(&poster);
@@ -574,8 +644,8 @@ fn ffmpeg_extract_frame_to(
 /// Extract several frames in ONE ffmpeg launch: the file is opened once per
 /// `(seek, output)` job as a separate fast-seeked input and each is mapped to its
 /// own output with one frame. Outputs are written to temp names and renamed into
-/// place only if ffmpeg succeeded. A frame that fails to decode fails the whole
-/// run; the backend does not retry (launch bound).
+/// place only if ffmpeg succeeded. If the batch fails, each frame is retried
+/// individually so one bad position loses only its own frame.
 pub(crate) fn ffmpeg_extract_frames(
     video_path: &Path,
     color: &ColorInfo,
@@ -611,13 +681,22 @@ pub(crate) fn ffmpeg_extract_frames(
         )),
         Err(e) => Err(e),
     };
-    // All-or-nothing: a failed run may leave a truncated output, so publish
-    // only after success. The caller does not retry.
+    // A failed run may leave truncated outputs, so publish only after success.
     for (tmp, (_, out)) in tmps.iter().zip(jobs) {
         if result.is_ok() && std::fs::rename(tmp, out).is_ok() {
             continue;
         }
         let _ = std::fs::remove_file(tmp);
+    }
+    if result.is_err() && jobs.len() > 1 {
+        // One undecodable position must not cost every frame: retry each one on
+        // its own (atomic publish). Failed positions are simply left missing.
+        let mut any = false;
+        for (seek, out) in jobs {
+            any |= ffmpeg_extract_frames(video_path, color, &[(*seek, out.clone())], max_px, quality)
+                .is_ok();
+        }
+        return if any { Ok(()) } else { result };
     }
     result
 }
@@ -1089,5 +1168,43 @@ mod cache_tests {
         assert!(dir.path().join(format!("{keep}_scrub_0.jpg")).exists());
         assert!(!dir.path().join(format!("{gone}_small.jpg")).exists());
         assert!(dir.path().join("notes.txt").exists());
+    }
+
+    #[test]
+    fn shared_registry_sweep_spares_other_catalogs_and_legacy_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let cat_dir = tempfile::tempdir().unwrap();
+        let mine = "44444444-4444-4444-4444-444444444444";
+        let other = "55555555-5555-5555-5555-555555555555";
+        let gone = "66666666-6666-6666-6666-666666666666";
+        let legacy = "77777777-7777-7777-7777-777777777777";
+        // Legacy file predates the registry: unattributable, never swept.
+        std::fs::write(dir.path().join(format!("{legacy}_small.jpg")), b"x").unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let mut paths = Vec::new();
+        for (name, id) in [("a.db", mine), ("b.db", other)] {
+            let p = cat_dir.path().join(name);
+            let c = rusqlite::Connection::open(&p).unwrap();
+            c.execute("CREATE TABLE videos (id TEXT)", []).unwrap();
+            c.execute("INSERT INTO videos (id) VALUES (?1)", [id]).unwrap();
+            ThumbnailGenerator::register_catalog(dir.path(), &p);
+            ThumbnailGenerator::register_catalog(dir.path(), &p); // idempotent
+            paths.push(p);
+        }
+        for id in [mine, other, gone] {
+            std::fs::write(dir.path().join(format!("{id}_small.jpg")), b"x").unwrap();
+        }
+        let (ids, since) = ThumbnailGenerator::shared_known_ids(dir.path()).unwrap();
+        let n = ThumbnailGenerator::sweep_orphans_since(
+            dir.path(), &ids, std::time::Duration::ZERO, 100, Some(since),
+        );
+        assert_eq!(n, 1);
+        assert!(dir.path().join(format!("{mine}_small.jpg")).exists());
+        assert!(dir.path().join(format!("{other}_small.jpg")).exists());
+        assert!(dir.path().join(format!("{legacy}_small.jpg")).exists());
+        assert!(!dir.path().join(format!("{gone}_small.jpg")).exists());
+        // An unreadable registered catalog disables the sweep.
+        std::fs::remove_file(&paths[1]).unwrap();
+        assert!(ThumbnailGenerator::shared_known_ids(dir.path()).is_none());
     }
 }
