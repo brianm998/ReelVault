@@ -2263,6 +2263,54 @@ impl Database {
         Ok(())
     }
 
+    /// Set the rating on every video in `video_ids` in ONE transaction:
+    /// all or nothing (an unknown id fails the FK and rolls everything back).
+    pub fn update_videos_rating(&self, video_ids: &[String], rating: i32) -> Result<()> {
+        let rating = rating.clamp(0, 5);
+        let mut conn = self.get_connection()?;
+        let tx = conn
+            .transaction()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        {
+            let mut stmt = tx
+                .prepare_cached(
+                    "INSERT INTO video_user_marks (video_id, rating, color_label, updated_at)
+                     VALUES (?1, ?2, COALESCE((SELECT color_label FROM video_user_marks WHERE video_id = ?1), ''), CURRENT_TIMESTAMP)
+                     ON CONFLICT(video_id) DO UPDATE SET rating = excluded.rating, updated_at = CURRENT_TIMESTAMP",
+                )
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            for id in video_ids {
+                stmt.execute(params![id, rating])
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            }
+        }
+        tx.commit()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))
+    }
+
+    /// Set the color label on every video in `video_ids` in ONE transaction.
+    pub fn update_videos_color_label(&self, video_ids: &[String], label: &str) -> Result<()> {
+        let mut conn = self.get_connection()?;
+        let tx = conn
+            .transaction()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        {
+            let mut stmt = tx
+                .prepare_cached(
+                    "INSERT INTO video_user_marks (video_id, rating, color_label, updated_at)
+                     VALUES (?1, COALESCE((SELECT rating FROM video_user_marks WHERE video_id = ?1), 0), ?2, CURRENT_TIMESTAMP)
+                     ON CONFLICT(video_id) DO UPDATE SET color_label = excluded.color_label, updated_at = CURRENT_TIMESTAMP",
+                )
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            for id in video_ids {
+                stmt.execute(params![id, label])
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            }
+        }
+        tx.commit()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))
+    }
+
     /// Read the (rating, color_label) tuple for a single video. Returns
     /// (0, "") when no marks row exists — the natural "unset" default.
     pub fn get_video_user_marks(&self, video_id: &str) -> Result<(i32, String)> {
@@ -5120,7 +5168,7 @@ mod tests {
         assert_eq!(db.count_videos_for_tag(&tag).unwrap(), 0);
         db.tag_videos(&tag, &ids).unwrap();
         assert_eq!(db.count_videos_for_tag(&tag).unwrap(), 3);
-        db.untag_videos(&tag, &ids[..2].to_vec()).unwrap();
+        db.untag_videos(&tag, &ids[..2]).unwrap();
         assert_eq!(db.count_videos_for_tag(&tag).unwrap(), 1);
 
         db.add_library_location("/lib", true).unwrap();
@@ -5132,6 +5180,43 @@ mod tests {
             assert_eq!(sub, db.location_has_subdirectories(&l.path).unwrap());
         }
         assert_eq!(stats["/lib"], (2, true));
+    }
+
+    #[test]
+    fn batch_collection_and_marks_edits_are_atomic() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = Database::new_empty();
+        db.set_path(&tmp.path().join("c.db")).unwrap();
+        let a = db.add_video("/lib/a.mov", "a.mov", None, None, Some(1)).unwrap();
+        let b = db.add_video("/lib/b.mov", "b.mov", None, None, Some(1)).unwrap();
+        let coll = db.create_collection("c", false, None).unwrap();
+        let bad = vec![a.clone(), "no-such-video".to_string(), b.clone()];
+
+        assert!(db.add_videos_to_collection(&coll, &bad).is_err());
+        let n: i64 = db
+            .get_connection()
+            .unwrap()
+            .query_row("SELECT COUNT(*) FROM collection_members", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(n, 0, "failed batch must leave no members");
+
+        assert!(db.update_videos_rating(&bad, 4).is_err());
+        assert_eq!(db.get_video_user_marks(&a).unwrap(), (0, String::new()));
+        assert!(db.update_videos_color_label(&bad, "red").is_err());
+        assert_eq!(db.get_video_user_marks(&a).unwrap(), (0, String::new()));
+
+        let ok = vec![a.clone(), b.clone()];
+        db.update_videos_rating(&ok, 4).unwrap();
+        db.update_videos_color_label(&ok, "red").unwrap();
+        assert_eq!(db.get_video_user_marks(&b).unwrap(), (4, "red".to_string()));
+        db.add_videos_to_collection(&coll, &ok).unwrap();
+        db.remove_videos_from_collection(&coll, &ok[..1]).unwrap();
+        let n: i64 = db
+            .get_connection()
+            .unwrap()
+            .query_row("SELECT COUNT(*) FROM collection_members", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(n, 1);
     }
 
     fn user_version(path: &Path) -> i64 {

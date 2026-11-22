@@ -182,31 +182,40 @@ impl ReelVaultService {
     /// runtime via `run_blocking`.
     #[allow(clippy::result_large_err)]
     async fn audio_loudness_blob(&self, video_id: &str) -> std::result::Result<Vec<u8>, Status> {
-        let video = match self.db.get_video(video_id) {
-            Ok(Some(v)) => v,
-            _ => return Ok(Vec::new()),
-        };
-        // Read the cached blob (if computed before) and the audio codec in one go.
-        // A non-NULL blob — even empty — means we already decoded this video, so
-        // return it and skip the (slow, networked) ffmpeg pass. NULL means we've
-        // never tried; empty codec_audio means there's no audio to analyse.
-        let (cached, has_audio): (Option<Vec<u8>>, bool) = self
-            .db
-            .get_connection()
-            .ok()
-            .and_then(|c| {
-                c.query_row(
-                    "SELECT audio_loudness, codec_audio FROM metadata WHERE video_id = ?",
-                    [video_id],
-                    |row| {
-                        let blob: Option<Vec<u8>> = row.get(0)?;
-                        let codec: Option<String> = row.get(1)?;
-                        Ok((blob, codec.map(|s| !s.is_empty()).unwrap_or(false)))
-                    },
-                )
-                .ok()
+        let vid = video_id.to_string();
+        let looked_up = self
+            .run_blocking(move |svc| {
+                let video = match svc.db.get_video(&vid) {
+                    Ok(Some(v)) => v,
+                    _ => return Ok(None),
+                };
+                // Read the cached blob (if computed before) and the audio codec in one go.
+                // A non-NULL blob — even empty — means we already decoded this video, so
+                // return it and skip the (slow, networked) ffmpeg pass. NULL means we've
+                // never tried; empty codec_audio means there's no audio to analyse.
+                let cached: (Option<Vec<u8>>, bool) = svc
+                    .db
+                    .get_connection()
+                    .ok()
+                    .and_then(|c| {
+                        c.query_row(
+                            "SELECT audio_loudness, codec_audio FROM metadata WHERE video_id = ?",
+                            [&vid],
+                            |row| {
+                                let blob: Option<Vec<u8>> = row.get(0)?;
+                                let codec: Option<String> = row.get(1)?;
+                                Ok((blob, codec.map(|s| !s.is_empty()).unwrap_or(false)))
+                            },
+                        )
+                        .ok()
+                    })
+                    .unwrap_or((None, false));
+                Ok(Some((video, cached)))
             })
-            .unwrap_or((None, false));
+            .await?;
+        let Some((video, (cached, has_audio))) = looked_up else {
+            return Ok(Vec::new());
+        };
         if let Some(blob) = cached {
             // A non-empty cached series is authoritative. An *empty* cached blob is
             // only trusted when the video has no audio track; for a video that does
@@ -236,12 +245,19 @@ impl ReelVaultService {
             .await?;
         // Cache the result (even empty — a decode that found no loudness shouldn't
         // be retried over the network on every detail open). Best-effort.
-        if let Ok(conn) = self.db.get_connection() {
-            let _ = conn.execute(
-                "UPDATE metadata SET audio_loudness = ? WHERE video_id = ?",
-                rusqlite::params![bytes, video_id],
-            );
-        }
+        let vid = video_id.to_string();
+        let to_store = bytes.clone();
+        let _ = self
+            .run_blocking(move |svc| {
+                if let Ok(conn) = svc.db.get_connection() {
+                    let _ = conn.execute(
+                        "UPDATE metadata SET audio_loudness = ? WHERE video_id = ?",
+                        rusqlite::params![to_store, vid],
+                    );
+                }
+                Ok(())
+            })
+            .await;
         Ok(bytes)
     }
 
@@ -656,30 +672,24 @@ impl ReelVaultService {
         {
             return Ok(Some(data));
         }
-        if let Ok(Some(_video)) = self.db.get_video(video_id) {
-            let duration = self.video_duration_secs(video_id);
-            if duration > 0.0 {
-                let cache2 = cache.clone();
-                let vid = video_id.to_string();
-                let size_s = size.to_string();
-                let db = std::sync::Arc::clone(&self.db);
-                let _ = tokio::task::spawn_blocking(move || {
-                    let source = match db.media_source_for(&vid) {
-                        Ok(s) => s,
-                        Err(_) => return,
-                    };
-                    let _ = ThumbnailGenerator::generate_frame_at_width(
-                        &source,
-                        &vid,
-                        &cache2,
-                        duration,
-                        &size_s,
-                        max_width,
-                    );
-                })
-                .await;
-            }
-        }
+        let cache2 = cache.clone();
+        let vid = video_id.to_string();
+        let size_s = size.to_string();
+        let _ = self
+            .run_blocking(move |svc| {
+                if let Ok(Some(_video)) = svc.db.get_video(&vid) {
+                    let duration = svc.video_duration_secs(&vid);
+                    if duration > 0.0 {
+                        if let Ok(source) = svc.db.media_source_for(&vid) {
+                            let _ = ThumbnailGenerator::generate_frame_at_width(
+                                &source, &vid, &cache2, duration, &size_s, max_width,
+                            );
+                        }
+                    }
+                }
+                Ok(())
+            })
+            .await;
         read_cached_thumbnail(cache, video_id.to_string(), size.to_string(), max_width).await
     }
 
@@ -1486,21 +1496,16 @@ impl ReelVaultTrait for ReelVaultService {
             .await?;
 
             if thumbnail_data.is_none() {
-                if let Ok(Some(_video)) = self.db.get_video(&req.video_id) {
+                {
+                    let vid = req.video_id.clone();
                     let duration_secs = self
-                        .db
-                        .get_connection()
-                        .ok()
-                        .and_then(|c| {
-                            c.query_row(
-                                "SELECT duration_ms FROM metadata WHERE video_id = ?",
-                                [&req.video_id],
-                                |row| row.get::<_, i64>(0),
-                            )
-                            .ok()
+                        .run_blocking(move |svc| {
+                            Ok(match svc.db.get_video(&vid) {
+                                Ok(Some(_)) => svc.video_duration_secs(&vid),
+                                _ => 0.0,
+                            })
                         })
-                        .map(|ms| ms as f64 / 1000.0)
-                        .unwrap_or(0.0);
+                        .await?;
 
                     if duration_secs > 0.0 {
                         let cache = self.config.thumbnail_cache_path.clone();
@@ -1564,21 +1569,16 @@ impl ReelVaultTrait for ReelVaultService {
             .await?;
 
             if thumbnail_data.is_none() {
-                if let Ok(Some(_video)) = self.db.get_video(&req.video_id) {
+                {
+                    let vid = req.video_id.clone();
                     let duration_secs = self
-                        .db
-                        .get_connection()
-                        .ok()
-                        .and_then(|c| {
-                            c.query_row(
-                                "SELECT duration_ms FROM metadata WHERE video_id = ?",
-                                [&req.video_id],
-                                |row| row.get::<_, i64>(0),
-                            )
-                            .ok()
+                        .run_blocking(move |svc| {
+                            Ok(match svc.db.get_video(&vid) {
+                                Ok(Some(_)) => svc.video_duration_secs(&vid),
+                                _ => 0.0,
+                            })
                         })
-                        .map(|ms| ms as f64 / 1000.0)
-                        .unwrap_or(0.0);
+                        .await?;
 
                     if duration_secs > 0.0 {
                         let cache = self.config.thumbnail_cache_path.clone();
@@ -2181,14 +2181,14 @@ impl ReelVaultTrait for ReelVaultService {
     ) -> std::result::Result<Response<CollectionResponse>, Status> {
         let req = request.into_inner();
 
+        let (name, is_smart, filter) = (req.name.clone(), req.is_smart, req.filter_json.clone());
         let collection_id = self
-            .db
-            .create_collection(
-                &req.name,
-                req.is_smart,
-                if req.filter_json.is_empty() { None } else { Some(&req.filter_json) },
-            )
-            .map_err(Status::from)?;
+            .run_blocking(move |svc| {
+                svc.db
+                    .create_collection(&name, is_smart, if filter.is_empty() { None } else { Some(&filter) })
+                    .map_err(Status::from)
+            })
+            .await?;
 
         Ok(Response::new(CollectionResponse {
             id: collection_id,
@@ -2324,11 +2324,9 @@ impl ReelVaultTrait for ReelVaultService {
                 return Err(Status::invalid_argument("video_ids must be non-empty"));
             }
             let count = req.video_ids.len();
-            for id in &req.video_ids {
-                svc.db
-                    .update_video_rating(id, req.rating)
-                    .map_err(Status::from)?;
-            }
+            svc.db
+                .update_videos_rating(&req.video_ids, req.rating)
+                .map_err(Status::from)?;
             Ok(Response::new(reelvault::Response {
                 success: true,
                 message: format!("Rating set to {} on {} video(s)", req.rating, count),
@@ -2358,11 +2356,9 @@ impl ReelVaultTrait for ReelVaultService {
                 return Err(Status::invalid_argument("video_ids must be non-empty"));
             }
             let count = req.video_ids.len();
-            for id in &req.video_ids {
-                svc.db
-                    .update_video_color_label(id, &req.color_label)
-                    .map_err(Status::from)?;
-            }
+            svc.db
+                .update_videos_color_label(&req.video_ids, &req.color_label)
+                .map_err(Status::from)?;
             let displayed_label = if req.color_label.is_empty() { "(none)" } else { req.color_label.as_str() };
             Ok(Response::new(reelvault::Response {
                 success: true,
@@ -2389,9 +2385,8 @@ impl ReelVaultTrait for ReelVaultService {
         // disagreeing if those lists drift).
         let default_slots: [&str; 4] = ["filename", "file_size", "resolution", "fps"];
         let raw = self
-            .db
-            .get_catalog_setting("grid_top_slots")
-            .map_err(Status::from)?;
+            .run_blocking(|svc| svc.db.get_catalog_setting("grid_top_slots").map_err(Status::from))
+            .await?;
         let mut slots: Vec<String> = match raw {
             Some(s) if !s.is_empty() => s.split(',').map(|t| t.to_string()).collect(),
             _ => default_slots.iter().map(|s| s.to_string()).collect(),
@@ -2611,11 +2606,21 @@ impl ReelVaultTrait for ReelVaultService {
         if req.video_id.is_empty() {
             return Err(Status::invalid_argument("video_id is required"));
         }
-        let video = self
-            .db
-            .get_video(&req.video_id)
-            .map_err(Status::from)?
-            .ok_or_else(|| Status::not_found(format!("video {}", req.video_id)))?;
+        let vid = req.video_id.clone();
+        let (video, source) = self
+            .run_blocking(move |svc| {
+                let video = svc
+                    .db
+                    .get_video(&vid)
+                    .map_err(Status::from)?
+                    .ok_or_else(|| Status::not_found(format!("video {}", vid)))?;
+                // Resolve the backend source the same way the thumbnail paths do, so
+                // proxy generation works for Photos-backed rows (whose `path` is a
+                // synthetic `photos://…`, not a real file) — not just filesystem rows.
+                let source = svc.db.media_source_for(&vid).map_err(Status::from)?;
+                Ok((video, source))
+            })
+            .await?;
 
         let target_height = if req.target_height > 0 {
             req.target_height
@@ -2624,10 +2629,6 @@ impl ReelVaultTrait for ReelVaultService {
         }
         .clamp(144, 4320) as u32;
 
-        // Resolve the backend source the same way the thumbnail paths do, so
-        // proxy generation works for Photos-backed rows (whose `path` is a
-        // synthetic `photos://…`, not a real file) — not just filesystem rows.
-        let source = self.db.media_source_for(&req.video_id).map_err(Status::from)?;
         let output_path = if !req.output_path.is_empty() {
             std::path::PathBuf::from(req.output_path)
         } else if let crate::media_backend::MediaSource::Path(p) = &source {
@@ -2822,10 +2823,10 @@ impl ReelVaultTrait for ReelVaultService {
                 "Select at least 2 videos to attach proxies",
             ));
         }
+        let ids = req.video_ids.clone();
         let (master_id, attached) = self
-            .db
-            .attach_proxies(&req.video_ids)
-            .map_err(Status::from)?;
+            .run_blocking(move |svc| svc.db.attach_proxies(&ids).map_err(Status::from))
+            .await?;
         tracing::info!(master = %master_id, attached, "attach/AttachProxies: RPC complete");
         Ok(Response::new(AttachProxiesResponse {
             master_video_id: master_id,
@@ -3144,9 +3145,13 @@ impl ReelVaultTrait for ReelVaultService {
             return Err(Status::invalid_argument("catalog path is empty"));
         }
         let path = std::path::PathBuf::from(&expanded);
-        self.db
-            .set_path(&path)
-            .map_err(|e| Status::internal(format!("Failed to open catalog: {}", e)))?;
+        let p2 = path.clone();
+        self.run_blocking(move |svc| {
+            svc.db
+                .set_path(&p2)
+                .map_err(|e| Status::internal(format!("Failed to open catalog: {}", e)))
+        })
+        .await?;
         let opened = now_ms();
         if let Ok(mut g) = self.opened_at_ms.write() {
             *g = opened;
@@ -3157,7 +3162,10 @@ impl ReelVaultTrait for ReelVaultService {
         // all-defaults set (watching on, 30 s poll), not this catalog's. Adopt
         // the real ones before (re)starting the watcher, or a user who turned
         // watching off gets it silently switched back on at every launch.
-        match crate::config::Config::load_watch_settings(self.db.as_ref()) {
+        let watch_loaded = self
+            .run_blocking(|svc| Ok(crate::config::Config::load_watch_settings(svc.db.as_ref())))
+            .await?;
+        match watch_loaded {
             Ok((enabled, settle, poll)) => {
                 let mut guard = self.watch_settings.write().await;
                 guard.enabled = enabled;
@@ -3174,14 +3182,21 @@ impl ReelVaultTrait for ReelVaultService {
         let handle = self.clone_for_watcher();
         tokio::spawn(async move { handle.restart_watcher().await });
 
-        Ok(Response::new(catalog_info_from(self.db.as_ref(), opened)))
+        let info = self
+            .run_blocking(move |svc| Ok(catalog_info_from(svc.db.as_ref(), opened)))
+            .await?;
+        Ok(Response::new(info))
     }
 
     async fn close_catalog(
         &self,
         _request: Request<CloseCatalogRequest>,
     ) -> std::result::Result<Response<reelvault::Response>, Status> {
-        self.db.clear_path();
+        self.run_blocking(|svc| {
+            svc.db.clear_path();
+            Ok(())
+        })
+        .await?;
         if let Ok(mut g) = self.opened_at_ms.write() {
             *g = 0;
         }
@@ -3392,16 +3407,15 @@ impl ReelVaultTrait for ReelVaultService {
                 "latitude must be -90..=90 and longitude must be -180..=180",
             ));
         }
+        let name = trimmed.to_string();
+        let (id, lat, lon, radius) = (req.id.clone(), req.latitude, req.longitude, req.radius_m);
         let saved = self
-            .db
-            .upsert_named_location(
-                &req.id,
-                trimmed,
-                req.latitude,
-                req.longitude,
-                req.radius_m,
-            )
-            .map_err(Status::from)?;
+            .run_blocking(move |svc| {
+                svc.db
+                    .upsert_named_location(&id, &name, lat, lon, radius)
+                    .map_err(Status::from)
+            })
+            .await?;
         let proto = NamedLocation {
             id: saved.id.clone(),
             name: saved.name.clone(),
@@ -3542,11 +3556,14 @@ impl ReelVaultTrait for ReelVaultService {
         // Persist to the config table so the new settings survive
         // restarts. Best-effort — failure to write doesn't fail the RPC,
         // we already have the in-memory values doing the right thing.
-        if let Ok(conn) = self.db.get_connection() {
+        let enabled = req.enabled;
+        let _ = self
+            .run_blocking(move |svc| {
+        if let Ok(conn) = svc.db.get_connection() {
             let _ = conn.execute(
                 "INSERT INTO config (key, value) VALUES (?, ?)
                  ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP",
-                rusqlite::params!["watch_enabled", req.enabled.to_string(), req.enabled.to_string()],
+                rusqlite::params!["watch_enabled", enabled.to_string(), enabled.to_string()],
             );
             let _ = conn.execute(
                 "INSERT INTO config (key, value) VALUES (?, ?)
@@ -3559,6 +3576,9 @@ impl ReelVaultTrait for ReelVaultService {
                 rusqlite::params!["watch_poll_interval_ms", poll.to_string(), poll.to_string()],
             );
         }
+                Ok(())
+            })
+            .await;
 
         // Restart the watcher with the new knobs. If `enabled` flipped
         // from true→false this tears it down; false→true builds a fresh
@@ -3584,7 +3604,9 @@ impl ReelVaultTrait for ReelVaultService {
         // 1. Custom overrides keyed by normalised internal name. We
         //    also keep the raw (user-supplied) internal string so the
         //    editor displays it back exactly as typed.
-        let raw_customs = self.read_custom_camera_names();
+        let raw_customs = self
+            .run_blocking(|svc| Ok(svc.read_custom_camera_names()))
+            .await?;
         let mut custom_by_normalised: std::collections::HashMap<String, (String, String)> =
             std::collections::HashMap::new();
         for c in &raw_customs {
@@ -3658,21 +3680,25 @@ impl ReelVaultTrait for ReelVaultService {
         }
 
         let normalised_key = crate::camera_names::normalise(&internal_raw);
-        let mut entries = self.read_custom_camera_names();
-        // Drop any pre-existing entry with the same normalised internal
-        // key, regardless of casing/whitespace the user originally
-        // typed. Keeps the list deduped and lets the new entry win.
-        entries.retain(|e| crate::camera_names::normalise(&e.internal) != normalised_key);
+        let (internal_c, marketing_c) = (internal_raw.clone(), marketing.clone());
+        self.run_blocking(move |svc| {
+            let mut entries = svc.read_custom_camera_names();
+            // Drop any pre-existing entry with the same normalised internal
+            // key, regardless of casing/whitespace the user originally
+            // typed. Keeps the list deduped and lets the new entry win.
+            entries.retain(|e| crate::camera_names::normalise(&e.internal) != normalised_key);
 
-        if !marketing.is_empty() {
-            entries.push(crate::config::CustomCameraName {
-                internal: internal_raw.clone(),
-                marketing: marketing.clone(),
-            });
-        }
+            if !marketing_c.is_empty() {
+                entries.push(crate::config::CustomCameraName {
+                    internal: internal_c,
+                    marketing: marketing_c,
+                });
+            }
 
-        self.write_custom_camera_names(&entries)
-            .map_err(|e| Status::internal(format!("Failed to save mappings: {e}")))?;
+            svc.write_custom_camera_names(&entries)
+                .map_err(|e| Status::internal(format!("Failed to save mappings: {e}")))
+        })
+        .await?;
 
         let message = if marketing.is_empty() {
             format!("Removed custom mapping for \"{internal_raw}\"")
@@ -3762,19 +3788,19 @@ impl ReelVaultTrait for ReelVaultService {
         }
 
         let normalised_key = crate::camera_names::normalise(&raw);
-        let mut entries = self.read_custom_lens_names();
-        // Drop any existing override for the same normalised lens, then
-        // (re-)add it. An empty alias just removes the override.
-        entries.retain(|e| crate::camera_names::normalise(&e.raw) != normalised_key);
-        if !alias.is_empty() {
-            entries.push(crate::config::CustomLensName {
-                raw: raw.clone(),
-                alias: alias.clone(),
-            });
-        }
-
-        self.write_custom_lens_names(&entries)
-            .map_err(|e| Status::internal(format!("Failed to save lens mappings: {e}")))?;
+        let (raw_c, alias_c) = (raw.clone(), alias.clone());
+        self.run_blocking(move |svc| {
+            let mut entries = svc.read_custom_lens_names();
+            // Drop any existing override for the same normalised lens, then
+            // (re-)add it. An empty alias just removes the override.
+            entries.retain(|e| crate::camera_names::normalise(&e.raw) != normalised_key);
+            if !alias_c.is_empty() {
+                entries.push(crate::config::CustomLensName { raw: raw_c, alias: alias_c });
+            }
+            svc.write_custom_lens_names(&entries)
+                .map_err(|e| Status::internal(format!("Failed to save lens mappings: {e}")))
+        })
+        .await?;
 
         let message = if alias.is_empty() {
             format!("Removed lens alias for \"{raw}\"")
@@ -4187,14 +4213,21 @@ impl ServiceWatcherHandle {
             tracing::info!("Watcher disabled in settings — not starting.");
             return;
         }
-        if self.db.current_path().is_none() {
-            tracing::debug!("No catalog open — skipping watcher start.");
-            return;
-        }
-
-        let locations = match self.db.list_library_locations() {
-            Ok(l) => l,
-            Err(e) => {
+        let db = Arc::clone(&self.db);
+        let listed = tokio::task::spawn_blocking(move || {
+            db.current_path()?;
+            Some(db.list_library_locations())
+        })
+        .await
+        .ok()
+        .flatten();
+        let locations = match listed {
+            None => {
+                tracing::debug!("No catalog open — skipping watcher start.");
+                return;
+            }
+            Some(Ok(l)) => l,
+            Some(Err(e)) => {
                 tracing::warn!("Could not list library_locations for watcher: {}", e);
                 return;
             }
