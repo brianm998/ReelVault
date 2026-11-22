@@ -5,4 +5,4 @@ pub mod executor;
 pub mod planner;
 
 pub use executor::SyncExecutor;
-pub use planner::{SyncAction, SyncPlan, SyncPlanItem};
+pub use planner::{Planner, SyncAction, SyncPlan, SyncPlanItem};
