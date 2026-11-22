@@ -592,7 +592,7 @@ impl IndexingEngine {
             .get_location_by_path(video_path.to_str().unwrap_or(""))
             .ok()
             .flatten()
-            .is_some_and(|loc| !db.is_video_deleted(&loc.video_id));
+            .is_some();
 
         let video_id = Self::index_video(db, video_path, thumbnail_cache, filename_date)?;
 

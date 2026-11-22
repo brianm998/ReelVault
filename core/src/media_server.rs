@@ -293,10 +293,7 @@ async fn pair(
     );
     let name = crate::pairing::sanitize_device_name(req.device_name.as_deref())
         .unwrap_or_else(|| "device".to_string());
-    if let Err(e) = state
-        .db
-        .add_paired_device(&crate::auth::token_hash(&token), &name)
-    {
+    if let Err(e) = state.db.add_paired_device(&crate::auth::token_hash(&token), &name) {
         tracing::warn!("pair: add_paired_device failed: {e}");
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
@@ -322,8 +319,7 @@ struct UploadQuery {
 fn is_safe_upload_id(s: &str) -> bool {
     !s.is_empty()
         && s.len() <= 64
-        && s.chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
 }
 
 /// Upload a full-resolution video (streamed) into the configured import dir,
@@ -350,10 +346,7 @@ async fn upload(
     let import_dir = match &state.import_dir {
         Some(d) => d.clone(),
         None => {
-            return (
-                StatusCode::CONFLICT,
-                "import directory not configured on the server",
-            )
+            return (StatusCode::CONFLICT, "import directory not configured on the server")
                 .into_response()
         }
     };
@@ -553,10 +546,7 @@ async fn upload(
         }
         other => {
             // The file landed; report success so the client doesn't re-upload.
-            tracing::warn!(
-                "upload: indexing {} failed: {other:?}",
-                final_path.display()
-            );
+            tracing::warn!("upload: indexing {} failed: {other:?}", final_path.display());
             Json(serde_json::json!({ "video_id": serde_json::Value::Null, "filename": fname }))
                 .into_response()
         }
@@ -570,9 +560,7 @@ async fn upload_status(
     State(state): State<MediaState>,
     headers: HeaderMap,
 ) -> Response {
-    let authz = headers
-        .get(header::AUTHORIZATION)
-        .and_then(|v| v.to_str().ok());
+    let authz = headers.get(header::AUTHORIZATION).and_then(|v| v.to_str().ok());
     if let Some(r) = auth_gate(&state.db, authz) {
         return r;
     }
@@ -593,9 +581,7 @@ async fn upload_catalog_data(
     headers: HeaderMap,
     body: String,
 ) -> Response {
-    let authz = headers
-        .get(header::AUTHORIZATION)
-        .and_then(|v| v.to_str().ok());
+    let authz = headers.get(header::AUTHORIZATION).and_then(|v| v.to_str().ok());
     if let Some(r) = auth_gate(&state.db, authz) {
         return r;
     }
@@ -637,10 +623,7 @@ fn dedup_path(dir: &Path, fname: &str) -> PathBuf {
     if !p.exists() {
         return p;
     }
-    let stem = Path::new(fname)
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("file");
+    let stem = Path::new(fname).file_stem().and_then(|s| s.to_str()).unwrap_or("file");
     let ext = Path::new(fname).extension().and_then(|s| s.to_str());
     for i in 2..1000 {
         let cand = match ext {
@@ -692,6 +675,7 @@ async fn video(
     }
 }
 
+
 /// `GET /hls/{id}/{height}/{file}` — serve one file of an on-the-fly HLS stream.
 ///
 /// `file` is `index.m3u8`, the fMP4 `init.mp4`, or a segment `seg_NNNNN.m4s`. The
@@ -724,9 +708,7 @@ async fn hls_file(
     let dir = match ensure_hls_session(&state, &id, height).await {
         Some(d) => d,
         None => {
-            tracing::warn!(
-                "hls: {id}@{height}p {file} -> 500 (no session: transcode failed or timed out)"
-            );
+            tracing::warn!("hls: {id}@{height}p {file} -> 500 (no session: transcode failed or timed out)");
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
@@ -734,9 +716,7 @@ async fn hls_file(
     if !path.exists() {
         // The two common cases: a forward-seek past the live transcode head, or a
         // segment that an LRU sweep removed mid-playback.
-        tracing::warn!(
-            "hls: {id}@{height}p {file} -> 404 (not on disk: ahead of live head, or evicted)"
-        );
+        tracing::warn!("hls: {id}@{height}p {file} -> 404 (not on disk: ahead of live head, or evicted)");
         return StatusCode::NOT_FOUND.into_response();
     }
     tracing::debug!("hls: {id}@{height}p serving {file}");
@@ -757,9 +737,8 @@ async fn hls_status(state: &MediaState, id: &str, height: i32) -> Response {
     let segments = count_ts(&dir);
     let complete = dir.join(".complete").exists();
     let failed = dir.join(".failed").exists();
-    let body = format!(
-        "{{\"segments\":{segments},\"complete\":{complete},\"failed\":{failed},\"segSeconds\":4}}"
-    );
+    let body =
+        format!("{{\"segments\":{segments},\"complete\":{complete},\"failed\":{failed},\"segSeconds\":4}}");
     Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
@@ -881,9 +860,7 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
                 // the live re-encode keeps up and playback doesn't stall.
                 match closest_proxy_source(state, id, height) {
                     Some(p) => {
-                        tracing::info!(
-                            "hls: {id}@{height}p no H.264/HEVC proxy — re-encoding from proxy {p}"
-                        );
+                        tracing::info!("hls: {id}@{height}p no H.264/HEVC proxy — re-encoding from proxy {p}");
                         (p, false, false)
                     }
                     None => match state.db.get_video(id) {
@@ -902,18 +879,9 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
         evict_old_hls_sessions(&state.cache_dir);
         tracing::info!(
             "hls: start {id}@{height}p — {} from {}",
-            if copy { "copy-mux" } else { "re-encode" },
-            src
+            if copy { "copy-mux" } else { "re-encode" }, src
         );
-        spawn_hls_transcode(
-            state.clone(),
-            id.to_string(),
-            dir.clone(),
-            src,
-            height,
-            copy,
-            from_original,
-        );
+        spawn_hls_transcode(state.clone(), id.to_string(), dir.clone(), src, height, copy, from_original);
     } else {
         // Debug, not info: status polling joins every second and would spam.
         tracing::debug!("hls: join in-progress session {id}@{height}p");
@@ -925,10 +893,7 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
     let started = Instant::now();
     for i in 0..200 {
         if index.exists() {
-            tracing::info!(
-                "hls: {id}@{height}p playlist ready in {}ms",
-                started.elapsed().as_millis()
-            );
+            tracing::info!("hls: {id}@{height}p playlist ready in {}ms", started.elapsed().as_millis());
             return Some(dir);
         }
         if failed.exists() {
@@ -942,12 +907,7 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
             let prog = read_ffmpeg_progress(&dir)
                 .map(|p| format!(" [{p}]"))
                 .unwrap_or_default();
-            tracing::info!(
-                "hls: {id}@{height}p still preparing — {}s, {} segment(s){}",
-                i / 10,
-                count_ts(&dir),
-                prog
-            );
+            tracing::info!("hls: {id}@{height}p still preparing — {}s, {} segment(s){}", i / 10, count_ts(&dir), prog);
         }
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     }
@@ -1002,9 +962,7 @@ fn count_ts(dir: &Path) -> usize {
                 .filter(|e| {
                     e.file_name()
                         .to_str()
-                        .map(|n| {
-                            n.starts_with("seg_") && (n.ends_with(".m4s") || n.ends_with(".ts"))
-                        })
+                        .map(|n| n.starts_with("seg_") && (n.ends_with(".m4s") || n.ends_with(".ts")))
                         .unwrap_or(false)
                 })
                 .count()
@@ -1016,15 +974,7 @@ fn count_ts(dir: &Path) -> usize {
 /// ffmpeg permit for the *whole* transcode (a streaming transcode is long-lived,
 /// unlike the one-shot MP4 cache). Writes `.complete` on success or `.failed` on
 /// error — both consulted by [`ensure_hls_session`].
-fn spawn_hls_transcode(
-    state: MediaState,
-    id: String,
-    dir: PathBuf,
-    src: String,
-    height: i32,
-    copy: bool,
-    from_original: bool,
-) {
+fn spawn_hls_transcode(state: MediaState, id: String, dir: PathBuf, src: String, height: i32, copy: bool, from_original: bool) {
     tokio::task::spawn_blocking(move || {
         // Scope the ffmpeg permit to the streaming transcode only. Promotion
         // (below) acquires its own permit for the remux, so the permit must be
@@ -1082,10 +1032,7 @@ fn run_hls_transcode(dir: &Path, src: &str, height: i32, copy: bool, from_origin
             // otherwise write `hev1`, which AVFoundation refuses to play.
             if probe_video_track(src)
                 .map(|(c, _)| {
-                    matches!(
-                        c.to_ascii_lowercase().as_str(),
-                        "hevc" | "h265" | "hvc1" | "hev1"
-                    )
+                    matches!(c.to_ascii_lowercase().as_str(), "hevc" | "h265" | "hvc1" | "hev1")
                 })
                 .unwrap_or(false)
             {
@@ -1116,59 +1063,28 @@ fn run_hls_transcode(dir: &Path, src: &str, height: i32, copy: bool, from_origin
             // first segment appears quickly and the encode keeps up; the resulting
             // proxy is slightly larger but it's a streaming proxy, an acceptable
             // trade for "plays at all". Re-encodes from a small proxy stay veryfast.
-            let preset = if from_original {
-                "ultrafast"
-            } else {
-                "veryfast"
-            };
+            let preset = if from_original { "ultrafast" } else { "veryfast" };
             cmd.args([
-                "-c:v",
-                "libx264",
-                "-preset",
-                preset,
-                "-crf",
-                "23",
-                "-profile:v",
-                "high",
-                "-level",
-                "4.1",
-                "-pix_fmt",
-                "yuv420p",
+                "-c:v", "libx264", "-preset", preset, "-crf", "23",
+                "-profile:v", "high", "-level", "4.1", "-pix_fmt", "yuv420p",
                 // Keyframe every 48 frames so -hls_time cuts on GOP boundaries
                 // and independent_segments lets AVPlayer start on any segment.
-                "-g",
-                "48",
-                "-keyint_min",
-                "48",
-                "-sc_threshold",
-                "0",
-                "-c:a",
-                "aac",
-                "-b:a",
-                "128k",
-                "-ac",
-                "2",
+                "-g", "48", "-keyint_min", "48", "-sc_threshold", "0",
+                "-c:a", "aac", "-b:a", "128k", "-ac", "2",
             ]);
         }
         cmd.args([
-            "-f",
-            "hls",
-            "-hls_time",
-            "4",
+            "-f", "hls",
+            "-hls_time", "4",
             // EVENT = append-only playlist with no ENDLIST until done, so the
             // client starts playing the first segments while the rest transcodes.
-            "-hls_playlist_type",
-            "event",
+            "-hls_playlist_type", "event",
             // temp_file = write seg_NNNNN.m4s.tmp then rename, so a reader never
             // sees a half-muxed segment (the playlist is renamed atomically too).
-            "-hls_flags",
-            "independent_segments+temp_file",
-            "-hls_segment_type",
-            "fmp4",
-            "-hls_fmp4_init_filename",
-            "init.mp4",
-            "-start_number",
-            "0",
+            "-hls_flags", "independent_segments+temp_file",
+            "-hls_segment_type", "fmp4",
+            "-hls_fmp4_init_filename", "init.mp4",
+            "-start_number", "0",
         ]);
         cmd.arg("-hls_segment_filename").arg(&seg).arg(&index);
         cmd.stdout(std::process::Stdio::null())
@@ -1279,33 +1195,25 @@ fn promote_hls_to_proxy(state: &MediaState, id: &str, height: i32, hls_dir: &Pat
 
     // Index the new file (gives it a videos row), then link it as a proxy of the
     // source — exactly the create_proxy tail.
-    match crate::indexing::IndexingEngine::scan_single_file(&state.db, &out, &state.cache_dir, None)
-    {
+    match crate::indexing::IndexingEngine::scan_single_file(&state.db, &out, &state.cache_dir, None) {
         Ok((proxy_id, _)) => {
             if let Err(e) = state.db.set_proxy_of(&proxy_id, id, 1.0, false) {
                 tracing::warn!("hls: promote {id}@{height}p — set_proxy_of failed: {e}");
                 return;
             }
-            let _ = state
-                .events
-                .send(crate::watcher::CatalogChange::VideoAdded {
-                    video_id: proxy_id,
-                    path: out.clone(),
-                });
+            let _ = state.events.send(crate::watcher::CatalogChange::VideoAdded {
+                video_id: proxy_id,
+                path: out.clone(),
+            });
             // The VideoAdded above is for the proxy row, which ListVideos hides
             // (proxy_of IS NULL filter). On its own it wouldn't visibly update
             // the master, so also announce the master changed — that refreshes
             // its proxy-count badge and any open inspector's proxy list.
-            let _ = state
-                .events
-                .send(crate::watcher::CatalogChange::VideoModified {
-                    video_id: id.to_string(),
-                    path: std::path::PathBuf::from(&source.path),
-                });
-            tracing::info!(
-                "hls: promoted {id}@{height}p to durable proxy {}",
-                out.display()
-            );
+            let _ = state.events.send(crate::watcher::CatalogChange::VideoModified {
+                video_id: id.to_string(),
+                path: std::path::PathBuf::from(&source.path),
+            });
+            tracing::info!("hls: promoted {id}@{height}p to durable proxy {}", out.display());
         }
         Err(e) => {
             tracing::warn!("hls: promote {id}@{height}p — indexing the remux failed: {e}");
@@ -1364,10 +1272,7 @@ fn evict_old_hls_sessions(cache_dir: &Path) {
     completed.sort_by_key(|(t, _)| *t); // oldest first
     let remove = completed.len() - KEEP;
     for (_, p) in completed.into_iter().take(remove) {
-        tracing::info!(
-            "hls: evicting old session {}",
-            p.file_name().and_then(|n| n.to_str()).unwrap_or("?")
-        );
+        tracing::info!("hls: evicting old session {}", p.file_name().and_then(|n| n.to_str()).unwrap_or("?"));
         let _ = std::fs::remove_dir_all(&p);
     }
 }
@@ -1378,12 +1283,7 @@ fn evict_old_hls_sessions(cache_dir: &Path) {
 /// playback over Wi-Fi); only transcodes when the video has no usable proxy.
 /// Concurrent identical transcode requests share one ffmpeg via a per-key lock;
 /// the result is cached under `<cache>/stream/` for reuse.
-async fn ensure_downscaled(
-    state: &MediaState,
-    id: &str,
-    src: &str,
-    height: i32,
-) -> Option<PathBuf> {
+async fn ensure_downscaled(state: &MediaState, id: &str, src: &str, height: i32) -> Option<PathBuf> {
     if let Some(proxy) = closest_proxy_path(state, id, height) {
         return Some(PathBuf::from(proxy));
     }
@@ -1427,30 +1327,19 @@ async fn ensure_downscaled(
             cmd.args(["-vf", vf.as_str()]);
         }
         cmd.args([
-            "-c:v",
-            "libx264",
-            "-preset",
-            "veryfast",
-            "-crf",
-            "23",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
             // Force 8-bit 4:2:0 High profile so Apple hardware decoders can play
             // it. Without -pix_fmt, a ProRes 4:2:2/4:4:4 or 10-bit master yields a
             // High-4:2:2 / 10-bit H.264 that iOS decodes to AUDIO ONLY (the big
             // "Q" with waves) — matching the HLS re-encode path, which already
             // pins yuv420p.
-            "-profile:v",
-            "high",
-            "-pix_fmt",
-            "yuv420p",
-            "-c:a",
-            "aac",
-            "-b:a",
-            "128k",
-            "-movflags",
-            "+faststart",
+            "-profile:v", "high", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-b:a", "128k",
+            "-movflags", "+faststart",
             out_str.as_str(),
         ]);
-        cmd.stdout(std::process::Stdio::null())
+        cmd
+            .stdout(std::process::Stdio::null())
             // Capture stderr so a failed transcode tells us *why* (e.g. ProRes
             // RAW, which ffmpeg can't decode — see rv-frameshot). Without this
             // the only signal is a bare exit code and the client just sees
@@ -1594,14 +1483,10 @@ fn closest_proxy_source(state: &MediaState, id: &str, height: i32) -> Option<Str
 fn probe_video_track(path: &str) -> Option<(String, String)> {
     let out = crate::ffmpeg::ffprobe_command()
         .args([
-            "-v",
-            "error",
-            "-select_streams",
-            "v:0",
-            "-show_entries",
-            "stream=codec_name,pix_fmt",
-            "-of",
-            "default=noprint_wrappers=1:nokey=1",
+            "-v", "error",
+            "-select_streams", "v:0",
+            "-show_entries", "stream=codec_name,pix_fmt",
+            "-of", "default=noprint_wrappers=1:nokey=1",
             path,
         ])
         .output()
@@ -1640,11 +1525,7 @@ fn probe_playable(path: &str) -> bool {
             let pix_ok = matches!(pix_fmt.as_str(), "yuv420p" | "yuvj420p" | "nv12");
             tracing::info!(
                 "media: playable probe {path}: codec={codec} pix_fmt={pix_fmt} -> {}",
-                if codec_ok && pix_ok {
-                    "serve as-is"
-                } else {
-                    "re-encode (not 8-bit 4:2:0 H.264/HEVC)"
-                }
+                if codec_ok && pix_ok { "serve as-is" } else { "re-encode (not 8-bit 4:2:0 H.264/HEVC)" }
             );
             codec_ok && pix_ok
         }
@@ -1678,10 +1559,7 @@ async fn serve_file_range(path: &str, headers: &HeaderMap) -> Response {
             .status(StatusCode::PARTIAL_CONTENT)
             .header(header::CONTENT_TYPE, ctype)
             .header(header::ACCEPT_RANGES, "bytes")
-            .header(
-                header::CONTENT_RANGE,
-                format!("bytes {start}-{end}/{total}"),
-            )
+            .header(header::CONTENT_RANGE, format!("bytes {start}-{end}/{total}"))
             .header(header::CONTENT_LENGTH, len.to_string())
             .body(body)
             .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response());
@@ -1715,11 +1593,7 @@ fn parse_range(headers: &HeaderMap, total: u64) -> Option<(u64, u64)> {
         (total - n, last)
     } else {
         let start: u64 = s.parse().ok()?;
-        let end: u64 = if e.is_empty() {
-            last
-        } else {
-            e.parse::<u64>().ok()?.min(last)
-        };
+        let end: u64 = if e.is_empty() { last } else { e.parse::<u64>().ok()?.min(last) };
         (start, end)
     };
     if start > end || start > last {
@@ -1759,34 +1633,22 @@ mod tests {
 
     #[test]
     fn parse_range_basic() {
-        assert_eq!(
-            parse_range(&range_header("bytes=0-99"), 1000),
-            Some((0, 99))
-        );
+        assert_eq!(parse_range(&range_header("bytes=0-99"), 1000), Some((0, 99)));
     }
 
     #[test]
     fn parse_range_open_ended() {
-        assert_eq!(
-            parse_range(&range_header("bytes=500-"), 1000),
-            Some((500, 999))
-        );
+        assert_eq!(parse_range(&range_header("bytes=500-"), 1000), Some((500, 999)));
     }
 
     #[test]
     fn parse_range_suffix() {
-        assert_eq!(
-            parse_range(&range_header("bytes=-100"), 1000),
-            Some((900, 999))
-        );
+        assert_eq!(parse_range(&range_header("bytes=-100"), 1000), Some((900, 999)));
     }
 
     #[test]
     fn parse_range_clamped_to_size() {
-        assert_eq!(
-            parse_range(&range_header("bytes=0-99999"), 1000),
-            Some((0, 999))
-        );
+        assert_eq!(parse_range(&range_header("bytes=0-99999"), 1000), Some((0, 999)));
     }
 
     #[test]
@@ -1843,9 +1705,7 @@ mod tests {
             .method("POST")
             .uri("/pair")
             .header("content-type", "application/json")
-            .body(Body::from(format!(
-                r#"{{"pin":"{pin}","device_name":"t"}}"#
-            )))
+            .body(Body::from(format!(r#"{{"pin":"{pin}","device_name":"t"}}"#)))
             .unwrap();
         app.clone().oneshot(req).await.unwrap().status()
     }
@@ -1883,10 +1743,7 @@ mod tests {
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let bytes = http_body_util::BodyExt::collect(resp.into_body())
-            .await
-            .unwrap()
-            .to_bytes();
+        let bytes = http_body_util::BodyExt::collect(resp.into_body()).await.unwrap().to_bytes();
         let v: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         let hdr = format!("Bearer {}", v["token"].as_str().unwrap());
         assert!(crate::auth::is_authorized(&db, Some(&hdr)));
@@ -1898,11 +1755,7 @@ mod tests {
         let (st, _db) = test_state(dir.path()).await;
         let (code, _) = crate::pairing::issue_code(&st.pairing, &st.data_dir).await;
         let app = router(st.clone());
-        let req = Request::builder()
-            .method("POST")
-            .uri("/pair/start")
-            .body(Body::empty())
-            .unwrap();
+        let req = Request::builder().method("POST").uri("/pair/start").body(Body::empty()).unwrap();
         assert_eq!(app.oneshot(req).await.unwrap().status(), StatusCode::OK);
         assert_eq!(st.pairing.lock().await.as_ref().unwrap().code, code);
     }
@@ -1924,29 +1777,15 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let db = Database::new(&dir.path().join("t.db")).unwrap();
         db.initialize().await.unwrap();
-        db.add_paired_device(&crate::auth::token_hash("tok"), "d")
-            .unwrap();
+        db.add_paired_device(&crate::auth::token_hash("tok"), "d").unwrap();
         let before = db.list_paired_devices().unwrap()[0].2;
         std::thread::sleep(std::time::Duration::from_millis(1100));
-        assert_eq!(
-            crate::auth::check(&db, Some("Bearer tok")),
-            crate::auth::AuthResult::Authorized
-        );
-        assert_eq!(
-            db.list_paired_devices().unwrap()[0].2,
-            before,
-            "no write on check"
-        );
-        assert_eq!(
-            crate::auth::check(&db, Some("Bearer nope")),
-            crate::auth::AuthResult::Unauthorized
-        );
+        assert_eq!(crate::auth::check(&db, Some("Bearer tok")), crate::auth::AuthResult::Authorized);
+        assert_eq!(db.list_paired_devices().unwrap()[0].2, before, "no write on check");
+        assert_eq!(crate::auth::check(&db, Some("Bearer nope")), crate::auth::AuthResult::Unauthorized);
         assert_eq!(db.flush_last_seen().unwrap(), 1);
         assert!(db.list_paired_devices().unwrap()[0].2 > before);
         let empty = Database::new_empty();
-        assert_eq!(
-            crate::auth::check(&empty, Some("Bearer tok")),
-            crate::auth::AuthResult::Unavailable
-        );
+        assert_eq!(crate::auth::check(&empty, Some("Bearer tok")), crate::auth::AuthResult::Unavailable);
     }
 }
