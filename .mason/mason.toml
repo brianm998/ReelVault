@@ -133,7 +133,7 @@ command = "./gradlew :shared:test :kotlin-desktop:test :android:testDebugUnitTes
 parser = "regex"
 pass_regex = '^(.+) > (.+) PASSED$'
 fail_regex = '^(.+) > (.+) FAILED$|FAILURE: Build failed|^e: '
-min_tests = 54 # shared alone measured 54 via `./gradlew :shared:test` (XML report + 54 PASSED lines), 2026-11-14
+min_tests = 94 # shared 54 + kotlin-desktop 32 + android 8 (hand-counted 2026-11-22; shared alone measured 54 on 2026-11-14)
 level = "t1"
 uses = { compile = 1 }
 
