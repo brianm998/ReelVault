@@ -372,8 +372,6 @@ fun GridScreen(
                         val contextMenuState = remember {
                             androidx.compose.foundation.ContextMenuState()
                         }
-                        val isContextMenuOpen = contextMenuState.status is
-                            androidx.compose.foundation.ContextMenuState.Status.Open
                         ContextMenuArea(
                             state = contextMenuState,
                             items = {

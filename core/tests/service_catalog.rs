@@ -301,3 +301,11 @@ async fn catalog_closed_returns_error_not_panic() {
     h.db.clear_path();
     assert!(h.svc.list_videos(Request::new(list_req(10, 0, "name", true))).await.is_err());
 }
+
+#[tokio::test]
+async fn update_config_without_open_catalog_errors() {
+    let h = Harness::new().await;
+    h.db.clear_path();
+    let r = h.svc.update_config(Request::new(UpdateConfigRequest::default())).await;
+    assert!(r.is_err(), "UpdateConfig must not report success with no catalog");
+}

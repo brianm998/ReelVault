@@ -277,6 +277,7 @@ fun VideoDetailScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
+@Suppress("UNUSED_PARAMETER")
 private fun DetailContent(
     videoId: String,
     metadata: VideoMetadata,

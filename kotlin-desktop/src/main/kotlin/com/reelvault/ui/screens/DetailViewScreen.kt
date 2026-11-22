@@ -5,6 +5,8 @@
 
 package com.reelvault.ui.screens
 
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -203,7 +205,7 @@ fun DetailViewScreen(
     val remoteHeight: Int = run {
         val picked = proxies.firstOrNull { it.id == selectedProxyId }
         if (picked != null) picked.height
-        else when (val h = areaSize.height) {
+        else when (areaSize.height) {
             in 1..480 -> 480
             in 481..720 -> 720
             in 721..1080 -> 1080
@@ -736,7 +738,7 @@ private fun ControlBar(
                 com.reelvault.ui.components.Tooltip(text = "Playback volume") {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = if (volume == 0) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                            imageVector = if (volume == 0) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                             contentDescription = "Volume",
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -874,7 +876,7 @@ private fun BoxScope.FullscreenControls(
                 )
                 if (hasAudio) {
                     Icon(
-                        imageVector = if (volume == 0) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                        imageVector = if (volume == 0) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                         contentDescription = "Volume",
                         tint = Color.White,
                         modifier = Modifier.size(18.dp),

@@ -3,6 +3,8 @@
 
 package com.reelvault.android.ui.components
 
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.util.Log
@@ -573,7 +575,7 @@ private fun ControlsOverlay(
             }
 
             Icon(
-                imageVector = if (volume > 0f) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                imageVector = if (volume > 0f) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
                 contentDescription = stringResource(R.string.player_volume),
                 tint = Color.White.copy(alpha = 0.85f),
                 modifier = Modifier.size(18.dp),
