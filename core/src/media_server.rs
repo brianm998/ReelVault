@@ -22,6 +22,7 @@
 //! except `/healthz` and `/fingerprint` requires a paired bearer token on the
 //! LAN bind (loopback is exempt).
 
+use crate::ffmpeg::CommandTimeout;
 use anyhow::{Context, Result};
 use axum::{
     body::Body,
@@ -130,7 +131,8 @@ pub async fn serve(
     Ok(())
 }
 
-fn router(state: MediaState) -> Router {
+/// The media router (public so integration tests can drive it with `oneshot`).
+pub fn router(state: MediaState) -> Router {
     Router::new()
         .route("/healthz", get(|| async { "ok" }))
         .route("/fingerprint", get(fingerprint))
@@ -463,10 +465,11 @@ async fn upload(
         }
 
         // Atomic move + index.
-        let final_path = dedup_path(&import_dir, &fname);
+        let final_path = reserve_path(&import_dir, &fname);
         if let Err(e) = std::fs::rename(&part_path, &final_path) {
             tracing::warn!("upload(resumable): rename failed: {e}");
             let _ = std::fs::remove_file(&part_path);
+            let _ = std::fs::remove_file(&final_path);
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
         let db = Arc::clone(&state.db);
@@ -524,10 +527,11 @@ async fn upload(
     drop(file);
 
     // Atomic move into the import dir, de-duping filename collisions.
-    let final_path = dedup_path(&import_dir, &fname);
+    let final_path = reserve_path(&import_dir, &fname);
     if let Err(e) = std::fs::rename(&tmp, &final_path) {
         tracing::warn!("upload: rename failed: {e}");
         let _ = std::fs::remove_file(&tmp);
+        let _ = std::fs::remove_file(&final_path);
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
 
@@ -563,6 +567,9 @@ async fn upload_status(
     let authz = headers.get(header::AUTHORIZATION).and_then(|v| v.to_str().ok());
     if let Some(r) = auth_gate(&state.db, authz) {
         return r;
+    }
+    if !is_safe_upload_id(&upload_id) {
+        return StatusCode::BAD_REQUEST.into_response();
     }
     // Find the .part file and return its current size.
     let part_path = match &state.import_dir {
@@ -617,10 +624,16 @@ pub fn check_streamable_proxy(
     None
 }
 
-/// Pick a non-colliding path in `dir` for `fname`, appending " (2)", " (3)", ….
-fn dedup_path(dir: &Path, fname: &str) -> PathBuf {
+/// Atomically reserve a non-colliding path in `dir` for `fname`, appending
+/// " (2)", " (3)", …. The name is claimed by creating an empty placeholder with
+/// `create_new`, so two concurrent same-name uploads can never get the same
+/// path; the caller's `rename` then replaces only its own placeholder.
+fn reserve_path(dir: &Path, fname: &str) -> PathBuf {
+    let try_claim = |p: &Path| {
+        std::fs::OpenOptions::new().write(true).create_new(true).open(p).is_ok()
+    };
     let p = dir.join(fname);
-    if !p.exists() {
+    if try_claim(&p) {
         return p;
     }
     let stem = Path::new(fname).file_stem().and_then(|s| s.to_str()).unwrap_or("file");
@@ -630,11 +643,13 @@ fn dedup_path(dir: &Path, fname: &str) -> PathBuf {
             Some(e) => dir.join(format!("{stem} ({i}).{e}")),
             None => dir.join(format!("{stem} ({i})")),
         };
-        if !cand.exists() {
+        if try_claim(&cand) {
             return cand;
         }
     }
-    dir.join(format!("{stem}-{}", uuid::Uuid::new_v4().simple()))
+    let p = dir.join(format!("{stem}-{}", uuid::Uuid::new_v4().simple()));
+    let _ = std::fs::OpenOptions::new().write(true).create_new(true).open(&p);
+    p
 }
 
 async fn video(
@@ -1089,7 +1104,7 @@ fn run_hls_transcode(dir: &Path, src: &str, height: i32, copy: bool, from_origin
         cmd.arg("-hls_segment_filename").arg(&seg).arg(&index);
         cmd.stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::piped());
-        match cmd.output() {
+        match cmd.output_timeout(crate::ffmpeg::TRANSCODE_TIMEOUT) {
             Ok(o) if o.status.success() => {
                 ensure_endlist(&index);
                 let _ = std::fs::write(dir.join(".complete"), MEDIA_CACHE_VERSION);
@@ -1173,7 +1188,7 @@ fn promote_hls_to_proxy(state: &MediaState, id: &str, height: i32, hls_dir: &Pat
             .arg(&out)
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::piped());
-        match cmd.output() {
+        match cmd.output_timeout(crate::ffmpeg::REMUX_TIMEOUT) {
             Ok(o) if o.status.success() => {}
             Ok(o) => {
                 let stderr = String::from_utf8_lossy(&o.stderr);
@@ -1345,7 +1360,7 @@ async fn ensure_downscaled(state: &MediaState, id: &str, src: &str, height: i32)
             // the only signal is a bare exit code and the client just sees
             // "can't be played on this device".
             .stderr(std::process::Stdio::piped())
-            .output()
+            .output_timeout(crate::ffmpeg::TRANSCODE_TIMEOUT)
     })
     .await;
 
@@ -1489,7 +1504,7 @@ fn probe_video_track(path: &str) -> Option<(String, String)> {
             "-of", "default=noprint_wrappers=1:nokey=1",
             path,
         ])
-        .output()
+        .output_timeout(crate::ffmpeg::PROBE_TIMEOUT)
         .ok()?;
     if !out.status.success() {
         return None;
@@ -1787,5 +1802,46 @@ mod tests {
         assert!(db.list_paired_devices().unwrap()[0].2 > before);
         let empty = Database::new_empty();
         assert_eq!(crate::auth::check(&empty, Some("Bearer tok")), crate::auth::AuthResult::Unavailable);
+    }
+}
+
+#[cfg(test)]
+mod reserve_tests {
+    use super::*;
+
+    #[test]
+    fn same_name_reservations_are_distinct() {
+        let d = std::env::temp_dir().join(format!("rv-reserve-{}", uuid::Uuid::new_v4().simple()));
+        std::fs::create_dir_all(&d).unwrap();
+        let a = reserve_path(&d, "clip.mp4");
+        let b = reserve_path(&d, "clip.mp4");
+        assert_ne!(a, b);
+        assert!(a.exists() && b.exists());
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn concurrent_same_name_reservations_make_two_files() {
+        let d = std::env::temp_dir().join(format!("rv-reserve-{}", uuid::Uuid::new_v4().simple()));
+        std::fs::create_dir_all(&d).unwrap();
+        let hs: Vec<_> = (0..16)
+            .map(|_| {
+                let d = d.clone();
+                std::thread::spawn(move || reserve_path(&d, "clip.mp4"))
+            })
+            .collect();
+        let mut paths: Vec<PathBuf> = hs.into_iter().map(|h| h.join().unwrap()).collect();
+        paths.sort();
+        paths.dedup();
+        assert_eq!(paths.len(), 16);
+        assert_eq!(std::fs::read_dir(&d).unwrap().count(), 16);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn upload_id_validation() {
+        assert!(is_safe_upload_id("abc-123_x"));
+        assert!(!is_safe_upload_id("../etc"));
+        assert!(!is_safe_upload_id(""));
     }
 }

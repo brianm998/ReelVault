@@ -53,7 +53,7 @@ struct Args {
     port: u16,
 
     /// Loopback host to bind. Defaults to `127.0.0.1`. Override only if you
-    /// have a reason to expose the daemon (note: there's no auth!).
+    /// have a reason to expose the daemon (note: there's no auth! Any local process gets the full API, so run the system daemon as an unprivileged account).
     #[arg(long, default_value = "127.0.0.1")]
     host: String,
 
@@ -103,6 +103,12 @@ struct Args {
     /// over mDNS. Defaults to the machine hostname.
     #[arg(long, value_name = "NAME")]
     advertise_name: Option<String>,
+
+    /// Allow paired LAN devices to call catalog-admin RPCs (OpenCatalog,
+    /// CloseCatalog, AddLibraryLocation, RemoveLibraryLocation). Off by
+    /// default; loopback callers are never restricted.
+    #[arg(long, default_value_t = false)]
+    remote_admin: bool,
 
     /// Port for the `--remote` HTTPS media server (download/stream + upload).
     /// Advertised over mDNS so clients know where to stream from.
@@ -512,6 +518,7 @@ where
         let lan_service = InterceptedService::new(service.clone().into_server(), interceptor);
         let tls = Server::builder()
             .tls_config(ServerTlsConfig::new().identity(tonic_id))?
+            .layer(auth::AdminGateLayer { allow_admin: args.remote_admin })
             .add_service(lan_service)
             .serve(lan_addr);
 

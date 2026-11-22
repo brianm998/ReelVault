@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 ReelVault Contributors
 
+use crate::ffmpeg::CommandTimeout;
 use crate::concurrency::acquire_ffmpeg_permit;
 use crate::db::Database;
-use crate::error::{ReelVaultError, Result};
+use crate::error::{Result, ReelVaultError};
 use crate::media_backend::{backend, MediaSource};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
@@ -79,12 +80,7 @@ impl ThumbnailGenerator {
         Ok(())
     }
 
-    fn extract_frame(
-        source: &MediaSource,
-        cache_dir: &Path,
-        video_id: &str,
-        duration_secs: f64,
-    ) -> Result<PathBuf> {
+    fn extract_frame(source: &MediaSource, cache_dir: &Path, video_id: &str, duration_secs: f64) -> Result<PathBuf> {
         // Extract frame at 50% through the video
         let temp_path = cache_dir.join(format!("{}_temp.jpg", video_id));
 
@@ -161,23 +157,23 @@ impl ThumbnailGenerator {
                     "5",
                     output_path.to_str().unwrap_or(""),
                 ])
-                .output()
-                .map_err(|e| {
-                    ReelVaultError::FfmpegError(format!("Failed to resize thumbnail: {}", e))
-                })?;
+                .output_timeout(crate::ffmpeg::FRAME_TIMEOUT)
+                .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to resize thumbnail: {}", e)))?;
 
             if !output.status.success() {
                 let error_msg = String::from_utf8_lossy(&output.stderr);
-                return Err(ReelVaultError::ThumbnailGenerationFailed(
-                    error_msg.to_string(),
-                ));
+                return Err(ReelVaultError::ThumbnailGenerationFailed(error_msg.to_string()));
             }
 
             Ok(())
         }
     }
 
-    pub fn get_thumbnail(cache_dir: &Path, video_id: &str, size: &str) -> Result<Option<Vec<u8>>> {
+    pub fn get_thumbnail(
+        cache_dir: &Path,
+        video_id: &str,
+        size: &str,
+    ) -> Result<Option<Vec<u8>>> {
         let path = cache_dir.join(format!("{}_{}.jpg", video_id, size));
         read_cache_file(&path)
     }
@@ -233,52 +229,47 @@ impl ThumbnailGenerator {
         // still still beats ffmpeg's dark/flat ProRes RAW frames. Local-file
         // sources only (Photos/Bookmark are iOS, handled by the native backend).
         if let Some(video_path) = source.as_path() {
-            if use_quicklook(&color_info) {
-                let count = Self::SCRUB_FRAME_COUNT;
-                // Try real frames first (only when the helper is actually embedded).
-                let mut all_ok = frameshot_path().is_some();
-                if all_ok {
-                    for i in 0..count {
-                        let out = cache_dir.join(format!("{}_scrub_{}.jpg", video_id, i));
-                        if out.exists() {
-                            continue;
-                        }
-                        let pct = if count > 1 {
-                            0.05 + (i as f64 / (count - 1) as f64) * 0.9
-                        } else {
-                            0.5
-                        };
-                        if frameshot_extract(
-                            video_path,
-                            &out,
-                            duration_secs * pct,
-                            Self::SCRUB_WIDTH,
-                        )
+        if use_quicklook(&color_info) {
+            let count = Self::SCRUB_FRAME_COUNT;
+            // Try real frames first (only when the helper is actually embedded).
+            let mut all_ok = frameshot_path().is_some();
+            if all_ok {
+                for i in 0..count {
+                    let out = cache_dir.join(format!("{}_scrub_{}.jpg", video_id, i));
+                    if out.exists() {
+                        continue;
+                    }
+                    let pct = if count > 1 {
+                        0.05 + (i as f64 / (count - 1) as f64) * 0.9
+                    } else {
+                        0.5
+                    };
+                    if frameshot_extract(video_path, &out, duration_secs * pct, Self::SCRUB_WIDTH)
                         .is_err()
-                        {
-                            all_ok = false;
-                            break;
-                        }
+                    {
+                        all_ok = false;
+                        break;
                     }
                 }
-                if all_ok {
-                    return Ok(());
-                }
-                // Helper missing or failed — reuse one poster for the remaining
-                // positions (won't overwrite any real frames already written).
-                let poster = cache_dir.join(format!("{}_qlscrub.jpg", video_id));
-                if quicklook_poster(video_path, &poster, Self::SCRUB_WIDTH).is_ok() {
-                    for i in 0..count {
-                        let out = cache_dir.join(format!("{}_scrub_{}.jpg", video_id, i));
-                        if !out.exists() {
-                            let _ = std::fs::copy(&poster, &out);
-                        }
-                    }
-                    let _ = std::fs::remove_file(&poster);
-                    return Ok(());
-                }
-                // QuickLook failed too — fall through to the ffmpeg path below.
             }
+            if all_ok {
+                return Ok(());
+            }
+            // Helper missing or failed — reuse one poster for the remaining
+            // positions (won't overwrite any real frames already written).
+            let poster = cache_dir.join(format!("{}_qlscrub.jpg", video_id));
+            if quicklook_poster(video_path, &poster, Self::SCRUB_WIDTH).is_ok() {
+                for i in 0..count {
+                    let out = cache_dir.join(format!("{}_scrub_{}.jpg", video_id, i));
+                    if !out.exists() {
+                        let _ = std::fs::copy(&poster, &out);
+                    }
+                }
+                let _ = std::fs::remove_file(&poster);
+                return Ok(());
+            }
+            // QuickLook failed too — fall through to the ffmpeg path below.
+        }
         } // end: local-file ProRes-RAW fast path
 
         let count = Self::SCRUB_FRAME_COUNT;
@@ -300,14 +291,9 @@ impl ThumbnailGenerator {
             // One frame per position at SCRUB_WIDTH, JPEG quality 6. The backend
             // acquires/releases an ffmpeg permit per call, so a slot frees for
             // another concurrent run between iterations.
-            if let Err(e) = backend().extract_frame(
-                source,
-                &color_info,
-                seek_pos,
-                Self::SCRUB_WIDTH,
-                6,
-                &output,
-            ) {
+            if let Err(e) =
+                backend().extract_frame(source, &color_info, seek_pos, Self::SCRUB_WIDTH, 6, &output)
+            {
                 tracing::warn!(
                     "Scrub frame {} for {} (t={:.3}s) failed: {}",
                     i,
@@ -348,10 +334,7 @@ impl ThumbnailGenerator {
     /// [`generate_scrub_thumbnails`](Self::generate_scrub_thumbnails));
     /// anything else resolves to the 50% poster frame.
     fn frame_seek_pos(size: &str, duration_secs: f64) -> f64 {
-        if let Some(n) = size
-            .strip_prefix("scrub_")
-            .and_then(|s| s.parse::<usize>().ok())
-        {
+        if let Some(n) = size.strip_prefix("scrub_").and_then(|s| s.parse::<usize>().ok()) {
             let count = Self::SCRUB_FRAME_COUNT;
             let pct = if count > 1 {
                 0.05 + (n as f64 / (count - 1) as f64) * 0.9
@@ -458,7 +441,7 @@ pub(crate) fn probe_color_info(video_path: &Path) -> ColorInfo {
             "default=nw=1",
             video_path.to_str().unwrap_or(""),
         ])
-        .output();
+        .output_timeout(crate::ffmpeg::PROBE_TIMEOUT);
     let Ok(out) = output else { return info };
     if !out.status.success() {
         return info;
@@ -542,7 +525,7 @@ pub(crate) fn ffmpeg_extract_frame(
             "-y",
             out.to_str().unwrap_or(""),
         ])
-        .output()
+        .output_timeout(crate::ffmpeg::FRAME_TIMEOUT)
         .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to run ffmpeg: {}", e)))?;
 
     if !output.status.success() {
@@ -564,7 +547,9 @@ fn tonemap_prefix(ci: &ColorInfo) -> Option<String> {
     // the right tool; `format=gbrpf32le` ensures the filter sees linear
     // float RGB regardless of the decoder's native output layout.
     if codec == "prores_raw" || pix.starts_with("gbrpf32") {
-        return Some("format=gbrpf32le,tonemap=tonemap=hable:desat=0,format=yuv420p".to_string());
+        return Some(
+            "format=gbrpf32le,tonemap=tonemap=hable:desat=0,format=yuv420p".to_string(),
+        );
     }
 
     // HDR transfer functions the `colorspace` filter can't natively
@@ -574,7 +559,9 @@ fn tonemap_prefix(ci: &ColorInfo) -> Option<String> {
     // EOTF into the JPEG.
     let unsupported_hdr_trc = matches!(trc, "smpte2084" | "arib-std-b67" | "smpte428");
     if unsupported_hdr_trc {
-        return Some("colorspace=all=bt709:iall=bt2020:itrc=bt2020-10,format=yuv420p".to_string());
+        return Some(
+            "colorspace=all=bt709:iall=bt2020:itrc=bt2020-10,format=yuv420p".to_string(),
+        );
     }
 
     // BT.2020 wide-gamut SDR or explicit log/linear transfer.
@@ -659,7 +646,7 @@ fn frameshot_extract(
         .arg(out_path)
         .arg(format!("{:.3}", time_secs.max(0.0)))
         .arg(max_px.to_string())
-        .output();
+        .output_timeout(crate::ffmpeg::FRAME_TIMEOUT);
     match out {
         Ok(o) if o.status.success() && out_path.exists() => Ok(()),
         Ok(o) => Err(ReelVaultError::ThumbnailGenerationFailed(format!(
@@ -682,16 +669,10 @@ fn quicklook_poster(video_path: &Path, out_path: &Path, max_px: i32) -> Result<(
     })?;
     // Unique scratch dir keyed by the output stem, so concurrent sizes of the
     // same clip don't race on qlmanage's `<filename>.png` output name.
-    let stem = out_path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("ql");
+    let stem = out_path.file_stem().and_then(|s| s.to_str()).unwrap_or("ql");
     let tmp_dir = parent.join(format!(".qltmp_{}", stem));
     let _ = std::fs::create_dir_all(&tmp_dir);
-    let in_name = video_path
-        .file_name()
-        .and_then(|s| s.to_str())
-        .unwrap_or("input");
+    let in_name = video_path.file_name().and_then(|s| s.to_str()).unwrap_or("input");
     let produced = tmp_dir.join(format!("{}.png", in_name));
 
     let _permit = acquire_ffmpeg_permit();
@@ -699,7 +680,7 @@ fn quicklook_poster(video_path: &Path, out_path: &Path, max_px: i32) -> Result<(
         .args(["-t", "-s", &max_px.to_string(), "-o"])
         .arg(&tmp_dir)
         .arg(video_path)
-        .output();
+        .output_timeout(crate::ffmpeg::FRAME_TIMEOUT);
     let ql_failure = match ql {
         Ok(_) if produced.exists() => None,
         Ok(o) => Some(String::from_utf8_lossy(&o.stderr).to_string()),
@@ -718,7 +699,7 @@ fn quicklook_poster(video_path: &Path, out_path: &Path, max_px: i32) -> Result<(
         .arg(&produced)
         .args(["-q:v", "4", "-y"])
         .arg(out_path)
-        .output();
+        .output_timeout(crate::ffmpeg::FRAME_TIMEOUT);
     let _ = std::fs::remove_dir_all(&tmp_dir);
     match conv {
         Ok(o) if o.status.success() => Ok(()),
@@ -737,7 +718,11 @@ impl ProxyGenerator {
         width > 1920 * threshold / 4 || height > 1080 * threshold / 4
     }
 
-    pub fn generate_proxy(video_path: &Path, scale: f64, output_path: &Path) -> Result<()> {
+    pub fn generate_proxy(
+        video_path: &Path,
+        scale: f64,
+        output_path: &Path,
+    ) -> Result<()> {
         if !Self::ffmpeg_available() {
             return Err(ReelVaultError::FfmpegError(
                 "ffmpeg not found in PATH. Please install FFmpeg.".to_string(),
@@ -757,15 +742,11 @@ impl ProxyGenerator {
                 "csv=p=0",
                 video_path.to_str().unwrap_or(""),
             ])
-            .output()
-            .map_err(|e| {
-                ReelVaultError::FfmpegError(format!("Failed to get video dimensions: {}", e))
-            })?;
+            .output_timeout(crate::ffmpeg::PROBE_TIMEOUT)
+            .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to get video dimensions: {}", e)))?;
 
         if !output.status.success() {
-            return Err(ReelVaultError::FfmpegError(
-                "Failed to probe video".to_string(),
-            ));
+            return Err(ReelVaultError::FfmpegError("Failed to probe video".to_string()));
         }
 
         let dims = String::from_utf8(output.stdout)
@@ -773,16 +754,12 @@ impl ProxyGenerator {
 
         let parts: Vec<&str> = dims.trim().split(',').collect();
         if parts.len() < 2 {
-            return Err(ReelVaultError::FfmpegError(
-                "Could not parse video dimensions".to_string(),
-            ));
+            return Err(ReelVaultError::FfmpegError("Could not parse video dimensions".to_string()));
         }
 
-        let width: f64 = parts[0]
-            .parse()
+        let width: f64 = parts[0].parse()
             .map_err(|_| ReelVaultError::FfmpegError("Invalid width".to_string()))?;
-        let height: f64 = parts[1]
-            .parse()
+        let height: f64 = parts[1].parse()
             .map_err(|_| ReelVaultError::FfmpegError("Invalid height".to_string()))?;
 
         let new_width = ((width * scale) as i32 / 2) * 2; // Round to even
@@ -810,7 +787,7 @@ impl ProxyGenerator {
                 "128k",
                 output_path.to_str().unwrap_or(""),
             ])
-            .output()
+            .output_timeout(crate::ffmpeg::TRANSCODE_TIMEOUT)
             .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to generate proxy: {}", e)))?;
 
         if !output.status.success() {
@@ -824,7 +801,7 @@ impl ProxyGenerator {
     fn ffmpeg_available() -> bool {
         crate::ffmpeg::ffmpeg_command()
             .arg("-version")
-            .output()
+            .output_timeout(crate::ffmpeg::PROBE_TIMEOUT)
             .map(|o| o.status.success())
             .unwrap_or(false)
     }

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 ReelVault Contributors
 
+use crate::ffmpeg::CommandTimeout;
+use crate::error::{Result, ReelVaultError};
 use crate::db::Database;
-use crate::error::{ReelVaultError, Result};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize, Deserializer};
 use std::path::Path;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,23 +56,19 @@ impl MetadataExtractor {
                 "json",
                 video_path.to_str().unwrap_or(""),
             ])
-            .output()
+            .output_timeout(crate::ffmpeg::PROBE_TIMEOUT)
             .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to run ffprobe: {}", e)))?;
 
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
-            return Err(ReelVaultError::MetadataExtractionFailed(
-                error_msg.to_string(),
-            ));
+            return Err(ReelVaultError::MetadataExtractionFailed(error_msg.to_string()));
         }
 
-        let json_str = String::from_utf8(output.stdout).map_err(|e| {
-            ReelVaultError::FfmpegError(format!("Invalid UTF-8 from ffprobe: {}", e))
-        })?;
+        let json_str = String::from_utf8(output.stdout)
+            .map_err(|e| ReelVaultError::FfmpegError(format!("Invalid UTF-8 from ffprobe: {}", e)))?;
 
-        let probe_output: FFProbeOutput = serde_json::from_str(&json_str).map_err(|e| {
-            ReelVaultError::MetadataExtractionFailed(format!("Failed to parse ffprobe JSON: {}", e))
-        })?;
+        let probe_output: FFProbeOutput = serde_json::from_str(&json_str)
+            .map_err(|e| ReelVaultError::MetadataExtractionFailed(format!("Failed to parse ffprobe JSON: {}", e)))?;
 
         Ok(probe_output)
     }
@@ -98,17 +95,18 @@ impl MetadataExtractor {
         // Check both; prefer the tag to preserve existing behaviour for older clips.
         // Swap width↔height for 90°/270° so every consumer (card aspect-ratio,
         // border drawing, iOS portrait-badge) sees correct display dimensions.
-        let rotate_from_tag = video_stream
-            .tags
+        let rotate_from_tag = video_stream.tags
             .as_ref()
             .and_then(|t| t.get("rotate"))
             .and_then(|v| v.trim().parse::<i32>().ok());
 
-        let rotate_from_matrix = video_stream.side_data_list.as_ref().and_then(|sds| {
-            sds.iter()
-                .find(|sd| sd.side_data_type.as_deref() == Some("Display Matrix"))
-                .and_then(|sd| sd.rotation)
-        });
+        let rotate_from_matrix = video_stream.side_data_list
+            .as_ref()
+            .and_then(|sds| {
+                sds.iter()
+                    .find(|sd| sd.side_data_type.as_deref() == Some("Display Matrix"))
+                    .and_then(|sd| sd.rotation)
+            });
 
         let rotate_deg = rotate_from_tag.or(rotate_from_matrix).unwrap_or(0).abs();
 
@@ -120,8 +118,7 @@ impl MetadataExtractor {
         let fps = Self::parse_fps(&video_stream.r_frame_rate);
         let bitrate = format.bit_rate.unwrap_or(0);
         let codec_video = video_stream.codec_name.clone();
-        let codec_audio = probe_output
-            .streams
+        let codec_audio = probe_output.streams
             .iter()
             .find(|s| s.codec_type == Some("audio".to_string()))
             .and_then(|s| s.codec_name.clone());
@@ -129,13 +126,13 @@ impl MetadataExtractor {
         // Extract EXIF data from tags - check format tags first (where camera/lens usually live for MOV/MP4)
         // Keep make and model as separate fields so the XMP merge below
         // can fall back per-field (see the camera_model merge note).
-        let ff_make =
-            Self::extract_make(&format.tags).or_else(|| Self::extract_make(&video_stream.tags));
-        let ff_model =
-            Self::extract_model(&format.tags).or_else(|| Self::extract_model(&video_stream.tags));
+        let ff_make = Self::extract_make(&format.tags)
+            .or_else(|| Self::extract_make(&video_stream.tags));
+        let ff_model = Self::extract_model(&format.tags)
+            .or_else(|| Self::extract_model(&video_stream.tags));
         let mut camera_model = combine_make_model(ff_make.as_deref(), ff_model.as_deref());
-        let mut lens_model =
-            Self::extract_lens(&format.tags).or_else(|| Self::extract_lens(&video_stream.tags));
+        let mut lens_model = Self::extract_lens(&format.tags)
+            .or_else(|| Self::extract_lens(&video_stream.tags));
         let mut creation_date = Self::extract_creation_date(&format.tags)
             .or_else(|| Self::extract_creation_date(&video_stream.tags));
 
@@ -240,10 +237,8 @@ impl MetadataExtractor {
         // GoPro) can't be one, and we skip the sidecar stat. Also gated to the
         // container extensions DJI produces.
         let dji = {
-            let is_dji_container = matches!(
-                ext.as_deref(),
-                Some("mp4") | Some("mov") | Some("lrv") | Some("m4v")
-            );
+            let is_dji_container =
+                matches!(ext.as_deref(), Some("mp4") | Some("mov") | Some("lrv") | Some("m4v"));
             if gps_from_container.is_none() && is_dji_container {
                 // Try sidecar first, then embedded subtitle if no sidecar found
                 let sidecar_data = crate::dji::read_sidecar(video_path);
@@ -285,10 +280,10 @@ impl MetadataExtractor {
 
         // GoPro GPMF inertial data: accelerometer and gyroscope magnitude series.
         // Each is stored as a little-endian f32 byte array (480 points max).
-        let accel_magnitude =
-            (!gpmf.accel_magnitude.is_empty()).then(|| serialize_f32_vec(&gpmf.accel_magnitude));
-        let gyro_magnitude =
-            (!gpmf.gyro_magnitude.is_empty()).then(|| serialize_f32_vec(&gpmf.gyro_magnitude));
+        let accel_magnitude = (!gpmf.accel_magnitude.is_empty())
+            .then(|| serialize_f32_vec(&gpmf.accel_magnitude));
+        let gyro_magnitude = (!gpmf.gyro_magnitude.is_empty())
+            .then(|| serialize_f32_vec(&gpmf.gyro_magnitude));
 
         // Recover a missing make prefix. Some files carry only the model
         // (a sidecar wrote `tiff:Model` but no make, and ffprobe had none
@@ -309,10 +304,7 @@ impl MetadataExtractor {
                 let low = n.to_ascii_lowercase();
                 if low.contains("gopro") {
                     n
-                } else if low.starts_with("hero")
-                    || low.starts_with("fusion")
-                    || low.starts_with("max")
-                {
+                } else if low.starts_with("hero") || low.starts_with("fusion") || low.starts_with("max") {
                     format!("GoPro {n}")
                 } else {
                     n
@@ -334,14 +326,10 @@ impl MetadataExtractor {
         // names accepted on the udta side are intentionally generous —
         // see the helpers below for the full list — because there's no
         // standard for these tag names in MP4/MOV udta and writers vary.
-        let final_iso = xmp
-            .as_ref()
-            .and_then(|x| x.iso)
+        let final_iso = xmp.as_ref().and_then(|x| x.iso)
             .or_else(|| Self::udta_int(&format.tags, &video_stream.tags, ISO_KEYS))
             .or(dji.iso);
-        let final_aperture = xmp
-            .as_ref()
-            .and_then(|x| x.aperture)
+        let final_aperture = xmp.as_ref().and_then(|x| x.aperture)
             .or_else(|| Self::udta_rational(&format.tags, &video_stream.tags, FNUMBER_KEYS))
             // iPhone per-track key, formatted "F1.78" — strip the leading F.
             .or_else(|| {
@@ -349,61 +337,31 @@ impl MetadataExtractor {
                     .and_then(|s| crate::xmp::parse_rational(s.trim_start_matches(['F', 'f'])))
             })
             .or(dji.aperture);
-        let final_exposure_time_s = xmp
-            .as_ref()
-            .and_then(|x| x.exposure_time_s)
+        let final_exposure_time_s = xmp.as_ref().and_then(|x| x.exposure_time_s)
             .or_else(|| Self::udta_rational(&format.tags, &video_stream.tags, EXPOSURE_TIME_KEYS))
             .or(dji.exposure_time_s);
-        let final_focal_length_mm = xmp
-            .as_ref()
-            .and_then(|x| x.focal_length_mm)
+        let final_focal_length_mm = xmp.as_ref().and_then(|x| x.focal_length_mm)
             .or_else(|| Self::udta_rational(&format.tags, &video_stream.tags, FOCAL_LENGTH_KEYS));
-        let final_exposure_mode =
-            xmp.as_ref()
-                .and_then(|x| x.exposure_mode.clone())
-                .or_else(|| {
-                    Self::udta_enum_label(
-                        &format.tags,
-                        &video_stream.tags,
-                        EXPOSURE_MODE_KEYS,
-                        crate::xmp::exposure_mode_label,
-                    )
-                });
-        let final_exposure_program = xmp
-            .as_ref()
-            .and_then(|x| x.exposure_program.clone())
-            .or_else(|| {
-                Self::udta_enum_label(
-                    &format.tags,
-                    &video_stream.tags,
-                    EXPOSURE_PROGRAM_KEYS,
-                    crate::xmp::exposure_program_label,
-                )
-            });
-        let final_white_balance =
-            xmp.as_ref()
-                .and_then(|x| x.white_balance.clone())
-                .or_else(|| {
-                    Self::udta_enum_label(
-                        &format.tags,
-                        &video_stream.tags,
-                        WHITE_BALANCE_KEYS,
-                        crate::xmp::white_balance_label,
-                    )
-                });
+        let final_exposure_mode = xmp.as_ref().and_then(|x| x.exposure_mode.clone())
+            .or_else(|| Self::udta_enum_label(
+                &format.tags, &video_stream.tags, EXPOSURE_MODE_KEYS,
+                crate::xmp::exposure_mode_label));
+        let final_exposure_program = xmp.as_ref().and_then(|x| x.exposure_program.clone())
+            .or_else(|| Self::udta_enum_label(
+                &format.tags, &video_stream.tags, EXPOSURE_PROGRAM_KEYS,
+                crate::xmp::exposure_program_label));
+        let final_white_balance = xmp.as_ref().and_then(|x| x.white_balance.clone())
+            .or_else(|| Self::udta_enum_label(
+                &format.tags, &video_stream.tags, WHITE_BALANCE_KEYS,
+                crate::xmp::white_balance_label));
 
         // Audio info
-        let audio_stream = probe_output
-            .streams
+        let audio_stream = probe_output.streams
             .iter()
             .find(|s| s.codec_type == Some("audio".to_string()));
         let audio_channels = audio_stream.and_then(|s| s.channels).unwrap_or(0);
         let audio_sample_rate = audio_stream
-            .and_then(|s| {
-                s.sample_rate
-                    .as_ref()
-                    .map(|r| r.parse::<i32>().unwrap_or(0))
-            })
+            .and_then(|s| s.sample_rate.as_ref().map(|r| r.parse::<i32>().unwrap_or(0)))
             .unwrap_or(0);
         // Audio bit depth (PCM only — 24 for the FX3; 0/None for compressed AAC),
         // primary-track language (skip the "und" placeholder), and total audio
@@ -411,9 +369,7 @@ impl MetadataExtractor {
         // track, so > 1 is real and worth surfacing).
         let audio_bit_depth = audio_stream
             .and_then(|s| {
-                s.bits_per_raw_sample
-                    .as_ref()
-                    .and_then(|v| v.trim().parse::<i32>().ok())
+                s.bits_per_raw_sample.as_ref().and_then(|v| v.trim().parse::<i32>().ok())
                     .or(s.bits_per_sample)
             })
             .filter(|&b| b > 0);
@@ -430,25 +386,19 @@ impl MetadataExtractor {
         // Chapters and subtitles. Chapter titles come from chapter tags.
         let chapter_count = probe_output.chapters.len() as i32;
         let chapters_json = if !probe_output.chapters.is_empty() {
-            let chapter_list: Vec<_> = probe_output
-                .chapters
-                .iter()
-                .map(|ch| {
-                    let start_ms = ch.start_time.map(|t| (t * 1000.0) as i64).unwrap_or(0);
-                    let end_ms = ch.end_time.map(|t| (t * 1000.0) as i64).unwrap_or(0);
-                    let title = ch
-                        .tags
-                        .as_ref()
-                        .and_then(|t| t.get("title"))
-                        .cloned()
-                        .unwrap_or_else(|| String::from("Chapter"));
-                    serde_json::json!({
-                        "title": title,
-                        "start_ms": start_ms,
-                        "end_ms": end_ms,
-                    })
+            let chapter_list: Vec<_> = probe_output.chapters.iter().map(|ch| {
+                let start_ms = ch.start_time.map(|t| (t * 1000.0) as i64).unwrap_or(0);
+                let end_ms = ch.end_time.map(|t| (t * 1000.0) as i64).unwrap_or(0);
+                let title = ch.tags.as_ref()
+                    .and_then(|t| t.get("title"))
+                    .cloned()
+                    .unwrap_or_else(|| String::from("Chapter"));
+                serde_json::json!({
+                    "title": title,
+                    "start_ms": start_ms,
+                    "end_ms": end_ms,
                 })
-                .collect();
+            }).collect();
             serde_json::to_string(&chapter_list).ok()
         } else {
             None
@@ -471,25 +421,20 @@ impl MetadataExtractor {
         let projection = video_stream.side_data_list.as_ref().and_then(|sds| {
             sds.iter()
                 .find(|sd| sd.side_data_type.as_deref() == Some("Spherical Mapping"))
-                .map(|sd| {
-                    sd.projection
-                        .clone()
-                        .unwrap_or_else(|| "spherical".to_string())
-                })
+                .map(|sd| sd.projection.clone().unwrap_or_else(|| "spherical".to_string()))
         });
 
         // Dolby Vision. ffprobe surfaces it as a "DOVI configuration record"
         // side-data entry on the video stream; extract the profile number.
-        let dolby_vision_profile: Option<i32> =
-            video_stream.side_data_list.as_ref().and_then(|sds| {
-                sds.iter().find_map(|sd| {
-                    if sd.side_data_type.as_deref() == Some("DOVI configuration record") {
-                        sd.dv_profile.map(|p| p as i32)
-                    } else {
-                        None
-                    }
-                })
-            });
+        let dolby_vision_profile: Option<i32> = video_stream.side_data_list.as_ref().and_then(|sds| {
+            sds.iter().find_map(|sd| {
+                if sd.side_data_type.as_deref() == Some("DOVI configuration record") {
+                    sd.dv_profile.map(|p| p as i32)
+                } else {
+                    None
+                }
+            })
+        });
 
         // Sony Professional XML sidecar metadata (clip name, scene, take, ND filter,
         // iris F-number, LUT name). Only looked for when the container is MP4/MOV.
@@ -515,31 +460,15 @@ impl MetadataExtractor {
         // Stereo mode from container metadata or stream tags (top-bottom,
         // left-right, mono). For 360° video this controls how left/right eyes are
         // packed in the frame for 3D VR playback.
-        let stereo_mode = format
-            .tags
-            .as_ref()
+        let stereo_mode = format.tags.as_ref()
             .and_then(|t| t.get("stereo_mode").cloned())
-            .or_else(|| {
-                video_stream
-                    .tags
-                    .as_ref()
-                    .and_then(|t| t.get("stereo_mode").cloned())
-            });
+            .or_else(|| video_stream.tags.as_ref().and_then(|t| t.get("stereo_mode").cloned()));
 
         // Ambisonics channel ordering from audio stream tags (ACN or Furse-Malham).
         let ambisonics_channel_order = audio_stream
-            .and_then(|s| {
-                s.tags
-                    .as_ref()
-                    .and_then(|t| t.get("ambisonics_channel_ordering").cloned())
-            })
-            .or_else(|| {
-                audio_stream.and_then(|s| {
-                    s.tags
-                        .as_ref()
-                        .and_then(|t| t.get("ambisonics_mode").cloned())
-                })
-            });
+            .and_then(|s| s.tags.as_ref().and_then(|t| t.get("ambisonics_channel_ordering").cloned()))
+            .or_else(|| audio_stream
+                .and_then(|s| s.tags.as_ref().and_then(|t| t.get("ambisonics_mode").cloned())));
 
         // Color space + HDR. ffprobe reports the transfer characteristic on the
         // video stream; an HDR EOTF (PQ/HLG/DCI) is what makes a clip HDR — both
@@ -567,17 +496,19 @@ impl MetadataExtractor {
             .or_else(|| Self::extract_capture_fps(&video_stream.tags));
 
         // Frame count from video stream (fall back to duration*fps if missing)
-        let frame_count: i64 = video_stream.nb_frames.unwrap_or_else(|| {
-            if fps > 0.0 {
-                ((duration_ms as f64 / 1000.0) * fps).round() as i64
-            } else {
-                0
-            }
-        });
+        let frame_count: i64 = video_stream
+            .nb_frames
+            .unwrap_or_else(|| {
+                if fps > 0.0 {
+                    ((duration_ms as f64 / 1000.0) * fps).round() as i64
+                } else {
+                    0
+                }
+            });
 
         // Metadata JSON for future expansion
-        let metadata_json =
-            serde_json::to_string(probe_output).unwrap_or_else(|_| "{}".to_string());
+        let metadata_json = serde_json::to_string(probe_output)
+            .unwrap_or_else(|_| "{}".to_string());
 
         let conn = db.get_connection()?;
 
@@ -731,13 +662,7 @@ impl MetadataExtractor {
         )
         .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
-        tracing::debug!(
-            "Stored metadata for video {}: {}x{}@{:.2}fps",
-            video_id,
-            width,
-            height,
-            fps
-        );
+        tracing::debug!("Stored metadata for video {}: {}x{}@{:.2}fps", video_id, width, height, fps);
 
         Ok(())
     }
@@ -745,7 +670,7 @@ impl MetadataExtractor {
     fn ffprobe_available() -> bool {
         crate::ffmpeg::ffprobe_command()
             .arg("-version")
-            .output()
+            .output_timeout(crate::ffmpeg::PROBE_TIMEOUT)
             .map(|o| o.status.success())
             .unwrap_or(false)
     }
@@ -780,43 +705,51 @@ impl MetadataExtractor {
         };
 
         let path = std::path::Path::new(video_path);
-        let dir = path.parent().ok_or_else(|| {
-            ReelVaultError::MetadataExtractionFailed("video has no parent directory".to_string())
-        })?;
-        let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("mp4");
-        let temp_path = dir.join(format!(".reelvault-loc-{}.{}", uuid::Uuid::new_v4(), ext));
+        let dir = path
+            .parent()
+            .ok_or_else(|| ReelVaultError::MetadataExtractionFailed(
+                "video has no parent directory".to_string(),
+            ))?;
+        let ext = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or("mp4");
+        let temp_path = dir.join(format!(
+            ".reelvault-loc-{}.{}",
+            uuid::Uuid::new_v4(),
+            ext
+        ));
 
         // Throttle the ffmpeg invocation like every other ffmpeg call.
         let _permit = crate::concurrency::acquire_ffmpeg_permit();
 
         let status = crate::ffmpeg::ffmpeg_command()
             .arg("-nostdin")
-            .arg("-loglevel")
-            .arg("error")
+            .arg("-loglevel").arg("error")
             .arg("-y")
-            .arg("-i")
-            .arg(video_path)
-            .arg("-c")
-            .arg("copy")
-            .arg("-map_metadata")
-            .arg("0")
+            .arg("-i").arg(video_path)
+            .arg("-c").arg("copy")
+            .arg("-map_metadata").arg("0")
             // QuickTime/MP4 location atom. ffmpeg also accepts
             // `-metadata:s:v location=...` but the global form covers both
             // container-level and stream-level placements correctly.
-            .arg("-metadata")
-            .arg(format!("location={}", iso6709))
-            .arg("-metadata")
-            .arg(format!("location-eng={}", iso6709))
+            .arg("-metadata").arg(format!("location={}", iso6709))
+            .arg("-metadata").arg(format!("location-eng={}", iso6709))
             .arg(&temp_path)
-            .status();
+            .output_timeout(crate::ffmpeg::REMUX_TIMEOUT);
 
+        let mut stderr_tail = String::new();
         let ok = match status {
-            Ok(s) => s.success(),
+            Ok(o) => {
+                if !o.status.success() {
+                    stderr_tail = String::from_utf8_lossy(&o.stderr).trim().to_string();
+                }
+                o.status.success()
+            }
             Err(e) => {
                 let _ = std::fs::remove_file(&temp_path);
                 return Err(ReelVaultError::MetadataExtractionFailed(format!(
-                    "ffmpeg failed to spawn: {}",
-                    e
+                    "ffmpeg failed to spawn or timed out: {}", e
                 )));
             }
         };
@@ -824,7 +757,10 @@ impl MetadataExtractor {
         if !ok {
             let _ = std::fs::remove_file(&temp_path);
             return Err(ReelVaultError::MetadataExtractionFailed(
-                "ffmpeg returned a non-zero exit code while writing location".to_string(),
+                format!(
+                    "ffmpeg returned a non-zero exit code while writing location: {}",
+                    stderr_tail
+                ),
             ));
         }
 
@@ -834,8 +770,7 @@ impl MetadataExtractor {
             // Try to clean the temp file up if the rename failed.
             let _ = std::fs::remove_file(&temp_path);
             ReelVaultError::MetadataExtractionFailed(format!(
-                "Failed to atomically replace {}: {}",
-                video_path, e
+                "Failed to atomically replace {}: {}", video_path, e
             ))
         })?;
 
@@ -856,48 +791,53 @@ impl MetadataExtractor {
         }
 
         // Chrono is already a dependency — use it for a robust UTC string.
-        let dt = chrono::DateTime::<chrono::Utc>::from_timestamp_millis(timestamp_ms).ok_or_else(
-            || {
-                ReelVaultError::MetadataExtractionFailed(format!(
-                    "timestamp_ms {} is out of range",
-                    timestamp_ms
-                ))
-            },
-        )?;
+        let dt = chrono::DateTime::<chrono::Utc>::from_timestamp_millis(timestamp_ms)
+            .ok_or_else(|| ReelVaultError::MetadataExtractionFailed(
+                format!("timestamp_ms {} is out of range", timestamp_ms)
+            ))?;
         let iso = dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
 
         let path = std::path::Path::new(video_path);
-        let dir = path.parent().ok_or_else(|| {
-            ReelVaultError::MetadataExtractionFailed("video has no parent directory".to_string())
-        })?;
-        let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("mp4");
-        let temp_path = dir.join(format!(".reelvault-date-{}.{}", uuid::Uuid::new_v4(), ext));
+        let dir = path
+            .parent()
+            .ok_or_else(|| ReelVaultError::MetadataExtractionFailed(
+                "video has no parent directory".to_string(),
+            ))?;
+        let ext = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or("mp4");
+        let temp_path = dir.join(format!(
+            ".reelvault-date-{}.{}",
+            uuid::Uuid::new_v4(),
+            ext
+        ));
 
         let _permit = crate::concurrency::acquire_ffmpeg_permit();
 
         let status = crate::ffmpeg::ffmpeg_command()
             .arg("-nostdin")
-            .arg("-loglevel")
-            .arg("error")
+            .arg("-loglevel").arg("error")
             .arg("-y")
-            .arg("-i")
-            .arg(video_path)
-            .arg("-c")
-            .arg("copy")
-            .arg("-map_metadata")
-            .arg("0")
-            .arg("-metadata")
-            .arg(format!("creation_time={}", iso))
+            .arg("-i").arg(video_path)
+            .arg("-c").arg("copy")
+            .arg("-map_metadata").arg("0")
+            .arg("-metadata").arg(format!("creation_time={}", iso))
             .arg(&temp_path)
-            .status();
+            .output_timeout(crate::ffmpeg::REMUX_TIMEOUT);
 
+        let mut stderr_tail = String::new();
         let ok = match status {
-            Ok(s) => s.success(),
+            Ok(o) => {
+                if !o.status.success() {
+                    stderr_tail = String::from_utf8_lossy(&o.stderr).trim().to_string();
+                }
+                o.status.success()
+            }
             Err(e) => {
                 let _ = std::fs::remove_file(&temp_path);
                 return Err(ReelVaultError::MetadataExtractionFailed(format!(
-                    "ffmpeg failed to spawn: {}",
-                    e
+                    "ffmpeg failed to spawn or timed out: {}", e
                 )));
             }
         };
@@ -905,15 +845,17 @@ impl MetadataExtractor {
         if !ok {
             let _ = std::fs::remove_file(&temp_path);
             return Err(ReelVaultError::MetadataExtractionFailed(
-                "ffmpeg returned a non-zero exit code while writing creation_time".to_string(),
+                format!(
+                    "ffmpeg returned a non-zero exit code while writing creation_time: {}",
+                    stderr_tail
+                ),
             ));
         }
 
         std::fs::rename(&temp_path, video_path).map_err(|e| {
             let _ = std::fs::remove_file(&temp_path);
             ReelVaultError::MetadataExtractionFailed(format!(
-                "Failed to atomically replace {}: {}",
-                video_path, e
+                "Failed to atomically replace {}: {}", video_path, e
             ))
         })?;
 
@@ -923,7 +865,7 @@ impl MetadataExtractor {
     fn ffmpeg_available() -> bool {
         crate::ffmpeg::ffmpeg_command()
             .arg("-version")
-            .output()
+            .output_timeout(crate::ffmpeg::PROBE_TIMEOUT)
             .map(|o| o.status.success())
             .unwrap_or(false)
     }
@@ -934,9 +876,7 @@ impl MetadataExtractor {
             .streams
             .iter()
             .find(|s| s.codec_type == Some("video".to_string()))
-            .ok_or_else(|| {
-                ReelVaultError::MetadataExtractionFailed("No video stream found".to_string())
-            })?;
+            .ok_or_else(|| ReelVaultError::MetadataExtractionFailed("No video stream found".to_string()))?;
 
         Ok((video_stream, format))
     }
@@ -1002,10 +942,7 @@ impl MetadataExtractor {
     /// smpte170m, linear ProRes RAW, …) is treated as SDR. Mirrors the
     /// HDR-transfer set `thumbnails.rs` uses to decide tone-mapping.
     fn is_hdr_transfer(transfer: Option<&str>) -> bool {
-        matches!(
-            transfer,
-            Some("smpte2084") | Some("arib-std-b67") | Some("smpte428")
-        )
+        matches!(transfer, Some("smpte2084") | Some("arib-std-b67") | Some("smpte428"))
     }
 
     /// Detect spatial (stereoscopic, Apple Vision Pro) video. Two independent
@@ -1022,10 +959,7 @@ impl MetadataExtractor {
             .as_deref()
             .is_some_and(|v| v.contains(','));
         let spatial_tag = format_tags.as_ref().is_some_and(|t| {
-            t.iter().any(|(k, _)| {
-                k.to_ascii_lowercase()
-                    .starts_with("com.apple.quicktime.spatial")
-            })
+            t.iter().any(|(k, _)| k.to_ascii_lowercase().starts_with("com.apple.quicktime.spatial"))
         });
         multiview || spatial_tag
     }
@@ -1035,11 +969,7 @@ impl MetadataExtractor {
     /// to inferring from the pixel format ("yuv420p10le" → 10, plain
     /// "yuv420p" → 8). `None` for float/RAW formats and the genuinely unknown.
     fn video_bit_depth(s: &FFProbeStream) -> Option<i32> {
-        if let Some(b) = s
-            .bits_per_raw_sample
-            .as_ref()
-            .and_then(|v| v.trim().parse::<i32>().ok())
-        {
+        if let Some(b) = s.bits_per_raw_sample.as_ref().and_then(|v| v.trim().parse::<i32>().ok()) {
             if b > 0 {
                 return Some(b);
             }
@@ -1121,8 +1051,7 @@ impl MetadataExtractor {
 
     fn extract_creation_date(tags: &Option<FFProbeTagMap>) -> Option<i64> {
         tags.as_ref().and_then(|t| {
-            let date_str = t
-                .get("creation_time")
+            let date_str = t.get("creation_time")
                 .or_else(|| t.get("com.apple.quicktime.creationdate"))?;
             // Parse ISO 8601: "2024-01-15T10:30:00.000000Z"
             chrono::DateTime::parse_from_rfc3339(date_str)
@@ -1233,54 +1162,34 @@ impl MetadataExtractor {
 // the ffmpeg-canonical name first, then more exotic variants seen in
 // the wild.
 const ISO_KEYS: &[&str] = &[
-    "iso",
-    "iso_speed",
-    "iso_speed_ratings",
-    "isospeed",
-    "com.apple.quicktime.iso",
-    "exif_iso",
+    "iso", "iso_speed", "iso_speed_ratings", "isospeed",
+    "com.apple.quicktime.iso", "exif_iso",
     // ProApps (Atomos/pro cameras) records the exposure index here.
     "com.apple.proapps.exif.{Exif}.ExposureIndex",
 ];
 const FNUMBER_KEYS: &[&str] = &[
-    "fnumber",
-    "f_number",
-    "aperture",
-    "apertureval",
-    "com.apple.quicktime.fnumber",
-    "com.apple.quicktime.aperture",
+    "fnumber", "f_number", "aperture", "apertureval",
+    "com.apple.quicktime.fnumber", "com.apple.quicktime.aperture",
     "exif_fnumber",
     // ProApps clip f-number, e.g. "8.000000".
     "com.apple.proapps.exif.{Exif}.FNumber",
 ];
 const EXPOSURE_TIME_KEYS: &[&str] = &[
-    "exposure_time",
-    "exposuretime",
-    "shutter_speed",
-    "shutter_speed_value",
-    "shutterspeed",
-    "com.apple.quicktime.exposuretime",
+    "exposure_time", "exposuretime", "shutter_speed", "shutter_speed_value",
+    "shutterspeed", "com.apple.quicktime.exposuretime",
     "com.apple.quicktime.shutterspeed",
 ];
 const FOCAL_LENGTH_KEYS: &[&str] = &[
-    "focal_length",
-    "focallength",
-    "com.apple.quicktime.focallength",
+    "focal_length", "focallength", "com.apple.quicktime.focallength",
 ];
 const EXPOSURE_MODE_KEYS: &[&str] = &[
-    "exposure_mode",
-    "exposuremode",
-    "com.apple.quicktime.exposuremode",
+    "exposure_mode", "exposuremode", "com.apple.quicktime.exposuremode",
 ];
 const EXPOSURE_PROGRAM_KEYS: &[&str] = &[
-    "exposure_program",
-    "exposureprogram",
-    "com.apple.quicktime.exposureprogram",
+    "exposure_program", "exposureprogram", "com.apple.quicktime.exposureprogram",
 ];
 const WHITE_BALANCE_KEYS: &[&str] = &[
-    "white_balance",
-    "whitebalance",
-    "com.apple.quicktime.whitebalance",
+    "white_balance", "whitebalance", "com.apple.quicktime.whitebalance",
 ];
 
 // FFprobe output structures
@@ -1500,9 +1409,9 @@ impl<'de> serde::Deserialize<'de> for FFProbeTagMap {
     where
         D: serde::Deserializer<'de>,
     {
-        Ok(FFProbeTagMap(std::collections::HashMap::deserialize(
-            deserializer,
-        )?))
+        Ok(FFProbeTagMap(
+            std::collections::HashMap::deserialize(deserializer)?,
+        ))
     }
 }
 
@@ -1525,7 +1434,8 @@ impl std::ops::Deref for FFProbeTagMap {
 
 impl FFProbeTagMap {
     pub fn get(&self, key: &str) -> Option<&String> {
-        self.0.get(&key.to_lowercase()).or_else(|| self.0.get(key))
+        self.0.get(&key.to_lowercase())
+            .or_else(|| self.0.get(key))
     }
 }
 
@@ -1597,12 +1507,8 @@ fn bit_depth_from_pix_fmt(pix: Option<&str>) -> Option<i32> {
         return Some(8); // plane marker present, no depth suffix → 8-bit planar
     }
     // No 'p' plane marker: common named 8-bit packed formats.
-    if p.starts_with("nv")
-        || p.starts_with("rgb")
-        || p.starts_with("bgr")
-        || p.starts_with("gray")
-        || p.starts_with("uyvy")
-        || p.starts_with("yuyv")
+    if p.starts_with("nv") || p.starts_with("rgb") || p.starts_with("bgr")
+        || p.starts_with("gray") || p.starts_with("uyvy") || p.starts_with("yuyv")
     {
         return Some(8);
     }
@@ -1613,12 +1519,7 @@ fn bit_depth_from_pix_fmt(pix: Option<&str>) -> Option<i32> {
 /// ("SLog3" → "S-Log3", "VLog" → "V-Log", …). Unknown curves pass through
 /// trimmed so an unrecognized profile still reads sensibly.
 fn prettify_log_curve(raw: &str) -> String {
-    match raw
-        .trim()
-        .to_ascii_lowercase()
-        .replace(['-', '_', ' '], "")
-        .as_str()
-    {
+    match raw.trim().to_ascii_lowercase().replace(['-', '_', ' '], "").as_str() {
         "slog3" => "S-Log3".to_string(),
         "slog2" => "S-Log2".to_string(),
         "slog" => "S-Log".to_string(),
@@ -1698,7 +1599,7 @@ pub fn extract_audio_loudness(video_path: &Path) -> Vec<f32> {
             "null",
             "-",
         ])
-        .output()
+        .output_timeout(crate::ffmpeg::LOUDNESS_TIMEOUT)
     {
         Ok(o) => o,
         Err(_) => return Vec::new(),
@@ -1746,7 +1647,9 @@ fn downsample_avg(src: &[f32], max: usize) -> Vec<f32> {
 
 /// Serialize a Vec<f32> to little-endian bytes for BLOB storage.
 fn serialize_f32_vec(samples: &[f32]) -> Vec<u8> {
-    samples.iter().flat_map(|&f| f.to_le_bytes()).collect()
+    samples.iter()
+        .flat_map(|&f| f.to_le_bytes())
+        .collect()
 }
 
 #[cfg(test)]
@@ -1831,9 +1734,7 @@ mod tests {
         assert!((al.unwrap() - 69.173).abs() < 1e-3);
 
         // Bare `location` from a non-Apple muxer.
-        assert!(
-            MetadataExtractor::extract_location(&tags(&[("location", "+10.0-20.0/")])).is_some()
-        );
+        assert!(MetadataExtractor::extract_location(&tags(&[("location", "+10.0-20.0/")])).is_some());
 
         // Nothing location-shaped → None.
         assert!(MetadataExtractor::extract_location(&tags(&[("make", "Apple")])).is_none());
@@ -1849,20 +1750,11 @@ mod tests {
             ("com.apple.proapps.modelname", "ILME-FX3"),
         ]);
         assert_eq!(MetadataExtractor::extract_make(&t).as_deref(), Some("Sony"));
-        assert_eq!(
-            MetadataExtractor::extract_model(&t).as_deref(),
-            Some("ILME-FX3")
-        );
+        assert_eq!(MetadataExtractor::extract_model(&t).as_deref(), Some("ILME-FX3"));
         // No ProApps keys → falls back to the plain tags (unchanged behaviour).
         let t2 = tags(&[("make", "Apple"), ("model", "iPhone X")]);
-        assert_eq!(
-            MetadataExtractor::extract_make(&t2).as_deref(),
-            Some("Apple")
-        );
-        assert_eq!(
-            MetadataExtractor::extract_model(&t2).as_deref(),
-            Some("iPhone X")
-        );
+        assert_eq!(MetadataExtractor::extract_make(&t2).as_deref(), Some("Apple"));
+        assert_eq!(MetadataExtractor::extract_model(&t2).as_deref(), Some("iPhone X"));
     }
 
     #[test]
@@ -1881,24 +1773,15 @@ mod tests {
     #[test]
     fn dynamic_range_classification() {
         let c = MetadataExtractor::classify_dynamic_range;
-        assert_eq!(
-            c(Some("hevc"), Some("smpte2084"), None).as_deref(),
-            Some("HDR (PQ)")
-        );
-        assert_eq!(
-            c(Some("hevc"), Some("arib-std-b67"), None).as_deref(),
-            Some("HDR (HLG)")
-        );
+        assert_eq!(c(Some("hevc"), Some("smpte2084"), None).as_deref(), Some("HDR (PQ)"));
+        assert_eq!(c(Some("hevc"), Some("arib-std-b67"), None).as_deref(), Some("HDR (HLG)"));
         // FX3 ProRes RAW: linear transfer + Atomos S-Log3 OETF.
         assert_eq!(
             c(Some("prores_raw"), Some("linear"), Some("S-Log3")).as_deref(),
             Some("RAW (S-Log3)")
         );
         // Log recorded to a non-RAW codec.
-        assert_eq!(
-            c(Some("prores"), Some("bt709"), Some("S-Log3")).as_deref(),
-            Some("Log (S-Log3)")
-        );
+        assert_eq!(c(Some("prores"), Some("bt709"), Some("S-Log3")).as_deref(), Some("Log (S-Log3)"));
         assert_eq!(c(Some("h264"), Some("bt709"), None).as_deref(), Some("SDR"));
         assert_eq!(c(Some("h264"), None, None), None); // no color signal → unknown
         assert_eq!(prettify_log_curve("SLog3"), "S-Log3");
@@ -1922,10 +1805,7 @@ mod tests {
             ("com.apple.proapps.exif.{Exif}.FNumber", "8.000000"),
             ("com.apple.proapps.exif.{Exif}.ExposureIndex", "800.000000"),
         ]);
-        assert_eq!(
-            MetadataExtractor::extract_timecode(&t).as_deref(),
-            Some("23:34:44:16")
-        );
+        assert_eq!(MetadataExtractor::extract_timecode(&t).as_deref(), Some("23:34:44:16"));
         assert_eq!(MetadataExtractor::extract_capture_fps(&t), Some(240.0));
         // ProApps f-number parses through FNUMBER_KEYS …
         assert_eq!(
@@ -1956,20 +1836,19 @@ mod tests {
         );
         assert_eq!(
             MetadataExtractor::udta_int(
-                &tags(&[("com.apple.quicktime.iso", "1600")]),
-                &None,
-                ISO_KEYS
-            ),
+                &tags(&[("com.apple.quicktime.iso", "1600")]), &None, ISO_KEYS),
             Some(1600)
         );
         // Falls through to stream tags when format tags lack the key.
         assert_eq!(
-            MetadataExtractor::udta_int(&None, &tags(&[("iso_speed", "400")]), ISO_KEYS),
+            MetadataExtractor::udta_int(
+                &None, &tags(&[("iso_speed", "400")]), ISO_KEYS),
             Some(400)
         );
         // Unknown key: nothing matches → None.
         assert_eq!(
-            MetadataExtractor::udta_int(&tags(&[("not_iso", "999")]), &None, ISO_KEYS),
+            MetadataExtractor::udta_int(
+                &tags(&[("not_iso", "999")]), &None, ISO_KEYS),
             None
         );
     }
@@ -1978,24 +1857,19 @@ mod tests {
     fn udta_rational_accepts_both_decimal_and_fraction() {
         // f-number as decimal
         assert_eq!(
-            MetadataExtractor::udta_rational(&tags(&[("fnumber", "1.8")]), &None, FNUMBER_KEYS),
+            MetadataExtractor::udta_rational(
+                &tags(&[("fnumber", "1.8")]), &None, FNUMBER_KEYS),
             Some(1.8)
         );
         // exposure time as rational
         let v = MetadataExtractor::udta_rational(
-            &tags(&[("exposure_time", "1/4000")]),
-            &None,
-            EXPOSURE_TIME_KEYS,
-        )
-        .unwrap();
+            &tags(&[("exposure_time", "1/4000")]), &None, EXPOSURE_TIME_KEYS)
+            .unwrap();
         assert!((v - 0.00025).abs() < 1e-9);
         // exposure time as plain seconds
         assert_eq!(
             MetadataExtractor::udta_rational(
-                &tags(&[("shutter_speed", "20")]),
-                &None,
-                EXPOSURE_TIME_KEYS
-            ),
+                &tags(&[("shutter_speed", "20")]), &None, EXPOSURE_TIME_KEYS),
             Some(20.0)
         );
     }
@@ -2005,31 +1879,22 @@ mod tests {
         // Integer code path — translated to label via xmp.rs helper.
         assert_eq!(
             MetadataExtractor::udta_enum_label(
-                &tags(&[("exposure_mode", "1")]),
-                &None,
-                EXPOSURE_MODE_KEYS,
-                crate::xmp::exposure_mode_label
-            ),
+                &tags(&[("exposure_mode", "1")]), &None, EXPOSURE_MODE_KEYS,
+                crate::xmp::exposure_mode_label),
             Some("Manual".to_string())
         );
         // Plain word: pass-through.
         assert_eq!(
             MetadataExtractor::udta_enum_label(
-                &tags(&[("white_balance", "Daylight")]),
-                &None,
-                WHITE_BALANCE_KEYS,
-                crate::xmp::white_balance_label
-            ),
+                &tags(&[("white_balance", "Daylight")]), &None, WHITE_BALANCE_KEYS,
+                crate::xmp::white_balance_label),
             Some("Daylight".to_string())
         );
         // Empty string is ignored — no spurious label.
         assert_eq!(
             MetadataExtractor::udta_enum_label(
-                &tags(&[("exposure_program", "")]),
-                &None,
-                EXPOSURE_PROGRAM_KEYS,
-                crate::xmp::exposure_program_label
-            ),
+                &tags(&[("exposure_program", "")]), &None, EXPOSURE_PROGRAM_KEYS,
+                crate::xmp::exposure_program_label),
             None
         );
     }
@@ -2051,35 +1916,22 @@ mod tests {
 
         let status = crate::ffmpeg::ffmpeg_command()
             .args([
-                "-nostdin",
-                "-loglevel",
-                "error",
-                "-y",
-                "-f",
-                "lavfi",
-                "-i",
-                "testsrc=duration=1:size=320x240:rate=30",
-                "-c:v",
-                "prores_ks",
+                "-nostdin", "-loglevel", "error", "-y",
+                "-f", "lavfi",
+                "-i", "testsrc=duration=1:size=320x240:rate=30",
+                "-c:v", "prores_ks",
                 // The combination that lets ffmpeg pass arbitrary
                 // udta keys through into the output container.
-                "-movflags",
-                "use_metadata_tags",
-                "-metadata",
-                "iso=100",
-                "-metadata",
-                "fnumber=1.8",
-                "-metadata",
-                "exposure_time=1/4000",
-                "-metadata",
-                "focal_length=14",
-                "-metadata",
-                "exposure_mode=Manual",
-                "-metadata",
-                "white_balance=Auto",
+                "-movflags", "use_metadata_tags",
+                "-metadata", "iso=100",
+                "-metadata", "fnumber=1.8",
+                "-metadata", "exposure_time=1/4000",
+                "-metadata", "focal_length=14",
+                "-metadata", "exposure_mode=Manual",
+                "-metadata", "white_balance=Auto",
             ])
             .arg(&path)
-            .status()
+            .status_timeout(crate::ffmpeg::REMUX_TIMEOUT)
             .expect("ffmpeg spawn");
         assert!(status.success(), "ffmpeg failed to write fixture");
 
@@ -2094,31 +1946,25 @@ mod tests {
             MetadataExtractor::udta_int(format_tags, stream_tags, ISO_KEYS),
             Some(100)
         );
-        let aperture =
-            MetadataExtractor::udta_rational(format_tags, stream_tags, FNUMBER_KEYS).unwrap();
+        let aperture = MetadataExtractor::udta_rational(
+            format_tags, stream_tags, FNUMBER_KEYS).unwrap();
         assert!((aperture - 1.8).abs() < 1e-9);
-        let exp =
-            MetadataExtractor::udta_rational(format_tags, stream_tags, EXPOSURE_TIME_KEYS).unwrap();
+        let exp = MetadataExtractor::udta_rational(
+            format_tags, stream_tags, EXPOSURE_TIME_KEYS).unwrap();
         assert!((exp - 1.0 / 4000.0).abs() < 1e-9);
-        let focal =
-            MetadataExtractor::udta_rational(format_tags, stream_tags, FOCAL_LENGTH_KEYS).unwrap();
+        let focal = MetadataExtractor::udta_rational(
+            format_tags, stream_tags, FOCAL_LENGTH_KEYS).unwrap();
         assert!((focal - 14.0).abs() < 1e-9);
         assert_eq!(
             MetadataExtractor::udta_enum_label(
-                format_tags,
-                stream_tags,
-                EXPOSURE_MODE_KEYS,
-                crate::xmp::exposure_mode_label
-            ),
+                format_tags, stream_tags, EXPOSURE_MODE_KEYS,
+                crate::xmp::exposure_mode_label),
             Some("Manual".to_string())
         );
         assert_eq!(
             MetadataExtractor::udta_enum_label(
-                format_tags,
-                stream_tags,
-                WHITE_BALANCE_KEYS,
-                crate::xmp::white_balance_label
-            ),
+                format_tags, stream_tags, WHITE_BALANCE_KEYS,
+                crate::xmp::white_balance_label),
             Some("Auto".to_string())
         );
     }
@@ -2157,10 +2003,14 @@ mod tests {
         )
         .expect("probe json");
 
-        MetadataExtractor::store_metadata(&db, &video_id, Path::new("/l/guard.mov"), &probe, 1000)
-            .expect(
-                "store_metadata must succeed — INSERT column/placeholder/param counts must match",
-            );
+        MetadataExtractor::store_metadata(
+            &db,
+            &video_id,
+            Path::new("/l/guard.mov"),
+            &probe,
+            1000,
+        )
+        .expect("store_metadata must succeed — INSERT column/placeholder/param counts must match");
 
         let conn = db.get_connection().expect("conn");
         let (w, h, codec): (i64, i64, String) = conn

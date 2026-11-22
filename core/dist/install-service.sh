@@ -99,10 +99,33 @@ install_macos() {
     local log_dir="/Library/Logs/ReelVault"
     local data_dir="/Library/Application Support/ReelVault"
 
+    echo "==> Ensuring the _reelvault service account…"
+    if ! dscl . -read /Users/_reelvault >/dev/null 2>&1; then
+        local gid=299
+        while dscl . -list /Groups PrimaryGroupID | awk '{print $2}' | grep -qx "$gid" \
+           || dscl . -list /Users UniqueID | awk '{print $2}' | grep -qx "$gid"; do
+            gid=$((gid - 1))
+        done
+        dscl . -create /Groups/_reelvault
+        dscl . -create /Groups/_reelvault PrimaryGroupID "$gid"
+        dscl . -create /Users/_reelvault
+        dscl . -create /Users/_reelvault UniqueID "$gid"
+        dscl . -create /Users/_reelvault PrimaryGroupID "$gid"
+        dscl . -create /Users/_reelvault UserShell /usr/bin/false
+        dscl . -create /Users/_reelvault RealName "ReelVault Core"
+        dscl . -create /Users/_reelvault NFSHomeDirectory /var/empty
+    fi
+
     echo "==> Creating directories…"
     mkdir -p "$log_dir" "$data_dir"
+    chown -R _reelvault:_reelvault "$log_dir" "$data_dir"
     chmod 755 "$log_dir"
     chmod 750 "$data_dir"
+
+    echo "NOTE: the daemon now runs as _reelvault, not root. Library roots and the"
+    echo "      --import-dir must be readable (import dir writable) by that account,"
+    echo "      e.g. chmod -R +a 'user:_reelvault allow read,list,search,readattr,readextattr' <dir>,"
+    echo "      and external volumes need 'Full Disk Access' if under protected folders."
 
     echo "==> Installing binary to ${install_bin}…"
     cp -f "$BINARY" "$install_bin"
