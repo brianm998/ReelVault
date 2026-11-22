@@ -3002,6 +3002,10 @@ class GridViewModel(
 
     // Thumbnail cache: video_id -> bytes
     private val _thumbnails = MutableStateFlow<Map<String, ByteArray>>(emptyMap())
+    // Bounded caches: least recently requested entries are evicted past budget
+    // (so the map copied per insert stays bounded too).
+    private val thumbnailLru = LruBudget(4000, 128L * 1024 * 1024)
+    private val scrubLru = LruBudget(150, 128L * 1024 * 1024)
     val thumbnails: StateFlow<Map<String, ByteArray>> = _thumbnails.asStateFlow()
 
     // Scrub-frame cache: video_id -> list of N frames (index 0..N-1).
@@ -3217,7 +3221,7 @@ class GridViewModel(
     }
 
     fun loadThumbnail(videoId: String) {
-        if (_thumbnails.value.containsKey(videoId)) return
+        if (_thumbnails.value.containsKey(videoId)) { thumbnailLru.touch(videoId); return }
         if (videoId in thumbnailLoading) return
         thumbnailLoading.add(videoId)
         viewModelScope.launch {
@@ -3246,7 +3250,8 @@ class GridViewModel(
                         continue
                     }
                     if (data != null) {
-                        _thumbnails.update { it + (videoId to data) }
+                        val evict = thumbnailLru.insert(videoId, data.size.toLong())
+                        _thumbnails.update { (it + (videoId to data)) - evict.toSet() }
                     }
                     // Success stored above; null is a definitive miss. Either
                     // way, stop.
@@ -3283,7 +3288,7 @@ class GridViewModel(
     }
 
     fun loadScrubFrames(videoId: String) {
-        if (_scrubFrames.value.containsKey(videoId)) return
+        if (_scrubFrames.value.containsKey(videoId)) { scrubLru.touch(videoId); return }
         if (videoId in scrubLoading) return
         scrubLoading.add(videoId)
         viewModelScope.launch {
@@ -3291,7 +3296,8 @@ class GridViewModel(
                 val count = uiPrefs.getInt("scrubFrameCount", 10)
                 val frames = repository.getScrubFrames(videoId, count = count)
                 if (frames.any { it != null }) {
-                    _scrubFrames.value = _scrubFrames.value + (videoId to frames)
+                    val evict = scrubLru.insert(videoId, frames.sumOf { (it?.size ?: 0).toLong() })
+                    _scrubFrames.update { (it + (videoId to frames)) - evict.toSet() }
                 }
             } finally {
                 scrubLoading.remove(videoId)
@@ -3927,6 +3933,8 @@ class GridViewModel(
         _topSlots.value = com.reelvault.data.models.defaultGridTopSlots
         _thumbnails.value = emptyMap()
         _scrubFrames.value = emptyMap()
+        thumbnailLru.clear()
+        scrubLru.clear()
         hiResJobs.values.forEach { it.cancel() }
         hiResJobs.clear()
         hiResWidth.clear()

@@ -239,6 +239,10 @@ public class GridViewModel: ObservableObject {
 
     // Thumbnails
     @Published public var thumbnails: [String: PlatformImage] = [:]
+    /// Bounded-cache bookkeeping for `thumbnails` / `scrubFrames`: least
+    /// recently requested entries are evicted past the budgets.
+    private var thumbnailLRU = LRUBudget(maxCount: 4000, maxBytes: 192 * 1024 * 1024)
+    private var scrubLRU = LRUBudget(maxCount: 150, maxBytes: 192 * 1024 * 1024)
 
     // Scrub frames per video, loaded lazily on first hover.
     @Published public var scrubFrames: [String: [PlatformImage?]] = [:]
@@ -2539,7 +2543,7 @@ public class GridViewModel: ObservableObject {
     // MARK: - Thumbnails
 
     public func loadThumbnail(videoId: String) {
-        if thumbnails[videoId] != nil { return }
+        if thumbnails[videoId] != nil { thumbnailLRU.touch(videoId); return }
         if thumbnailLoading.contains(videoId) { return }
         thumbnailLoading.insert(videoId)
         Task {
@@ -2563,6 +2567,9 @@ public class GridViewModel: ObservableObject {
                     await thumbnailSemaphore.release()
                     if let image {
                         thumbnails[videoId] = image
+                        for old in thumbnailLRU.insert(videoId, cost: image.approxBytes) {
+                            thumbnails.removeValue(forKey: old)
+                        }
                     }
                     // Success stored above; nil is a definitive miss. Either
                     // way, stop.
@@ -2643,7 +2650,7 @@ public class GridViewModel: ObservableObject {
     }
 
     public func loadScrubFrames(videoId: String) {
-        if scrubFrames[videoId] != nil { return }
+        if scrubFrames[videoId] != nil { scrubLRU.touch(videoId); return }
         if scrubLoading.contains(videoId) { return }
         scrubLoading.insert(videoId)
         NSLog("[GridViewModel] loadScrubFrames begin video=%@", videoId)
@@ -2657,7 +2664,7 @@ public class GridViewModel: ObservableObject {
             if let s = summaryForScrub(videoId), s.codecVideo == "prores_raw" {
                 let local = await proResRawScrubFrames(path: s.path, count: count, durationMs: s.durationMs)
                 if local.contains(where: { $0 != nil }) {
-                    scrubFrames[videoId] = local
+                    storeScrubFrames(local, videoId: videoId)
                     NSLog("[GridViewModel] loadScrubFrames video=%@ used local AVFoundation frames", videoId)
                     return
                 }
@@ -2671,8 +2678,16 @@ public class GridViewModel: ObservableObject {
                 frames.count
             )
             if nonNil > 0 {
-                scrubFrames[videoId] = frames
+                storeScrubFrames(frames, videoId: videoId)
             }
+        }
+    }
+
+    private func storeScrubFrames(_ frames: [PlatformImage?], videoId: String) {
+        scrubFrames[videoId] = frames
+        let cost = frames.reduce(0) { $0 + ($1?.approxBytes ?? 0) }
+        for old in scrubLRU.insert(videoId, cost: cost) {
+            scrubFrames.removeValue(forKey: old)
         }
     }
 
@@ -3059,6 +3074,8 @@ public class GridViewModel: ObservableObject {
         topSlots = defaultGridTopSlots
         thumbnails = [:]
         scrubFrames = [:]
+        thumbnailLRU.removeAll()
+        scrubLRU.removeAll()
         scrubLoading = []
         expandedGroupIds = []
         expandedGroupMembers = [:]
