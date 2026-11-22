@@ -35,20 +35,36 @@ impl SyncExecutor {
 
     /// Apply the database-side effect of one planned item. Transfers
     /// (`CopyNew`) are the client's job and are a no-op here.
-    pub fn apply(&self, peer_key: &str, item: &super::SyncPlanItem) -> Result<()> {
+    ///
+    /// `remote_data` is the peer's catalog data (tags, rating, notes, ...) for
+    /// the item. When an item adopts a local original, or the peer's marks
+    /// revision moved since the last sync, it is merged into the local video
+    /// *before* the link's `remote_rev` is advanced, so a failed merge leaves
+    /// the link stale and the next plan retries it.
+    pub fn apply(
+        &self,
+        peer_key: &str,
+        item: &super::SyncPlanItem,
+        remote_data: Option<&crate::db::VideoCatalogData>,
+    ) -> Result<()> {
         use super::SyncAction::*;
+        let link = |local_video_id: &str| crate::db::SyncLinkParams {
+            local_video_id: local_video_id.to_string(),
+            peer_key: peer_key.to_string(),
+            remote_video_id: item.source_video_id.clone(),
+            origin_hash: item.content_hash.clone(),
+            is_derived: false,
+            derived_height: None,
+            local_rev: 0,
+            remote_rev: item.remote_marks_rev,
+        };
         match &item.action {
-            AdoptLocal { local_video_id } => {
-                self.update_sync_link_after_reconcile(&crate::db::SyncLinkParams {
-                    local_video_id: local_video_id.clone(),
-                    peer_key: peer_key.to_string(),
-                    remote_video_id: item.source_video_id.clone(),
-                    origin_hash: item.content_hash.clone(),
-                    is_derived: false,
-                    derived_height: None,
-                    local_rev: 0,
-                    remote_rev: item.remote_marks_rev,
-                })
+            AdoptLocal { local_video_id }
+            | SkipFileReconcileData { local_video_id, marks_changed: true } => {
+                if let Some(d) = remote_data {
+                    self.db.apply_video_catalog_data(local_video_id, d)?;
+                }
+                self.update_sync_link_after_reconcile(&link(local_video_id))
             }
             SoftDelete { local_video_id: Some(id) } => self.soft_delete(id),
             _ => Ok(()),
@@ -90,7 +106,7 @@ mod tests {
         let plan = planner.classify(&[row.clone()], &hits);
         assert_eq!(plan[0].action, SyncAction::AdoptLocal { local_video_id: id.clone() });
 
-        SyncExecutor::new(db.clone()).apply("peer", &plan[0]).unwrap();
+        SyncExecutor::new(db.clone()).apply("peer", &plan[0], None).unwrap();
 
         let again = planner.classify(&[row], &hits);
         assert_eq!(

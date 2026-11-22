@@ -4388,9 +4388,9 @@ impl Database {
 
         // GPS + creation_date from metadata
         let meta_row = conn.query_row(
-            "SELECT gps_lat, gps_lon, creation_date FROM metadata WHERE video_id = ?1",
+            "SELECT gps_latitude, gps_longitude, creation_date FROM metadata WHERE video_id = ?1",
             rusqlite::params![video_id],
-            |r| Ok((r.get::<_, Option<f64>>(0)?, r.get::<_, Option<f64>>(1)?, r.get::<_, Option<String>>(2)?))
+            |r| Ok((r.get::<_, Option<f64>>(0)?, r.get::<_, Option<f64>>(1)?, r.get::<_, Option<i64>>(2)?.map(|ms| ms.to_string())))
         ).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let (gps_lat, gps_lon, creation_date) = meta_row.unwrap_or((None, None, None));
         let has_gps = gps_lat.is_some() && gps_lon.is_some();
