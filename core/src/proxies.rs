@@ -908,7 +908,7 @@ pub(crate) fn ffmpeg_transcode_proxy(
     // pipe:1` writes machine-readable key=value progress to stdout; `-nostats`
     // suppresses the interleaved per-frame stat lines.
     let scale_filter = format!("scale=-2:{}", target_height);
-    let mut child = crate::ffmpeg::ffmpeg_command()
+    let child = crate::ffmpeg::ffmpeg_command()
         .args([
             "-y",
             "-i",
@@ -938,6 +938,17 @@ pub(crate) fn ffmpeg_transcode_proxy(
         .stderr(std::process::Stdio::inherit())
         .spawn()
         .map_err(|e| crate::error::ReelVaultError::FfmpegError(format!("spawn ffmpeg: {}", e)))?;
+    drive_transcode_child(child, crate::ffmpeg::TRANSCODE_TIMEOUT, total_frames, progress)
+}
+
+/// Drives a spawned ffmpeg (stdout piped) to completion: parses progress,
+/// enforces `deadline` via a watchdog, and maps the exit status to a result.
+fn drive_transcode_child(
+    mut child: std::process::Child,
+    deadline: std::time::Duration,
+    total_frames: i64,
+    progress: &mut dyn FnMut(f64),
+) -> Result<()> {
     let stdout = child.stdout.take().expect("stdout was piped");
     // Watchdog: kill ffmpeg if it outlives the deadline (a stalled NAS read
     // would otherwise block the progress loop below forever).
@@ -949,7 +960,7 @@ pub(crate) fn ffmpeg_transcode_proxy(
         let timed_out = timed_out.clone();
         std::thread::spawn(move || {
             if done_rx
-                .recv_timeout(crate::ffmpeg::TRANSCODE_TIMEOUT)
+                .recv_timeout(deadline)
                 == Err(std::sync::mpsc::RecvTimeoutError::Timeout)
             {
                 timed_out.store(true, std::sync::atomic::Ordering::SeqCst);
@@ -978,15 +989,27 @@ pub(crate) fn ffmpeg_transcode_proxy(
         }
     }
 
-    let waited = child.lock().map_err(|_| {
-        crate::error::ReelVaultError::FfmpegError("ffmpeg child lock poisoned".into())
-    })?.wait();
+    // Poll with a short-lived lock: holding it across a blocking wait() would
+    // keep the watchdog from ever taking it to kill a stalled child.
+    let waited = loop {
+        let polled = child
+            .lock()
+            .map_err(|_| {
+                crate::error::ReelVaultError::FfmpegError("ffmpeg child lock poisoned".into())
+            })?
+            .try_wait();
+        match polled {
+            Ok(None) => std::thread::sleep(std::time::Duration::from_millis(50)),
+            Ok(Some(st)) => break Ok(st),
+            Err(e) => break Err(e),
+        }
+    };
     let _ = done_tx.send(());
     let _ = watchdog.join();
     if timed_out.load(std::sync::atomic::Ordering::SeqCst) {
         return Err(crate::error::ReelVaultError::FfmpegError(format!(
             "ffmpeg timed out after {}s and was killed",
-            crate::ffmpeg::TRANSCODE_TIMEOUT.as_secs()
+            deadline.as_secs()
         )));
     }
     let exit_status = waited
@@ -1624,5 +1647,25 @@ mod tests {
         assert!(looks_like_proxies_dir("PROXY"));
         assert!(!looks_like_proxies_dir("2024-video"));
         assert!(!looks_like_proxies_dir("renders"));
+    }
+}
+
+#[cfg(test)]
+mod transcode_timeout_tests {
+    use super::*;
+
+    /// A child that closes stdout and then sleeps must still be killed by the
+    /// watchdog (the wait phase, not just the stdout loop).
+    #[test]
+    fn transcode_watchdog_kills_child_that_closes_stdout() {
+        let child = std::process::Command::new("sh")
+            .args(["-c", "exec 1>&-; sleep 30"])
+            .stdout(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        let start = std::time::Instant::now();
+        let r = drive_transcode_child(child, std::time::Duration::from_millis(300), 0, &mut |_| {});
+        assert!(start.elapsed() < std::time::Duration::from_secs(10));
+        assert!(format!("{:?}", r.unwrap_err()).contains("timed out"));
     }
 }
