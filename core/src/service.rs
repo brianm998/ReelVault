@@ -111,11 +111,27 @@ impl ReelVaultService {
             data_dir,
         };
 
-        // Bounded background sweep of thumbnail files whose video is gone.
+        // Bounded background cleanup: purge rows soft-deleted over 30 days ago
+        // (with their cached files), then sweep files whose video is gone. The
+        // orphan sweep only runs on a cache dir this catalog owns: the default
+        // per-user dir is shared by every catalog without its own
+        // `thumbnail_cache_path`, so another catalog's files look like orphans.
         if service.db.current_path().is_some() {
             let db = Arc::clone(&service.db);
             let cache = service.config.thumbnail_cache_path.clone();
             tokio::task::spawn_blocking(move || {
+                let cutoff = chrono::Utc::now().timestamp_millis() - 30 * 24 * 3600 * 1000;
+                if let Ok(ids) = db.purge_soft_deleted_before(cutoff) {
+                    for id in &ids {
+                        let _ = ThumbnailGenerator::cleanup_thumbnails(&cache, id);
+                    }
+                    if !ids.is_empty() {
+                        tracing::info!("purged {} long-deleted video(s)", ids.len());
+                    }
+                }
+                if crate::config::Config::is_default_cache_path(&cache) {
+                    return;
+                }
                 if let Ok(ids) = db.all_video_ids() {
                     let n = ThumbnailGenerator::sweep_orphans(
                         &cache,

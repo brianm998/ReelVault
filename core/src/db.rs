@@ -2330,6 +2330,27 @@ impl Database {
         Ok(ids)
     }
 
+    /// Hard-delete rows soft-deleted before `cutoff_ms` (Unix ms) and return
+    /// their ids so the caller can remove their cached files.
+    pub fn purge_soft_deleted_before(&self, cutoff_ms: i64) -> Result<Vec<String>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn
+            .prepare("SELECT id FROM videos WHERE deleted_at IS NOT NULL AND deleted_at < ?1")
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let ids = stmt
+            .query_map([cutoff_ms], |r| r.get::<_, String>(0))
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        drop(stmt);
+        conn.execute(
+            "DELETE FROM videos WHERE deleted_at IS NOT NULL AND deleted_at < ?1",
+            [cutoff_ms],
+        )
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(ids)
+    }
+
     /// Every video id in the catalog, soft-deleted rows included (their
     /// thumbnails are kept until the row is hard-deleted).
     pub fn all_video_ids(&self) -> Result<std::collections::HashSet<String>> {

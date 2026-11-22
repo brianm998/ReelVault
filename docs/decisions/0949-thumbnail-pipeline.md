@@ -11,6 +11,11 @@
   service start (max 5000 files, files younger than 10 min skipped). `prune_photos` only soft-deletes the row
   (`deleted_at`) and deliberately KEEPS its thumbnails, so a restored row still has them. The sweep treats
   soft-deleted rows as known, so it never deletes their files; files go only when the row is really removed.
+- The orphan sweep only runs when the cache dir is NOT the shared per-user default (a catalog-specific
+  `thumbnail_cache_path`), since catalogs sharing the default would delete each other's files.
+- Soft-deleted rows older than 30 days are hard-deleted at service start and their files removed (bounded
+  by one query; the sweep itself is bounded to 5000 files). This closes the Photos `prune_photos` accumulation.
+- Large is "at most 800 px wide, never upscaled": narrower sources give a narrower large still.
 - Publishing uses `rename`, atomic on Linux/macOS; on Windows a rename over a file a reader has open can fail
   with a sharing violation, in which case generation fails for that attempt and is retried on the next request.
 - Probes (ffprobe) are not counted among "ffmpeg launches".
