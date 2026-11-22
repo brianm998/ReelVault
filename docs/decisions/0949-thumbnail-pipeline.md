@@ -4,9 +4,9 @@
   resized from it with the `image` crate (all platforms), so no double JPEG encode of large and no resize launches.
 - Scrub frames: one ffmpeg launch with N fast-seeked inputs and N outputs; the normal path is 2 launches per new
   video (1 frame + 1 scrub), counting every launch: availability is checked by resolving ffmpeg on PATH, never by
-  launching `ffmpeg -version`. If the batch fails nothing is published; the caller then salvages frames one launch
-  each, in order, stopping at the first failure (so one bad seek keeps the other frames, a wholly bad file costs one
-  extra launch, and only failure adds launches). Any failure records the 24 h backoff.
+  launching `ffmpeg -version`. The batch is all-or-nothing: if it fails nothing is
+  published (no scrub frames), temp files are removed and the failure backoff is recorded. The budget is at most 2
+  launches per new video, failure included; there is no per-frame salvage or retry.
   The backend trait gets `extract_frames` (default loops `extract_frame`).
 - All cache writes go to a unique `{id}_..tmpPID-N.jpg` sibling and are renamed into place.
 - Cleanup: `remove_library_location` (hard delete) deletes the video's files; `sweep_orphans` runs once at
@@ -49,3 +49,4 @@
   ffmpeg exists; timeout/I-O error: 10 min; decode failure (ffmpeg ran and failed, or exited 0 without writing every
   requested frame): 24 h. The marker stores the reason; an unknown reason counts as expired. There is no per-frame
   salvage or retry of a failed scrub batch. Indexing probes color once and passes it to stills and scrub.
+- Risk (owner-accepted): one bad seek point drops all 10 scrub frames for that video until the backoff expires.

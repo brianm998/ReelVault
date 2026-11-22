@@ -97,9 +97,9 @@ impl FilenameDateRule {
         if !(1..=12).contains(&month) || !(1..=31).contains(&day) || !(1900..=2999).contains(&year) {
             return None;
         }
-        let date = chrono::NaiveDate::from_ymd_opt(year, month as u32, day as u32)?;
-        let dt = date.and_hms_opt(0, 0, 0)?.and_utc();
-        Some(dt.timestamp_millis())
+        let month = time::Month::try_from(u8::try_from(month).ok()?).ok()?;
+        let date = time::Date::from_calendar_date(year, month, u8::try_from(day).ok()?).ok()?;
+        Some(crate::db::unix_ms(date.midnight().assume_utc()))
     }
 
     /// Locate three integer components in the order dictated by self.format.
@@ -701,6 +701,14 @@ pub struct ScanProgress {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn filename_date_to_midnight_utc() {
+        let r = FilenameDateRule::from_proto("MM-DD-YYYY", "anywhere").unwrap();
+        assert_eq!(r.parse_filename("03-05-2024"), Some(1709596800000));
+        assert_eq!(r.parse_filename("13-05-2024"), None);
+        assert_eq!(r.parse_filename("02-31-2024"), None);
+    }
     use crate::db::FilterSpec;
 
     fn make_clip(dir: &Path) -> Option<std::path::PathBuf> {
