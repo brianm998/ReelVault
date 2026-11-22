@@ -139,6 +139,8 @@ jni = "0.21"
 [dev-dependencies]
 criterion = "0.5"
 mockall = "0.12"
+tower = { version = "0.4", features = ["util"] }
+http-body-util = "0.1"
 
 # Build configuration
 [build-dependencies]
