@@ -429,6 +429,19 @@ where
             tracing::warn!("No LAN IPv4 available to advertise over mDNS");
         }
 
+        // Bump paired devices' `last_seen` every few minutes, off the request path.
+        {
+            let flush_db = Arc::clone(&auth_db);
+            tokio::spawn(async move {
+                let mut tick = tokio::time::interval(std::time::Duration::from_secs(300));
+                loop {
+                    tick.tick().await;
+                    let d = Arc::clone(&flush_db);
+                    let _ = tokio::task::spawn_blocking(move || d.flush_last_seen()).await;
+                }
+            });
+        }
+
         // Gate every LAN gRPC call on a paired-device bearer token. Loopback is
         // never wrapped, so desktop clients stay exempt. The Result<_, Status>
         // shape is fixed by tonic's interceptor signature, so the large-Err
@@ -437,10 +450,14 @@ where
         let interceptor =
             move |req: tonic::Request<()>| -> Result<tonic::Request<()>, tonic::Status> {
                 let authz = req.metadata().get("authorization").and_then(|v| v.to_str().ok());
-                if auth::is_authorized(&auth_db, authz) {
-                    Ok(req)
-                } else {
-                    Err(tonic::Status::unauthenticated("device not paired"))
+                match auth::check(&auth_db, authz) {
+                    auth::AuthResult::Authorized => Ok(req),
+                    auth::AuthResult::Unauthorized => {
+                        Err(tonic::Status::unauthenticated("device not paired"))
+                    }
+                    auth::AuthResult::Unavailable => {
+                        Err(tonic::Status::unavailable("catalog database unavailable"))
+                    }
                 }
             };
         let lan_service = InterceptedService::new(service.clone().into_server(), interceptor);

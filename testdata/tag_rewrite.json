@@ -1,0 +1,15 @@
+{
+  "srcTags": {"s1": "Travel", "s2": "Family", "s3": "Only-src"},
+  "dstTags": {"d1": "Travel", "d2": "Family"},
+  "cases": [
+    {"name": "remaps_by_name", "input": "{\"tagIds\":[\"s1\",\"s2\"],\"minRating\":1}",
+     "expected": {"tagIds": ["d1", "d2"], "minRating": 1}},
+    {"name": "drops_names_missing_on_destination", "input": "{\"tagIds\":[\"s1\",\"s3\"]}",
+     "expected": {"tagIds": ["d1"]}},
+    {"name": "drops_unknown_source_ids", "input": "{\"tagIds\":[\"zzz\"]}", "expected": {"tagIds": []}},
+    {"name": "blank_unchanged", "input": "", "unchanged": true},
+    {"name": "whitespace_unchanged", "input": "  ", "unchanged": true},
+    {"name": "no_tag_ids_key_unchanged", "input": "{\"minRating\":2}", "unchanged": true},
+    {"name": "empty_array_stays_empty", "input": "{\"tagIds\":[]}", "expected": {"tagIds": []}}
+  ]
+}
