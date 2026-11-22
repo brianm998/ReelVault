@@ -496,7 +496,7 @@ pub(crate) fn prune_photos(present_ids_json: String) -> i32 {
             Ok(v) => v.into_iter().collect(),
             Err(_) => return -2,
         };
-    prune_photos_in(&ctx.db, &ctx.events, &present)
+    prune_photos_in(&ctx.db, &ctx.events, &present, Some(&ctx.cache))
 }
 
 /// Body of [`prune_photos`], split out so it can run against a plain database.
@@ -506,6 +506,7 @@ fn prune_photos_in(
     db: &Database,
     events: &tokio::sync::broadcast::Sender<crate::watcher::CatalogChange>,
     present: &std::collections::HashSet<String>,
+    cache: Option<&Path>,
 ) -> i32 {
     let rows = match db.list_videos_by_source_kind("photo") {
         Ok(r) => r,
@@ -520,6 +521,11 @@ fn prune_photos_in(
             continue;
         }
         if db.delete_video(&video_id).is_ok() {
+            // The asset is gone from the library, so its cached stills and
+            // scrub frames go with it (they regenerate if the row returns).
+            if let Some(dir) = cache {
+                let _ = crate::thumbnails::ThumbnailGenerator::cleanup_thumbnails(dir, &video_id);
+            }
             let _ = events.send(crate::watcher::CatalogChange::VideoRemoved {
                 video_id: Some(video_id),
                 path: PathBuf::from(format!("photos://{source_id}")),
@@ -556,8 +562,12 @@ mod prune_tests {
             .unwrap();
         let (tx, mut rx) = tokio::sync::broadcast::channel(16);
         let present = std::collections::HashSet::new();
-        let first = prune_photos_in(&db, &tx, &present);
-        let second = prune_photos_in(&db, &tx, &present);
+        let cache = tmp.path().join("cache");
+        std::fs::create_dir(&cache).unwrap();
+        std::fs::write(cache.join(format!("{id}_large.jpg")), b"x").unwrap();
+        let first = prune_photos_in(&db, &tx, &present, Some(&cache));
+        let second = prune_photos_in(&db, &tx, &present, Some(&cache));
+        assert_eq!(std::fs::read_dir(&cache).unwrap().count(), 0, "prune removes thumbnails");
         assert_eq!(first, 1);
         assert_eq!(second, 0);
         let mut events = 0;

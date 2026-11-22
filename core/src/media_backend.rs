@@ -30,7 +30,6 @@
 //! `set_backend` before first use). Trivially convertible to a threaded field
 //! later if a per-service backend is ever needed.
 
-use crate::ffmpeg::CommandTimeout;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 
@@ -110,6 +109,25 @@ pub trait MediaBackend: Send + Sync {
         out: &Path,
     ) -> Result<()>;
 
+    /// Extract one frame per `(time_secs, out)` job at `max_px`. The default
+    /// loops [`extract_frame`](Self::extract_frame), logging and skipping
+    /// failures; the CLI backend overrides it with a single ffmpeg launch.
+    fn extract_frames(
+        &self,
+        src: &MediaSource,
+        color: &ColorInfo,
+        jobs: &[(f64, PathBuf)],
+        max_px: i32,
+        quality: u8,
+    ) -> Result<()> {
+        for (t, out) in jobs {
+            if let Err(e) = self.extract_frame(src, color, *t, max_px, quality, out) {
+                tracing::warn!("frame at t={:.3}s failed: {}", t, e);
+            }
+        }
+        Ok(())
+    }
+
     /// Transcode a downscaled H.264/AAC proxy at `target_height` to `out` —
     /// replaces the libx264 ffmpeg pass. `total_frames` (0 = unknown) lets the
     /// implementation report `progress` as a 0.0–85.0 percentage on the band the
@@ -182,6 +200,21 @@ impl MediaBackend for CliMediaBackend {
         ffmpeg_extract_frame(src.require_path()?, color, time_secs, max_px, quality, out)
     }
 
+    fn extract_frames(
+        &self,
+        src: &MediaSource,
+        color: &ColorInfo,
+        jobs: &[(f64, PathBuf)],
+        max_px: i32,
+        quality: u8,
+    ) -> Result<()> {
+        let path = src.require_path()?;
+        // Exactly one launch, all-or-nothing, no per-frame retry: the "at most 2
+        // ffmpeg launches per video" bound must hold on failure too. The caller
+        // records the failure so later requests back off.
+        crate::thumbnails::ffmpeg_extract_frames(path, color, jobs, max_px, quality)
+    }
+
     fn transcode_proxy(
         &self,
         src: &MediaSource,
@@ -220,10 +253,21 @@ impl MediaBackend for CliMediaBackend {
     }
 
     fn is_available(&self) -> bool {
-        crate::ffmpeg::ffmpeg_command()
-            .arg("-version")
-            .output_timeout(crate::ffmpeg::PROBE_TIMEOUT)
-            .map(|o| o.status.success())
+        // Resolve the binary without launching it: a `-version` launch costs
+        // ~50 ms of process startup, and a missing/broken ffmpeg fails the
+        // real call anyway.
+        let cmd = crate::ffmpeg::ffmpeg_command();
+        let prog = std::path::PathBuf::from(cmd.get_program());
+        if prog.components().count() > 1 {
+            return prog.is_file();
+        }
+        std::env::var_os("PATH")
+            .map(|paths| {
+                std::env::split_paths(&paths).any(|d| {
+                    let p = d.join(&prog);
+                    p.is_file() || (cfg!(windows) && p.with_extension("exe").is_file())
+                })
+            })
             .unwrap_or(false)
     }
 }

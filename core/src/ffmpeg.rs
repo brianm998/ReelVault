@@ -79,7 +79,18 @@ fn ffprobe_path() -> &'static PathBuf {
 
 /// A `Command` for the resolved ffmpeg binary. Drop-in for `Command::new("ffmpeg")`.
 pub fn ffmpeg_command() -> Command {
+    #[cfg(test)]
+    if let Some(p) = TEST_FFMPEG.with(|c| c.borrow().clone()) {
+        return Command::new(p);
+    }
     Command::new(ffmpeg_path())
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Per-thread ffmpeg override so a test can substitute a fake binary.
+    pub(crate) static TEST_FFMPEG: std::cell::RefCell<Option<PathBuf>> =
+        const { std::cell::RefCell::new(None) };
 }
 
 /// A `Command` for the resolved ffprobe binary. Drop-in for `Command::new("ffprobe")`.

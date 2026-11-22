@@ -110,6 +110,8 @@ impl ReelVaultService {
             data_dir,
         };
 
+        service.spawn_cache_maintenance();
+
         // Boot the watcher if config says so and a catalog is open.
         // Done on a Tokio task so `new` stays synchronous.
         if config.watch_enabled && service.db.current_path().is_some() {
@@ -120,6 +122,41 @@ impl ReelVaultService {
         }
 
         service
+    }
+
+    /// Bounded background sweep of cache files whose video is gone. Rows are
+    /// never purged here (soft-delete stays reversible). Any cache dir may be
+    /// shared, so the sweep uses the registry of catalogs that have used it and
+    /// skips if any can't be read.
+    fn spawn_cache_maintenance(&self) {
+        let Some(catalog_path) = self.db.current_path() else { return };
+        let cache = self.config.thumbnail_cache_path.clone();
+        tokio::task::spawn_blocking(move || {
+            // Always key on the registry: the catalog open now may not be the
+            // one whose config chose this directory.
+            ThumbnailGenerator::register_catalog(&cache, &catalog_path);
+            let (ids, since) = match ThumbnailGenerator::shared_known_ids(&cache) {
+                Some((ids, since)) => (ids, Some(since)),
+                None => {
+                    tracing::warn!(
+                        "thumbnail sweep skipped: a catalog registered for {} cannot be read (current catalog {})",
+                        cache.display(),
+                        catalog_path.display()
+                    );
+                    return;
+                }
+            };
+            let n = ThumbnailGenerator::sweep_orphans_since(
+                &cache,
+                &ids,
+                std::time::Duration::from_secs(600),
+                5000,
+                since,
+            );
+            if n > 0 {
+                tracing::info!("thumbnail sweep removed {n} orphaned file(s)");
+            }
+        });
     }
 
     /// A sender on the catalog-change broadcast bus. The media server holds one
@@ -1497,18 +1534,38 @@ impl ReelVaultTrait for ReelVaultService {
         // the requested one. Without this the card shows the film-icon
         // placeholder forever — GetThumbnail returns NOT_FOUND, which tells the
         // client to stop asking — even though only scrub frames self-healed.
+        // A still made by an older pipeline version (blurry upscaled large) is
+        // regenerated lazily on access; the old bytes stay as a fallback if
+        // regeneration fails (e.g. the source volume is offline).
+        let mut stale_fallback = None;
+        if req.max_width == 0
+            && thumbnail_data.is_some()
+            && matches!(req.size.as_str(), "small" | "medium" | "large")
+            && !ThumbnailGenerator::stills_current(&self.config.thumbnail_cache_path, &req.video_id)
+        {
+            stale_fallback = thumbnail_data.take();
+        }
         if req.max_width == 0 && thumbnail_data.is_none() && !req.size.starts_with("scrub_") {
             let lock = self.scrub_lock_for(&req.video_id).await;
             let _gen_guard = lock.lock().await;
 
             // Double-check: another waiter may have generated it meanwhile.
-            thumbnail_data = read_cached_thumbnail(
-                self.config.thumbnail_cache_path.clone(),
-                req.video_id.clone(),
-                req.size.clone(),
-                0,
-            )
-            .await?;
+            // A stale still on disk counts as a miss unless it was refreshed
+            // meanwhile (stills_current), so regeneration actually runs.
+            if stale_fallback.is_none()
+                || ThumbnailGenerator::stills_current(
+                    &self.config.thumbnail_cache_path,
+                    &req.video_id,
+                )
+            {
+                thumbnail_data = read_cached_thumbnail(
+                    self.config.thumbnail_cache_path.clone(),
+                    req.video_id.clone(),
+                    req.size.clone(),
+                    0,
+                )
+                .await?;
+            }
 
             if thumbnail_data.is_none() {
                 {
@@ -1551,6 +1608,9 @@ impl ReelVaultTrait for ReelVaultService {
                 }
             }
 
+            if thumbnail_data.is_none() {
+                thumbnail_data = stale_fallback.take();
+            }
             drop(_gen_guard);
             if Arc::strong_count(&lock) == 2 {
                 let mut map = self.scrub_locks.lock().await;
@@ -1760,10 +1820,24 @@ impl ReelVaultTrait for ReelVaultService {
     ) -> std::result::Result<Response<LocationResponse>, Status> {
         let req = request.into_inner();
 
+        // Collect the ids first: the rows are hard-deleted below, and their
+        // cached thumbnails would otherwise stay forever.
         let path = req.path.clone();
-        let deleted = self
-            .run_blocking(move |svc| svc.db.remove_library_location(&path).map_err(Status::from))
+        let (doomed, deleted) = self
+            .run_blocking(move |svc| {
+                let doomed = svc.db.video_ids_under(&path).unwrap_or_default();
+                let deleted = svc.db.remove_library_location(&path).map_err(Status::from)?;
+                Ok((doomed, deleted))
+            })
             .await?;
+        {
+            let cache = self.config.thumbnail_cache_path.clone();
+            tokio::task::spawn_blocking(move || {
+                for id in doomed {
+                    let _ = ThumbnailGenerator::cleanup_thumbnails(&cache, &id);
+                }
+            });
+        }
 
         // Drop this path from the watcher.
         let handle = self.clone_for_watcher();
@@ -2455,6 +2529,9 @@ impl ReelVaultTrait for ReelVaultService {
             }
 
             svc.db.delete_video(&req.video_id).map_err(Status::from)?;
+            // Soft delete keeps the row (undelete is possible) but not its
+            // cache files; thumbnails regenerate lazily if it comes back.
+            let _ = ThumbnailGenerator::cleanup_thumbnails(&svc.config.thumbnail_cache_path, &req.video_id);
 
             Ok(Response::new(reelvault::Response {
                 success: true,
@@ -3198,6 +3275,8 @@ impl ReelVaultTrait for ReelVaultService {
         // Restart the watcher so it observes those instead of the old set.
         let handle = self.clone_for_watcher();
         tokio::spawn(async move { handle.restart_watcher().await });
+
+        self.spawn_cache_maintenance();
 
         let info = self
             .run_blocking(move |svc| Ok(catalog_info_from(svc.db.as_ref(), opened)))

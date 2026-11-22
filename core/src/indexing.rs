@@ -6,7 +6,7 @@ use crate::error::{Result, ReelVaultError};
 use crate::media_backend::{backend, MediaSource};
 use crate::metadata::MetadataExtractor;
 use crate::post_index;
-use crate::thumbnails::ThumbnailGenerator;
+use crate::thumbnails::{ColorInfo, ThumbnailGenerator};
 use rayon::prelude::*;
 use std::path::Path;
 use std::sync::atomic::{AtomicI64, Ordering};
@@ -474,9 +474,14 @@ impl IndexingEngine {
         let duration_secs = probe_output.format.duration.unwrap_or(0.0);
 
         // Generate thumbnail (skip if already exists, ffmpeg overwrite would be redundant)
-        let thumb_path = thumbnail_cache.join(format!("{}_medium.jpg", video_id));
-        if !thumb_path.exists() {
-            match ThumbnailGenerator::generate(db, &source, &video_id, thumbnail_cache, duration_secs) {
+        // Probe the color once, lazily, and share it between stills and scrub.
+        let mut color: Option<ColorInfo> = None;
+        let first_scrub = thumbnail_cache.join(format!("{}_scrub_0.jpg", video_id));
+        if !ThumbnailGenerator::stills_current(thumbnail_cache, &video_id) {
+            let c = color.get_or_insert_with(|| ThumbnailGenerator::probe_color(&source));
+            match ThumbnailGenerator::generate_default_sizes_with_color(
+                &source, &video_id, thumbnail_cache, duration_secs, Some(c), crate::thumbnails::now_secs(),
+            ) {
                 Ok(_) => {
                     tracing::debug!("Generated thumbnail for {}", video_id);
                 }
@@ -489,13 +494,15 @@ impl IndexingEngine {
         // Generate scrub-frame previews (idempotent — skips already-existing).
         // Done after the regular thumbnail so users see *something* in the grid
         // even if scrub generation is mid-flight.
-        let first_scrub = thumbnail_cache.join(format!("{}_scrub_0.jpg", video_id));
         if !first_scrub.exists() {
-            match ThumbnailGenerator::generate_scrub_thumbnails(
+            let c = color.get_or_insert_with(|| ThumbnailGenerator::probe_color(&source));
+            match ThumbnailGenerator::generate_scrub_thumbnails_with_color(
                 &source,
                 &video_id,
                 thumbnail_cache,
                 duration_secs,
+                Some(c),
+                crate::thumbnails::now_secs(),
             ) {
                 Ok(_) => tracing::debug!("Generated scrub frames for {}", video_id),
                 Err(e) => tracing::warn!("Failed to generate scrub frames for {}: {}", video_id, e),
@@ -549,8 +556,7 @@ impl IndexingEngine {
         )?;
 
         let duration_secs = probe_output.format.duration.unwrap_or(0.0);
-        let thumb_path = thumbnail_cache.join(format!("{}_medium.jpg", video_id));
-        if !thumb_path.exists() {
+        if !ThumbnailGenerator::stills_current(thumbnail_cache, &video_id) {
             if let Err(e) =
                 ThumbnailGenerator::generate(db, source, &video_id, thumbnail_cache, duration_secs)
             {
