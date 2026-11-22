@@ -30,9 +30,10 @@ class AndroidServerDiscovery(private val context: Context) : ServerDiscovery {
                 val fingerprint = attr("fp")
                 val catalogName = attr("catalog")
 
+                @Suppress("DEPRECATION") val host = info.host
                 val server = DiscoveredServer(
                     name = info.serviceName,
-                    host = info.host.hostAddress ?: return,
+                    host = host.hostAddress ?: return,
                     grpcPort = grpcPort,
                     mediaPort = mediaPort,
                     fingerprintHex = fingerprint,
@@ -50,6 +51,7 @@ class AndroidServerDiscovery(private val context: Context) : ServerDiscovery {
             override fun onDiscoveryStopped(type: String) {}
             override fun onServiceFound(info: NsdServiceInfo) {
                 if (info.serviceType == "_reelvault._tcp.") {
+                    @Suppress("DEPRECATION")
                     try { nsdManager.resolveService(info, resolveListener) } catch (_: Exception) {}
                 }
             }

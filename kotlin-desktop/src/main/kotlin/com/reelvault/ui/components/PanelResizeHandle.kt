@@ -40,6 +40,7 @@ import java.util.prefs.Preferences
  *   equivalent.
  */
 @Composable
+@Suppress("UNUSED_PARAMETER")
 fun PanelResizeHandle(
     isLeftPanel: Boolean,
     onDrag: (deltaPx: Float) -> Unit,
