@@ -160,11 +160,26 @@ public final class LoopbackMediaProxy: @unchecked Sendable {
         let parts = reqLine.split(separator: " ")
         guard parts.count >= 2 else { writeError(box, 400); return }
         let target = String(parts[1])           // e.g. /hls/<id>/<height>/master.m3u8
+        guard Self.isAllowedRequest(method: String(parts[0]), target: target) else {
+            writeError(box, 400); return
+        }
         var range: String?
         for line in lines.dropFirst() where line.lowercased().hasPrefix("range:") {
             range = String(line.dropFirst("range:".count)).trimmingCharacters(in: .whitespaces)
         }
         forward(box, target: target, range: range)
+    }
+
+    /// The proxy carries the bearer token, so any local process could otherwise
+    /// aim it elsewhere. Only `GET` of origin-form `/hls/…` and `/video/…` paths
+    /// (no scheme/authority, no `..`) is forwarded to the daemon.
+    static func isAllowedRequest(method: String, target: String) -> Bool {
+        guard method == "GET" else { return false }
+        guard target.hasPrefix("/hls/") || target.hasPrefix("/video/") else { return false }
+        let path = target.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)[0]
+        let lower = path.lowercased()
+        if lower.contains("%2e") || lower.contains("%2f") || lower.contains("\\") { return false }
+        return !path.split(separator: "/").contains("..")
     }
 
     private func forward(_ box: ConnBox, target: String, range: String?) {
