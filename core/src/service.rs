@@ -125,39 +125,20 @@ impl ReelVaultService {
         service
     }
 
-    /// Bounded background cleanup for the open catalog: purge rows soft-deleted
-    /// over 30 days ago (with their cached files), then sweep cache files whose
-    /// video is gone. A custom `thumbnail_cache_path` belongs to this catalog; the
-    /// default per-user dir is shared, so there the sweep uses the registry of
-    /// catalogs that have used it and skips if any can't be read.
+    /// Bounded background sweep of cache files whose video is gone. Rows are
+    /// never purged here (soft-delete stays reversible). Any cache dir may be
+    /// shared, so the sweep uses the registry of catalogs that have used it and
+    /// skips if any can't be read.
     fn spawn_cache_maintenance(&self) {
         let Some(catalog_path) = self.db.current_path() else { return };
-        let db = Arc::clone(&self.db);
         let cache = self.config.thumbnail_cache_path.clone();
         tokio::task::spawn_blocking(move || {
-            let shared = crate::config::Config::is_default_cache_path(&cache);
-            if shared {
-                ThumbnailGenerator::register_catalog(&cache, &catalog_path);
-            }
-            let cutoff = chrono::Utc::now().timestamp_millis() - 30 * 24 * 3600 * 1000;
-            if let Ok(ids) = db.purge_soft_deleted_before(cutoff) {
-                for id in &ids {
-                    let _ = ThumbnailGenerator::cleanup_thumbnails(&cache, id);
-                }
-                if !ids.is_empty() {
-                    tracing::info!("purged {} long-deleted video(s)", ids.len());
-                }
-            }
-            let (ids, since) = if shared {
-                match ThumbnailGenerator::shared_known_ids(&cache) {
-                    Some((ids, since)) => (ids, Some(since)),
-                    None => return,
-                }
-            } else {
-                match db.all_video_ids() {
-                    Ok(ids) => (ids, None),
-                    Err(_) => return,
-                }
+            // Always key on the registry: the catalog open now may not be the
+            // one whose config chose this directory.
+            ThumbnailGenerator::register_catalog(&cache, &catalog_path);
+            let (ids, since) = match ThumbnailGenerator::shared_known_ids(&cache) {
+                Some((ids, since)) => (ids, Some(since)),
+                None => return,
             };
             let n = ThumbnailGenerator::sweep_orphans_since(
                 &cache,

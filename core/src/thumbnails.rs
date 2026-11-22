@@ -202,13 +202,11 @@ impl ThumbnailGenerator {
         if existing.lines().any(|l| l == line) {
             return;
         }
-        let mut all = existing;
-        if !all.is_empty() && !all.ends_with('\n') {
-            all.push('\n');
+        // O_APPEND: concurrent daemons can't drop each other's lines.
+        use std::io::Write;
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&reg) {
+            let _ = f.write_all(format!("\n{line}\n").as_bytes());
         }
-        all.push_str(&line);
-        all.push('\n');
-        let _ = write_atomic(&reg, all.as_bytes());
     }
 
     /// Union of video ids across every registered catalog plus the registry

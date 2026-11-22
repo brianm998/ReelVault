@@ -2409,34 +2409,13 @@ impl Database {
         let conn = self.get_connection()?;
         let prefix = format!("{}/", path.trim_end_matches('/'));
         let mut stmt = conn
-            .prepare("SELECT id FROM videos WHERE path LIKE ? || '%'")
+            .prepare("SELECT id FROM videos WHERE substr(path, 1, length(?1)) = ?1")
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let ids = stmt
             .query_map([&prefix], |r| r.get::<_, String>(0))
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
-        Ok(ids)
-    }
-
-    /// Hard-delete rows soft-deleted before `cutoff_ms` (Unix ms) and return
-    /// their ids so the caller can remove their cached files.
-    pub fn purge_soft_deleted_before(&self, cutoff_ms: i64) -> Result<Vec<String>> {
-        let conn = self.get_connection()?;
-        let mut stmt = conn
-            .prepare("SELECT id FROM videos WHERE deleted_at IS NOT NULL AND deleted_at < ?1")
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
-        let ids = stmt
-            .query_map([cutoff_ms], |r| r.get::<_, String>(0))
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
-            .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
-        drop(stmt);
-        conn.execute(
-            "DELETE FROM videos WHERE deleted_at IS NOT NULL AND deleted_at < ?1",
-            [cutoff_ms],
-        )
-        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(ids)
     }
 
@@ -2463,7 +2442,7 @@ impl Database {
         // doesn't accidentally match "/home/user/Videos2".
         let prefix = format!("{}/", path.trim_end_matches('/'));
         let deleted = conn.execute(
-            "DELETE FROM videos WHERE path LIKE ? || '%'",
+            "DELETE FROM videos WHERE substr(path, 1, length(?1)) = ?1",
             [&prefix],
         ).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 

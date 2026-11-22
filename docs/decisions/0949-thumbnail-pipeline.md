@@ -17,8 +17,12 @@
   registered catalogs, only considers files modified after the registry began (earlier files cannot be attributed
   to a catalog), and skips entirely if any registered catalog can't be read (e.g. unmounted drive).
 - The ProRes RAW poster-reuse scrub fallback copies through a temp file and renames, like every other publish.
-- Soft-deleted rows older than 30 days are hard-deleted at service start and their files removed (bounded
-  by one query; the sweep itself is bounded to 5000 files). This closes the Photos `prune_photos` accumulation.
+- Rows are never hard-deleted by maintenance: soft-delete stays reversible (restoring keeps ratings, tags, notes). Only
+  files of rows that are really gone are swept (bounded to 5000 files per run).
+- Every cache dir, custom or default, is swept via the `.catalogs` registry (appended with O_APPEND, no read-modify-write),
+  because the open catalog may not be the one whose config chose the directory.
+- Library-root prefix matching uses `substr(path,1,length(?))=?` (exact, case-sensitive), not LIKE.
+- The Cargo.lock change drops an unreferenced `rusqlite_migration` entry (unrelated cleanup).
 - Large is "at most 800 px wide, never upscaled": narrower sources give a narrower large still.
 - Publishing uses `rename`, atomic on Linux/macOS; on Windows a rename over a file a reader has open can fail
   with a sharing violation, in which case generation fails for that attempt and is retried on the next request.
