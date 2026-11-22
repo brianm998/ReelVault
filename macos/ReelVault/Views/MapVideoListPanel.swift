@@ -141,8 +141,10 @@ struct MapVideoListPanel: View {
                                 gridViewModel.nameForLocation(latitude: lat, longitude: lon)?.name
                             })
                             .onAppear {
+                                gridViewModel.cardAppeared(videoId: video.id)
                                 if video.hasThumbnail { gridViewModel.loadThumbnail(videoId: video.id) }
                             }
+                            .onDisappear { gridViewModel.cardDisappeared(videoId: video.id) }
                             .contextMenu {
                                 Button("Open in Grid") { onOpenInGrid(video) }
                                 Button("Open in List") { onOpenInList(video) }

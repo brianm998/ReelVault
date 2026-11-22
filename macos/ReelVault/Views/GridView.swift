@@ -180,6 +180,7 @@ struct GridView: View {
                         videoContextMenu(for: item.video)
                     }
                     .onAppear {
+                        viewModel.cardAppeared(videoId: item.video.id)
                         if item.video.hasThumbnail {
                             viewModel.loadThumbnail(videoId: item.video.id)
                         }
@@ -188,6 +189,7 @@ struct GridView: View {
                             viewModel.loadMore()
                         }
                     }
+                    .onDisappear { viewModel.cardDisappeared(videoId: item.video.id) }
                 }
 
                 if viewModel.isLoading && !viewModel.videos.isEmpty {

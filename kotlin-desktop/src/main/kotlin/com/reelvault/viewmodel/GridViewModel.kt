@@ -2981,12 +2981,40 @@ class GridViewModel(
     val scanStatus: StateFlow<String?> = _scanStatus.asStateFlow()
 
     // Thumbnail cache: video_id -> bytes
-    private val _thumbnails = MutableStateFlow<Map<String, ByteArray>>(emptyMap())
+    private val _thumbnails = MutableStateFlow<VersionedMap<ByteArray>>(VersionedMap.empty())
+    // Bounded caches: least recently requested entries are evicted past budget
+    // (inserts mutate a shared concurrent map and bump a version; no per-insert copy).
+    private val thumbnailLru = LruBudget(4000, 128L * 1024 * 1024)
+    private val scrubLru = LruBudget(150, 128L * 1024 * 1024)
+    // Videos whose cards are on screen (ref-counted); never evicted.
+    private val visibleCounts = java.util.concurrent.ConcurrentHashMap<String, Int>()
+    private fun visibleIds(): Set<String> = visibleCounts.keys.toSet()
+
+    /** A card for [videoId] appeared: pin its cached images, refresh recency. Pair with [cardDisappeared]. */
+    fun cardAppeared(videoId: String) {
+        visibleCounts.merge(videoId, 1, Int::plus)
+        thumbnailLru.touch(videoId); scrubLru.touch(videoId)
+    }
+
+    fun cardDisappeared(videoId: String) {
+        visibleCounts.computeIfPresent(videoId) { _, n -> if (n <= 1) null else n - 1 }
+        thumbnailLru.touch(videoId); scrubLru.touch(videoId)
+    }
+
+    internal fun storeThumbnail(videoId: String, data: ByteArray) {
+        val evict = thumbnailLru.insert(videoId, data.size.toLong(), visibleIds())
+        _thumbnails.update { it.with(videoId, data, evict) }
+    }
+
+    internal fun storeScrubFrames(videoId: String, frames: List<ByteArray?>) {
+        val evict = scrubLru.insert(videoId, frames.sumOf { (it?.size ?: 0).toLong() }, visibleIds())
+        _scrubFrames.update { it.with(videoId, frames, evict) }
+    }
     val thumbnails: StateFlow<Map<String, ByteArray>> = _thumbnails.asStateFlow()
 
     // Scrub-frame cache: video_id -> list of N frames (index 0..N-1).
     // Loaded lazily on first hover over each card.
-    private val _scrubFrames = MutableStateFlow<Map<String, List<ByteArray?>>>(emptyMap())
+    private val _scrubFrames = MutableStateFlow<VersionedMap<List<ByteArray?>>>(VersionedMap.empty())
     val scrubFrames: StateFlow<Map<String, List<ByteArray?>>> = _scrubFrames.asStateFlow()
 
     // Limits concurrent thumbnail fetches. A large grid can have 30-50+
@@ -3197,7 +3225,7 @@ class GridViewModel(
     }
 
     fun loadThumbnail(videoId: String) {
-        if (_thumbnails.value.containsKey(videoId)) return
+        if (_thumbnails.value.containsKey(videoId)) { thumbnailLru.touch(videoId); return }
         if (videoId in thumbnailLoading) return
         thumbnailLoading.add(videoId)
         viewModelScope.launch {
@@ -3226,7 +3254,7 @@ class GridViewModel(
                         continue
                     }
                     if (data != null) {
-                        _thumbnails.update { it + (videoId to data) }
+                        storeThumbnail(videoId, data)
                     }
                     // Success stored above; null is a definitive miss. Either
                     // way, stop.
@@ -3263,7 +3291,7 @@ class GridViewModel(
     }
 
     fun loadScrubFrames(videoId: String) {
-        if (_scrubFrames.value.containsKey(videoId)) return
+        if (_scrubFrames.value.containsKey(videoId)) { scrubLru.touch(videoId); return }
         if (videoId in scrubLoading) return
         scrubLoading.add(videoId)
         viewModelScope.launch {
@@ -3271,7 +3299,7 @@ class GridViewModel(
                 val count = uiPrefs.getInt("scrubFrameCount", 10)
                 val frames = repository.getScrubFrames(videoId, count = count)
                 if (frames.any { it != null }) {
-                    _scrubFrames.value = _scrubFrames.value + (videoId to frames)
+                    storeScrubFrames(videoId, frames)
                 }
             } finally {
                 scrubLoading.remove(videoId)
@@ -3905,8 +3933,10 @@ class GridViewModel(
         _filterMinRating.value = 0
         _filterColorLabel.value = ""
         _topSlots.value = com.reelvault.data.models.defaultGridTopSlots
-        _thumbnails.value = emptyMap()
-        _scrubFrames.value = emptyMap()
+        _thumbnails.update { it.cleared() }
+        _scrubFrames.update { it.cleared() }
+        thumbnailLru.clear()
+        scrubLru.clear()
         hiResJobs.values.forEach { it.cancel() }
         hiResJobs.clear()
         hiResWidth.clear()

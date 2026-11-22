@@ -145,7 +145,9 @@ struct ListView: View {
                         .contextMenu {
                             videoContextMenu(for: item.video)
                         }
+                        .onDisappear { viewModel.cardDisappeared(videoId: item.video.id) }
                         .onAppear {
+                            viewModel.cardAppeared(videoId: item.video.id)
                             if item.video.hasThumbnail {
                                 viewModel.loadThumbnail(videoId: item.video.id)
                             }
@@ -231,7 +233,11 @@ struct ListView: View {
                             .padding(.vertical, 4)
                         }
                         .id(displayRow.key)
+                        .onDisappear {
+                            for si in allItems { viewModel.cardDisappeared(videoId: si.video.id) }
+                        }
                         .onAppear {
+                            for si in allItems { viewModel.cardAppeared(videoId: si.video.id) }
                             for si in allItems where si.video.hasThumbnail {
                                 viewModel.loadThumbnail(videoId: si.video.id)
                             }
