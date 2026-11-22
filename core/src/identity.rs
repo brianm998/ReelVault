@@ -57,7 +57,8 @@ pub fn load_or_create(data_dir: &Path, sans: &[String]) -> Result<Identity> {
     fs::create_dir_all(&dir).with_context(|| format!("create {}", dir.display()))?;
     let (cert_pem, key_pem, fingerprint_hex) = generate(sans)?;
     fs::write(&cert_path, &cert_pem)?;
-    crate::pairing::write_private(&key_path, key_pem.as_bytes());
+    crate::pairing::write_private(&key_path, key_pem.as_bytes())
+        .with_context(|| format!("write {}", key_path.display()))?;
     fs::write(&fp_path, &fingerprint_hex)?;
     restrict_key_permissions(&key_path);
     Ok(Identity {

@@ -52,7 +52,10 @@ pub fn sanitize_device_name(raw: Option<&str>) -> Option<String> {
 /// Constant-time equality for the PIN comparison.
 pub fn ct_eq(a: &str, b: &str) -> bool {
     let (a, b) = (a.as_bytes(), b.as_bytes());
-    let mut diff = (a.len() ^ b.len()) as u8;
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff = 0u8;
     for i in 0..a.len().max(b.len()) {
         diff |= a.get(i).copied().unwrap_or(0) ^ b.get(i).copied().unwrap_or(0);
     }
@@ -185,12 +188,14 @@ async fn issue_code_inner(
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0);
     tracing::info!("PAIRING CODE: {code} — enter on the device within 5 minutes");
-    write_private(&data_dir.join("pairing.txt"), format!("{code}\n").as_bytes());
+    if let Err(e) = write_private(&data_dir.join("pairing.txt"), format!("{code}\n").as_bytes()) {
+        tracing::warn!("could not write pairing.txt: {e}");
+    }
     Some((code, expires_at_ms))
 }
 
 /// Write `bytes` to `path` with owner-only (0600) permissions on Unix.
-pub fn write_private(path: &Path, bytes: &[u8]) {
+pub fn write_private(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     use std::io::Write;
     let mut opts = std::fs::OpenOptions::new();
     opts.write(true).create(true).truncate(true);
@@ -199,12 +204,30 @@ pub fn write_private(path: &Path, bytes: &[u8]) {
         use std::os::unix::fs::OpenOptionsExt;
         opts.mode(0o600);
     }
-    if let Ok(mut f) = opts.open(path) {
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let _ = f.set_permissions(std::fs::Permissions::from_mode(0o600));
-        }
-        let _ = f.write_all(bytes);
+    let mut f = opts.open(path)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        f.set_permissions(std::fs::Permissions::from_mode(0o600))?;
+    }
+    f.write_all(bytes)
+}
+
+#[cfg(test)]
+mod retry_tests {
+    use super::*;
+
+    #[test]
+    fn ct_eq_rejects_nul_padding() {
+        let padded = format!("123456{}", "\0".repeat(256));
+        assert!(!ct_eq("123456", &padded));
+        assert!(!ct_eq(&padded, "123456"));
+        assert!(ct_eq("123456", "123456"));
+    }
+
+    #[test]
+    fn write_private_reports_errors() {
+        let dir = std::env::temp_dir().join("rv_no_such_dir_903/x/key.pem");
+        assert!(write_private(&dir, b"k").is_err());
     }
 }
