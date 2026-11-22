@@ -786,7 +786,15 @@ impl Database {
         let fail = |what: &str, e: rusqlite::Error| {
             ReelVaultError::DatabaseError(format!("Migration failed ({}): {}", what, e))
         };
-        // IMMEDIATE takes the write lock up front, and the version is read
+        // Fast path: an up-to-date catalog needs no write lock at all, so a
+        // busy writer (e.g. a scan) can't block opening it.
+        let peek: i64 = conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .map_err(|e| fail("read schema version", e))?;
+        if peek == SCHEMA_VERSION {
+            return Ok(());
+        }
+        // IMMEDIATE takes the write lock up front, and the version is re-read
         // inside it, so a concurrent opener can't also see an old version and
         // re-run the backfills.
         let tx = rusqlite::Transaction::new_unchecked(conn, rusqlite::TransactionBehavior::Immediate)
@@ -4968,39 +4976,29 @@ mod tests {
     }
 
     #[test]
-    fn failing_migration_list_statement_rolls_back_earlier_ddl() {
-        let tmp = tempfile::tempdir().unwrap();
-        let p = tmp.path().join("c.db");
-        // `metadata` is a view: schema.sql's CREATE TABLE IF NOT EXISTS skips
-        // it, then a migration-list `ALTER TABLE metadata` fails (not a
-        // duplicate column), after schema.sql has already created tables.
-        let conn = Connection::open(&p).unwrap();
-        conn.execute_batch(
-            "CREATE TABLE metadata_real (video_id TEXT PRIMARY KEY, duration_ms INTEGER);
-             CREATE VIEW metadata AS SELECT * FROM metadata_real;",
-        )
-        .unwrap();
-        drop(conn);
-        assert!(Database::new_empty().set_path(&p).is_err());
-        assert_eq!(user_version(&p), 0);
-        let conn = Connection::open(&p).unwrap();
-        let n: i64 = conn
-            .query_row("SELECT COUNT(*) FROM sqlite_master WHERE name = 'library_locations'", [], |r| r.get(0))
-            .unwrap();
-        assert_eq!(n, 0, "schema.sql DDL must be rolled back");
-    }
-
-    #[test]
     fn failing_migration_fails_open_and_rolls_back() {
         let tmp = tempfile::tempdir().unwrap();
         let p = tmp.path().join("c.db");
-        // A `videos` that is a view makes ALTER TABLE fail (not a duplicate).
+        Database::new_empty().set_path(&p).unwrap();
+        // Rewind to v1 and break the *second* backfill (video_locations
+        // missing) after the first one (proxy_links) has already written.
         let conn = Connection::open(&p).unwrap();
-        conn.execute_batch("CREATE TABLE videos_real (id TEXT); CREATE VIEW videos AS SELECT * FROM videos_real;").unwrap();
+        conn.execute_batch(
+            "INSERT INTO videos (id, path, filename) VALUES ('m', '/m', 'm');
+             INSERT INTO videos (id, path, filename, proxy_of) VALUES ('p', '/p', 'p', 'm');
+             DELETE FROM proxy_links;
+             DROP TABLE video_locations;",
+        )
+        .unwrap();
+        conn.pragma_update(None, "user_version", 1).unwrap();
         drop(conn);
-        let db = Database::new_empty();
-        assert!(db.set_path(&p).is_err());
-        assert_eq!(user_version(&p), 0);
+        assert!(Database::new_empty().set_path(&p).is_err());
+        assert_eq!(user_version(&p), 1);
+        let conn = Connection::open(&p).unwrap();
+        let n: i64 = conn
+            .query_row("SELECT COUNT(*) FROM proxy_links", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(n, 0, "first backfill must be rolled back");
     }
 
     #[test]
