@@ -195,7 +195,7 @@ async fn search_engine_filename_notes_and_tags() {
 }
 
 #[tokio::test]
-async fn search_treats_like_wildcards_and_quotes_safely() {
+async fn search_handles_quotes_and_injection_input_safely() {
     let h = Harness::new().await;
     h.add_video("a.mp4", 1);
     // Must not error on quote characters / injection attempts.
