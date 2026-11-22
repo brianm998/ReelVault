@@ -81,9 +81,6 @@ class SyncWorker(context: Context, params: WorkerParameters) :
             remoteMediaPort = endpoint.mediaPort,
             token = endpoint.token,
             fingerprint = endpoint.fingerprintHex,
-            onIngestSynced = { path, filename, originHash, derivedHeight ->
-                ReelVaultCore.nativeIngestSynced(path, filename, originHash, derivedHeight)
-            },
         )
 
         for (profile in autoProfiles) {

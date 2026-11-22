@@ -64,7 +64,6 @@ struct ReelVaultApp: App {
 /// flagged auto-sync on this device, and drives a one-shot SyncManager.
 @MainActor
 private func triggerAutoSync(router: AppRouter) async {
-    guard CatalogSyncFeature.isEnabled else { return }
     guard let localPort = LocalCore.port else { return }
     let store = SyncProfileStore(localPort: localPort)
     await store.load()
@@ -74,8 +73,8 @@ private func triggerAutoSync(router: AppRouter) async {
     let mgr = SyncManager(
         localPort: localPort,
         remoteHost: endpoint.host,
-        remotePort: endpoint.mediaPort,
-        remoteMediaPort: endpoint.mediaPort + 1,
+        remotePort: endpoint.mediaPort - 1,   // gRPC port is mediaPort - 1 by convention
+        remoteMediaPort: endpoint.mediaPort,
         token: endpoint.bearerToken ?? "",
         fingerprint: endpoint.fingerprintHex ?? ""
     )

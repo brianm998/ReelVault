@@ -25,9 +25,9 @@ import java.io.File
  * Drives a catalog sync run between the local embedded core (loopback) and a
  * remote daemon (TLS-pinned, bearer-token authed).
  *
- * Lives in `shared/` so it can be reused by both Android and desktop.  The
- * Android-specific ingest step (JNI call into the embedded core) is injected
- * via [onIngestSynced] so this class stays platform-neutral.
+ * Lives in `shared/` so it can be reused by both Android and desktop.  Pulled
+ * files are ingested through the local core's `IngestSyncedFile` RPC, so no
+ * platform-specific callback is needed.
  *
  * Usage:
  *   1. Construct with both endpoints.
@@ -46,13 +46,6 @@ class SyncManager(
     private val remoteMediaPort: Int,
     private val token: String,
     private val fingerprint: String,
-    /**
-     * Platform callback invoked after a video has been downloaded during a
-     * FROM_REMOTE pull.  Implementations should ingest the file into the local
-     * core (Android: JNI call; future desktop: direct gRPC call into local
-     * daemon).  Returns 0 on success, non-zero on failure.
-     */
-    private val onIngestSynced: ((path: String, filename: String, contentHash: String, derivedHeight: Int) -> Int)? = null,
 ) {
     private val _jobs = MutableStateFlow<List<SyncJob>>(emptyList())
     val jobs: StateFlow<List<SyncJob>> = _jobs.asStateFlow()
@@ -75,10 +68,6 @@ class SyncManager(
      */
     suspend fun startSync(profile: SyncProfile) {
         if (_isRunning.value) return
-        if (!CatalogSyncFeature.ENABLED) {
-            _lastResult.value = SyncRunResult(errors = listOf("Catalog sync is not available yet"))
-            return
-        }
         _isRunning.value = true
         cancelled = false
         _jobs.value = emptyList()
@@ -130,7 +119,7 @@ class SyncManager(
             )
             val remoteStub = ReelVaultGrpcKt.ReelVaultCoroutineStub(authedChannel)
 
-            val entries = collectManifest(localStub, profile)
+            val entries = collectManifest(localStub, profile).filter { it.deletedAtMs == 0L }
             total = entries.size
 
             coroutineScope {
@@ -271,14 +260,23 @@ class SyncManager(
             val entries = collectManifest(remoteStub, profile)
             total = entries.size
 
+            // Reconcile against the local catalog first (adopt by content hash,
+            // merge marks, record links, honour tombstones); only the entries the
+            // planner reports still need their bytes transferred.
+            val toCopy = try {
+                reconcile(entries, profile, remoteStub, localStub)
+            } catch (e: Exception) {
+                return SyncRunResult(total, 0, 0, 0, listOf("pull: reconcile failed: ${e.message}"))
+            }
+
             coroutineScope {
                 val semaphore = kotlinx.coroutines.sync.Semaphore(concurrencyLimit)
-                entries.map { entry ->
+                entries.filter { it.videoId in toCopy }.map { entry ->
                     async {
                         if (cancelled) return@async
                         semaphore.acquire()
                         try {
-                            pullVideo(entry, profile, remoteStub)
+                            pullVideo(entry, profile, remoteStub, localStub)
                             completed++
                         } catch (e: Exception) {
                             failed++
@@ -306,10 +304,42 @@ class SyncManager(
         return SyncRunResult(total, completed, failed, 0, errors)
     }
 
+    /**
+     * `ReconcileCatalog` on the local core for the peer's live [entries]; returns
+     * the peer video ids whose bytes still need transferring. Peer catalog data
+     * is fetched only for entries whose hash the local catalog already holds.
+     */
+    private suspend fun reconcile(
+        entries: List<Reelvault.SyncManifestEntry>,
+        profile: SyncProfile,
+        remoteStub: ReelVaultGrpcKt.ReelVaultCoroutineStub,
+        localStub: ReelVaultGrpcKt.ReelVaultCoroutineStub,
+    ): Set<String> {
+        val held = localStub.lookupByContentHash(
+            Reelvault.LookupByContentHashRequest.newBuilder()
+                .addAllContentHash(entries.map { it.contentHash }.filter { it.isNotEmpty() }).build()
+        ).hitsList.map { it.contentHash }.toSet()
+        val req = Reelvault.ReconcileCatalogRequest.newBuilder()
+            .setPeerKey(profile.peerKey)
+            .addAllEntries(entries)
+        for (e in entries) {
+            if (e.deletedAtMs == 0L && e.contentHash in held) {
+                req.putRemoteData(
+                    e.videoId,
+                    remoteStub.getVideoCatalogData(
+                        Reelvault.VideoCatalogDataRequest.newBuilder().setVideoId(e.videoId).build()
+                    ),
+                )
+            }
+        }
+        return localStub.reconcileCatalog(req.build()).toCopyList.toSet()
+    }
+
     private suspend fun pullVideo(
         entry: Reelvault.SyncManifestEntry,
         profile: SyncProfile,
         remoteStub: ReelVaultGrpcKt.ReelVaultCoroutineStub,
+        localStub: ReelVaultGrpcKt.ReelVaultCoroutineStub,
     ) = withContext(Dispatchers.IO) {
         val job = SyncJob(
             videoId = entry.videoId,
@@ -318,6 +348,44 @@ class SyncManager(
             status = SyncJobStatus.IN_FLIGHT,
         )
         updateJobs { it + job }
+        try {
+            pullVideoInner(entry, profile, remoteStub, localStub, job)
+            updateJobs { jobs ->
+                jobs.map { if (it.id == job.id) it.copy(status = SyncJobStatus.DONE, progress = 1f) else it }
+            }
+        } catch (e: Exception) {
+            updateJobs { jobs -> jobs.map { if (it.id == job.id) it.copy(status = SyncJobStatus.FAILED) else it } }
+            throw e
+        }
+    }
+
+    /**
+     * Pull body: PrepareRendition, download over pinned TLS, `IngestSyncedFile`
+     * on the local daemon, then copy the remote's catalog data onto the local video.
+     */
+    private suspend fun pullVideoInner(
+        entry: Reelvault.SyncManifestEntry,
+        profile: SyncProfile,
+        remoteStub: ReelVaultGrpcKt.ReelVaultCoroutineStub,
+        localStub: ReelVaultGrpcKt.ReelVaultCoroutineStub,
+        job: SyncJob,
+    ) {
+        val localId = downloadAndIngest(entry, profile, remoteStub, localStub, job)
+        val data = remoteStub.getVideoCatalogData(
+            Reelvault.VideoCatalogDataRequest.newBuilder().setVideoId(entry.videoId).build()
+        )
+        localStub.applyVideoCatalogData(
+            Reelvault.ApplyCatalogDataRequest.newBuilder().setVideoId(localId).setData(data).build()
+        )
+    }
+
+    private suspend fun downloadAndIngest(
+        entry: Reelvault.SyncManifestEntry,
+        profile: SyncProfile,
+        remoteStub: ReelVaultGrpcKt.ReelVaultCoroutineStub,
+        localStub: ReelVaultGrpcKt.ReelVaultCoroutineStub,
+        job: SyncJob,
+    ): String {
 
         // 1. Ask the remote to prepare a rendition at the target resolution.
         val prepReq = Reelvault.PrepareRenditionRequest.newBuilder()
@@ -326,12 +394,15 @@ class SyncManager(
             .build()
 
         var downloadPath = ""
+        var readyHeight = 0
         remoteStub.prepareRendition(prepReq).collect { progress ->
             when (progress.phase) {
                 Reelvault.PrepareRenditionProgress.Phase.FAILED ->
                     throw Exception("PrepareRendition failed: ${progress.detail}")
-                Reelvault.PrepareRenditionProgress.Phase.READY ->
+                Reelvault.PrepareRenditionProgress.Phase.READY -> {
                     downloadPath = progress.downloadPath
+                    readyHeight = progress.readyHeight
+                }
                 else -> {
                     val fraction = progress.fraction
                     updateJobs { jobs ->
@@ -347,7 +418,7 @@ class SyncManager(
         val remoteMediaBase = "https://$remoteHost:$remoteMediaPort"
         val downloadUrl = java.net.URL("$remoteMediaBase$downloadPath")
         val destDir = File(System.getProperty("user.home", "/tmp"), "ReelVaultSynced").also { it.mkdirs() }
-        val destFile = File(destDir, entry.filename)
+        val destFile = File(destDir, safeSyncFilename(entry.filename))
 
         val client = com.reelvault.data.remote.PinnedTls.pinnedHttpClient(fingerprint)
         val dlRequest = okhttp3.Request.Builder()
@@ -366,17 +437,16 @@ class SyncManager(
             jobs.map { if (it.id == job.id) it.copy(progress = 0.8f) else it }
         }
 
-        // 3. Ingest into the local core (platform-injected callback).
-        onIngestSynced?.invoke(
-            destFile.absolutePath,
-            entry.filename,
-            entry.contentHash,
-            profile.targetHeight,
-        )
-
-        updateJobs { jobs ->
-            jobs.map { if (it.id == job.id) it.copy(status = SyncJobStatus.DONE, progress = 1f) else it }
-        }
+        // 3. Ingest into the local daemon. Only a downscaled copy is "derived".
+        val derived = if (profile.targetHeight > 0 && readyHeight > 0 && readyHeight < entry.height) readyHeight else 0
+        return localStub.ingestSyncedFile(
+            Reelvault.IngestSyncedFileRequest.newBuilder()
+                .setPath(destFile.absolutePath)
+                .setFilename(entry.filename)
+                .setOriginHash(entry.contentHash)
+                .setDerivedHeight(derived)
+                .build()
+        ).videoId
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
@@ -564,6 +634,12 @@ internal suspend fun pushFile(
     }
     val newId = remoteVideoId ?: throw Exception("${entry.filename}: remote did not index the upload")
     t.applyRemoteCatalogData(newId, t.localCatalogData(entry.videoId))
+}
+
+/** A remote-supplied filename reduced to a bare name (no path traversal). */
+internal fun safeSyncFilename(name: String): String {
+    val base = name.substringAfterLast('/').substringAfterLast('\\')
+    return if (base.isBlank() || base.all { it == '.' }) "video" else base
 }
 
 internal const val UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024

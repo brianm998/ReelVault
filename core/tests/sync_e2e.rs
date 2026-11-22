@@ -8,11 +8,11 @@
 //! `ingest_synced` (the Kotlin pull sequence, which ends at ingest).
 //!
 //! What this proves: chunked hash-verified push, corrupt-push refusal, hash
-//! adoption + marks merge via `reconcile_catalog`, and the pull's
-//! PrepareRendition -> `/video` -> ingest chain. What it does NOT prove: that a
-//! pulled rendition gets a sync link or catalog data (no client does that yet;
-//! #979-#982), nor the Kotlin push's remote hash lookup (covered by the
-//! `PushFileTest` unit test with a fake remote).
+//! adoption + marks merge via `reconcile_catalog`, and the full pull sequence
+//! the clients run: manifest -> `ReconcileCatalog` -> `PrepareRendition` ->
+//! `/video` download -> `IngestSyncedFile` -> `ApplyVideoCatalogData`. The Kotlin
+//! push's remote hash lookup is covered by `PushFileTest` (fake remote), the
+//! Swift chunk/resume logic by `SyncPushTests`.
 mod common;
 
 use std::sync::Arc;
@@ -26,7 +26,7 @@ use reelvault_core::media_server::{router, MEDIA_CACHE_VERSION};
 use reelvault_core::metadata::FFProbeOutput;
 use reelvault_core::service::reelvault::reel_vault_server::ReelVault;
 use reelvault_core::service::reelvault::*;
-use reelvault_core::sync::{ingest_synced_into, reconcile_catalog};
+use reelvault_core::sync::reconcile_catalog;
 use reelvault_core::thumbnails::ColorInfo;
 use tonic::Request as GrpcRequest;
 use tower::ServiceExt;
@@ -168,13 +168,56 @@ async fn push_then_pull_download_and_ingest_between_two_daemons() {
     let rendition: Vec<u8> = (0..1800u32).map(|i| (i % 7) as u8 ^ 0x5a).collect();
     std::fs::write(stream.join(format!("{b2}_480.{MEDIA_CACHE_VERSION}.mp4")), &rendition).unwrap();
 
-    let manifest = b.db.get_sync_manifest_page(100, "").unwrap();
-    let plan = reconcile_catalog(&a.db, "peer-b", &manifest, |id| b.db.get_video_catalog_data(id)).unwrap();
+    use tokio_stream::StreamExt;
+    // The client's reconcile step: B's manifest over gRPC, B's catalog data for
+    // entries A already holds by hash, then A's `ReconcileCatalog` RPC.
+    let mut stream_in = b
+        .svc
+        .get_sync_manifest(GrpcRequest::new(SyncManifestRequest { page_size: 100, ..Default::default() }))
+        .await
+        .unwrap()
+        .into_inner();
+    let mut entries = Vec::new();
+    while let Some(e) = stream_in.next().await {
+        entries.push(e.unwrap());
+    }
+    let held: Vec<String> = a
+        .svc
+        .lookup_by_content_hash(GrpcRequest::new(LookupByContentHashRequest {
+            content_hash: entries.iter().map(|e| e.content_hash.clone()).collect(),
+        }))
+        .await
+        .unwrap()
+        .into_inner()
+        .hits
+        .into_iter()
+        .map(|h| h.content_hash)
+        .collect();
+    let mut remote_data = std::collections::HashMap::new();
+    for e in entries.iter().filter(|e| held.contains(&e.content_hash)) {
+        let d = b
+            .svc
+            .get_video_catalog_data(GrpcRequest::new(VideoCatalogDataRequest { video_id: e.video_id.clone() }))
+            .await
+            .unwrap()
+            .into_inner();
+        remote_data.insert(e.video_id.clone(), d);
+    }
+    let rec = a
+        .svc
+        .reconcile_catalog(GrpcRequest::new(ReconcileCatalogRequest {
+            peer_key: "peer-b".into(),
+            entries: entries.clone(),
+            remote_data,
+        }))
+        .await
+        .unwrap()
+        .into_inner();
     // Order-independent: `second` must be copied; `clip` (already on A, by hash) is adopted.
-    assert_eq!(plan.to_copy, vec![b2.clone()]);
+    assert_eq!(rec.to_copy, vec![b2.clone()]);
+    assert_eq!(rec.adopted, 1);
 
     // PrepareRendition on the source yields the route to download from.
-    use tokio_stream::StreamExt;
     let mut prog = b
         .svc
         .prepare_rendition(GrpcRequest::new(PrepareRenditionRequest {
@@ -203,25 +246,37 @@ async fn push_then_pull_download_and_ingest_between_two_daemons() {
     assert_eq!(got, rendition);
     assert_ne!(got, pull_bytes);
 
-    // Client side of the Kotlin pull (`SyncManager.pullVideo`): write the
-    // download to a local file on A, then ingest it through the real
-    // `ingest_synced` path (provenance stamped, new local id returned). The
-    // Kotlin client stops here: it records no link and applies no catalog data
-    // after ingest (that needs the id over FFI, tracked in #979-#982), so this
-    // test does not either.
+    // Client side of the pull (`SyncManager.pullVideo` in Kotlin / pullEntry in
+    // Swift): write the download to a file on A, ingest it through the
+    // `IngestSyncedFile` RPC (provenance stamped, new local id returned), then
+    // copy B's catalog data onto it with `ApplyVideoCatalogData`.
     let landed = a.dir.path().join("second_480.mp4");
     std::fs::write(&landed, &got).unwrap();
-    let (tx, _rx) = tokio::sync::broadcast::channel(16);
-    let a_new = ingest_synced_into(
-        &a.db,
-        &a.dir.path().join("thumbs"),
-        &tx,
-        landed.to_str().unwrap(),
-        "second.mp4",
-        &phash,
-        480,
-    )
-    .unwrap();
+    let a_new = a
+        .svc
+        .ingest_synced_file(GrpcRequest::new(IngestSyncedFileRequest {
+            path: landed.to_str().unwrap().into(),
+            filename: "second.mp4".into(),
+            origin_hash: phash.clone(),
+            derived_height: 480,
+        }))
+        .await
+        .unwrap()
+        .into_inner()
+        .video_id;
+    let data = b
+        .svc
+        .get_video_catalog_data(GrpcRequest::new(VideoCatalogDataRequest { video_id: b2.clone() }))
+        .await
+        .unwrap()
+        .into_inner();
+    a.svc
+        .apply_video_catalog_data(GrpcRequest::new(ApplyCatalogDataRequest {
+            video_id: a_new.clone(),
+            data: Some(data),
+        }))
+        .await
+        .unwrap();
     let ingested: (bool, Option<String>) = a
         .db
         .get_connection()
@@ -231,4 +286,5 @@ async fn push_then_pull_download_and_ingest_between_two_daemons() {
         })
         .unwrap();
     assert_eq!(ingested, (true, Some(phash.clone())), "derived copy stamped with the origin hash");
+    assert_eq!(a.db.get_video_catalog_data(&a_new).unwrap().unwrap().rating, 3, "B's marks land on A's copy");
 }

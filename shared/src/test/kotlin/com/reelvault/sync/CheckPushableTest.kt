@@ -37,3 +37,12 @@ class CheckPushableTest {
         } finally { f.delete() }
     }
 }
+
+class SafeSyncFilenameTest {
+    @org.junit.Test
+    fun stripsTraversal() {
+        org.junit.Assert.assertEquals("passwd", safeSyncFilename("../../etc/passwd"))
+        org.junit.Assert.assertEquals("clip.mov", safeSyncFilename("clip.mov"))
+        org.junit.Assert.assertEquals("video", safeSyncFilename(".."))
+    }
+}

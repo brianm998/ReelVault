@@ -103,7 +103,7 @@ final class AppRouter: ObservableObject {
     /// endpoint is persisted. Sync requires both endpoints simultaneously:
     /// the local core as the "home base" and the remote as the transient peer.
     var canSync: Bool {
-        CatalogSyncFeature.isEnabled && LocalCore.isAvailable && lastPairedUploadEndpoint() != nil
+        LocalCore.isAvailable && lastPairedUploadEndpoint() != nil
     }
 
     /// Reconstruct the last-paired server's media endpoint — address from

@@ -168,6 +168,15 @@ service ReelVault {
   rpc GetVideoCatalogData(VideoCatalogDataRequest) returns (VideoCatalogData);
   rpc ApplyVideoCatalogData(ApplyCatalogDataRequest) returns (Response);
   rpc PrepareRendition(PrepareRenditionRequest) returns (stream PrepareRenditionProgress);
+  // Index a file a client pulled from a sync peer (already on this daemon's
+  // disk) and stamp its provenance. Returns the new local video id so the
+  // client can ApplyVideoCatalogData onto it.
+  // Run the sync planner for one pull against a peer's manifest: adopt local
+  // originals that match by content hash, merge catalog data, record sync
+  // links and honour tombstones. Returns the remote video ids whose bytes the
+  // client still has to transfer.
+  rpc ReconcileCatalog(ReconcileCatalogRequest) returns (ReconcileCatalogResponse);
+  rpc IngestSyncedFile(IngestSyncedFileRequest) returns (IngestSyncedFileResponse);
   rpc ListSyncProfiles(ListSyncProfilesRequest) returns (ListSyncProfilesResponse);
   rpc UpsertSyncProfile(UpsertSyncProfileRequest) returns (SyncProfileResponse);
   rpc DeleteSyncProfile(DeleteSyncProfileRequest) returns (Response);
@@ -1374,6 +1383,35 @@ message SyncManifestEntry {
   // Destinations that have a sync_links entry for this video should soft-delete
   // (is_online = 0) when deleted_at_ms > 0.
   int64 deleted_at_ms = 15;
+}
+
+message ReconcileCatalogRequest {
+  string peer_key = 1;
+  repeated SyncManifestEntry entries = 2;
+  // Peer catalog data keyed by the peer's video id. Supply it for every entry
+  // whose hash the local catalog already holds (those are adopted/merged); the
+  // call fails, leaving the link stale, if an entry needs data that is absent.
+  map<string, VideoCatalogData> remote_data = 3;
+}
+
+message ReconcileCatalogResponse {
+  int32 adopted = 1;
+  int32 marks_reconciled = 2;
+  int32 soft_deleted = 3;
+  repeated string to_copy = 4;  // peer video ids still to download
+  int32 ambiguous = 5;
+  int32 deferred = 6;
+}
+
+message IngestSyncedFileRequest {
+  string path = 1;           // absolute path of the downloaded file on the daemon's host
+  string filename = 2;       // display name (empty = file name of path)
+  string origin_hash = 3;    // content hash of the peer's original
+  int32 derived_height = 4;  // height of a downscaled copy; 0 = the original itself
+}
+
+message IngestSyncedFileResponse {
+  string video_id = 1;
 }
 
 message LookupByContentHashRequest {
