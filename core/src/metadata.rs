@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 ReelVault Contributors
 
+use crate::ffmpeg::CommandTimeout;
 use crate::error::{Result, ReelVaultError};
 use crate::db::Database;
 use serde::{Deserialize, Serialize, Deserializer};
@@ -55,7 +56,7 @@ impl MetadataExtractor {
                 "json",
                 video_path.to_str().unwrap_or(""),
             ])
-            .output()
+            .output_timeout(crate::ffmpeg::PROBE_TIMEOUT)
             .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to run ffprobe: {}", e)))?;
 
         if !output.status.success() {
@@ -669,7 +670,7 @@ impl MetadataExtractor {
     fn ffprobe_available() -> bool {
         crate::ffmpeg::ffprobe_command()
             .arg("-version")
-            .output()
+            .output_timeout(crate::ffmpeg::PROBE_TIMEOUT)
             .map(|o| o.status.success())
             .unwrap_or(false)
     }
@@ -735,7 +736,7 @@ impl MetadataExtractor {
             .arg("-metadata").arg(format!("location={}", iso6709))
             .arg("-metadata").arg(format!("location-eng={}", iso6709))
             .arg(&temp_path)
-            .status();
+            .status_timeout(crate::ffmpeg::REMUX_TIMEOUT);
 
         let ok = match status {
             Ok(s) => s.success(),
@@ -814,7 +815,7 @@ impl MetadataExtractor {
             .arg("-map_metadata").arg("0")
             .arg("-metadata").arg(format!("creation_time={}", iso))
             .arg(&temp_path)
-            .status();
+            .status_timeout(crate::ffmpeg::REMUX_TIMEOUT);
 
         let ok = match status {
             Ok(s) => s.success(),
@@ -846,7 +847,7 @@ impl MetadataExtractor {
     fn ffmpeg_available() -> bool {
         crate::ffmpeg::ffmpeg_command()
             .arg("-version")
-            .output()
+            .output_timeout(crate::ffmpeg::PROBE_TIMEOUT)
             .map(|o| o.status.success())
             .unwrap_or(false)
     }
@@ -1580,7 +1581,7 @@ pub fn extract_audio_loudness(video_path: &Path) -> Vec<f32> {
             "null",
             "-",
         ])
-        .output()
+        .output_timeout(crate::ffmpeg::LOUDNESS_TIMEOUT)
     {
         Ok(o) => o,
         Err(_) => return Vec::new(),
@@ -1912,7 +1913,7 @@ mod tests {
                 "-metadata", "white_balance=Auto",
             ])
             .arg(&path)
-            .status()
+            .status_timeout(crate::ffmpeg::REMUX_TIMEOUT)
             .expect("ffmpeg spawn");
         assert!(status.success(), "ffmpeg failed to write fixture");
 

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 ReelVault Contributors
 
+use crate::ffmpeg::CommandTimeout;
 use crate::concurrency::acquire_ffmpeg_permit;
 use crate::db::Database;
 use crate::error::{Result, ReelVaultError};
@@ -156,7 +157,7 @@ impl ThumbnailGenerator {
                     "5",
                     output_path.to_str().unwrap_or(""),
                 ])
-                .output()
+                .output_timeout(crate::ffmpeg::FRAME_TIMEOUT)
                 .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to resize thumbnail: {}", e)))?;
 
             if !output.status.success() {
@@ -440,7 +441,7 @@ pub(crate) fn probe_color_info(video_path: &Path) -> ColorInfo {
             "default=nw=1",
             video_path.to_str().unwrap_or(""),
         ])
-        .output();
+        .output_timeout(crate::ffmpeg::PROBE_TIMEOUT);
     let Ok(out) = output else { return info };
     if !out.status.success() {
         return info;
@@ -524,7 +525,7 @@ pub(crate) fn ffmpeg_extract_frame(
             "-y",
             out.to_str().unwrap_or(""),
         ])
-        .output()
+        .output_timeout(crate::ffmpeg::FRAME_TIMEOUT)
         .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to run ffmpeg: {}", e)))?;
 
     if !output.status.success() {
@@ -645,7 +646,7 @@ fn frameshot_extract(
         .arg(out_path)
         .arg(format!("{:.3}", time_secs.max(0.0)))
         .arg(max_px.to_string())
-        .output();
+        .output_timeout(crate::ffmpeg::FRAME_TIMEOUT);
     match out {
         Ok(o) if o.status.success() && out_path.exists() => Ok(()),
         Ok(o) => Err(ReelVaultError::ThumbnailGenerationFailed(format!(
@@ -679,7 +680,7 @@ fn quicklook_poster(video_path: &Path, out_path: &Path, max_px: i32) -> Result<(
         .args(["-t", "-s", &max_px.to_string(), "-o"])
         .arg(&tmp_dir)
         .arg(video_path)
-        .output();
+        .output_timeout(crate::ffmpeg::FRAME_TIMEOUT);
     let ql_failure = match ql {
         Ok(_) if produced.exists() => None,
         Ok(o) => Some(String::from_utf8_lossy(&o.stderr).to_string()),
@@ -698,7 +699,7 @@ fn quicklook_poster(video_path: &Path, out_path: &Path, max_px: i32) -> Result<(
         .arg(&produced)
         .args(["-q:v", "4", "-y"])
         .arg(out_path)
-        .output();
+        .output_timeout(crate::ffmpeg::FRAME_TIMEOUT);
     let _ = std::fs::remove_dir_all(&tmp_dir);
     match conv {
         Ok(o) if o.status.success() => Ok(()),
@@ -741,7 +742,7 @@ impl ProxyGenerator {
                 "csv=p=0",
                 video_path.to_str().unwrap_or(""),
             ])
-            .output()
+            .output_timeout(crate::ffmpeg::PROBE_TIMEOUT)
             .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to get video dimensions: {}", e)))?;
 
         if !output.status.success() {
@@ -786,7 +787,7 @@ impl ProxyGenerator {
                 "128k",
                 output_path.to_str().unwrap_or(""),
             ])
-            .output()
+            .output_timeout(crate::ffmpeg::TRANSCODE_TIMEOUT)
             .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to generate proxy: {}", e)))?;
 
         if !output.status.success() {
@@ -800,7 +801,7 @@ impl ProxyGenerator {
     fn ffmpeg_available() -> bool {
         crate::ffmpeg::ffmpeg_command()
             .arg("-version")
-            .output()
+            .output_timeout(crate::ffmpeg::PROBE_TIMEOUT)
             .map(|o| o.status.success())
             .unwrap_or(false)
     }

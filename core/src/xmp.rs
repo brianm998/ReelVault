@@ -703,10 +703,11 @@ mod tests {
     /// ship one; the parser-only tests above still cover the format.
     #[test]
     fn round_trip_through_exiftool() {
+        use crate::ffmpeg::CommandTimeout;
         use std::process::Command;
 
-        let exiftool = Command::new("exiftool").arg("-ver").output().ok();
-        let ffmpeg = crate::ffmpeg::ffmpeg_command().arg("-version").output().ok();
+        let exiftool = Command::new("exiftool").arg("-ver").output_timeout(crate::ffmpeg::PROBE_TIMEOUT).ok();
+        let ffmpeg = crate::ffmpeg::ffmpeg_command().arg("-version").output_timeout(crate::ffmpeg::PROBE_TIMEOUT).ok();
         let have_tools = exiftool.as_ref().is_some_and(|o| o.status.success())
             && ffmpeg.as_ref().is_some_and(|o| o.status.success());
         if !have_tools {
@@ -733,7 +734,7 @@ mod tests {
                 "prores_ks",
             ])
             .arg(&video_path)
-            .status()
+            .status_timeout(crate::ffmpeg::REMUX_TIMEOUT)
             .expect("ffmpeg spawn");
         assert!(status.success(), "ffmpeg failed to generate fixture clip");
 
@@ -757,7 +758,7 @@ mod tests {
                 "-XMP-exif:ExposureProgram=1",
             ])
             .arg(&video_path)
-            .status()
+            .status_timeout(crate::ffmpeg::REMUX_TIMEOUT)
             .expect("exiftool spawn");
         assert!(status.success(), "exiftool failed to embed XMP");
 

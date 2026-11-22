@@ -938,10 +938,30 @@ pub(crate) fn ffmpeg_transcode_proxy(
         .stderr(std::process::Stdio::inherit())
         .spawn()
         .map_err(|e| crate::error::ReelVaultError::FfmpegError(format!("spawn ffmpeg: {}", e)))?;
+    let stdout = child.stdout.take().expect("stdout was piped");
+    // Watchdog: kill ffmpeg if it outlives the deadline (a stalled NAS read
+    // would otherwise block the progress loop below forever).
+    let child = std::sync::Arc::new(std::sync::Mutex::new(child));
+    let timed_out = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let (done_tx, done_rx) = std::sync::mpsc::channel::<()>();
+    let watchdog = {
+        let child = child.clone();
+        let timed_out = timed_out.clone();
+        std::thread::spawn(move || {
+            if done_rx
+                .recv_timeout(crate::ffmpeg::TRANSCODE_TIMEOUT)
+                == Err(std::sync::mpsc::RecvTimeoutError::Timeout)
+            {
+                timed_out.store(true, std::sync::atomic::Ordering::SeqCst);
+                if let Ok(mut c) = child.lock() {
+                    let _ = c.kill();
+                }
+            }
+        })
+    };
 
     // Parse stdout for `frame=N` progress lines and map them onto the 0-85%
     // band; "indexing"/"complete" cover 90-100% after ffmpeg exits.
-    let stdout = child.stdout.take().expect("stdout was piped");
     use std::io::BufRead;
     for line in std::io::BufReader::new(stdout).lines().map_while(|l| l.ok()) {
         if let Some(frame_str) = line.strip_prefix("frame=") {
@@ -958,8 +978,18 @@ pub(crate) fn ffmpeg_transcode_proxy(
         }
     }
 
-    let exit_status = child
-        .wait()
+    let waited = child.lock().map_err(|_| {
+        crate::error::ReelVaultError::FfmpegError("ffmpeg child lock poisoned".into())
+    })?.wait();
+    let _ = done_tx.send(());
+    let _ = watchdog.join();
+    if timed_out.load(std::sync::atomic::Ordering::SeqCst) {
+        return Err(crate::error::ReelVaultError::FfmpegError(format!(
+            "ffmpeg timed out after {}s and was killed",
+            crate::ffmpeg::TRANSCODE_TIMEOUT.as_secs()
+        )));
+    }
+    let exit_status = waited
         .map_err(|e| crate::error::ReelVaultError::FfmpegError(format!("wait ffmpeg: {}", e)))?;
     if !exit_status.success() {
         return Err(crate::error::ReelVaultError::FfmpegError(format!(
