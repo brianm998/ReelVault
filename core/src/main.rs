@@ -114,6 +114,41 @@ struct Args {
     /// upload. Should live inside an enabled library location.
     #[arg(long, value_name = "PATH")]
     import_dir: Option<PathBuf>,
+
+    /// Exit when the launching process goes away: stdin reaching EOF (the
+    /// launcher holds a pipe it never writes) or the parent pid changing.
+    /// Lets a desktop app that crashed or was force-killed take its daemon
+    /// with it instead of leaving a stale one holding the catalog and port.
+    #[arg(long, default_value_t = false)]
+    exit_with_parent: bool,
+}
+
+/// Watch for the parent going away and exit the process when it does.
+fn spawn_parent_watchdog() {
+    use std::io::Read;
+    #[cfg(unix)]
+    let original_ppid = unsafe { libc::getppid() };
+    std::thread::spawn(|| {
+        let mut buf = [0u8; 256];
+        let mut stdin = std::io::stdin();
+        loop {
+            match stdin.read(&mut buf) {
+                Ok(0) | Err(_) => {
+                    eprintln!("stdin closed; parent gone, exiting");
+                    std::process::exit(0);
+                }
+                Ok(_) => {}
+            }
+        }
+    });
+    #[cfg(unix)]
+    std::thread::spawn(move || loop {
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        if unsafe { libc::getppid() } != original_ppid {
+            eprintln!("parent pid changed; exiting");
+            std::process::exit(0);
+        }
+    });
 }
 
 fn main() -> Result<()> {
@@ -124,6 +159,9 @@ fn main() -> Result<()> {
     reelvault_core::install_crypto_provider();
 
     let args = Args::parse();
+    if args.exit_with_parent {
+        spawn_parent_watchdog();
+    }
 
     // On Windows, when started by the Service Control Manager in system-daemon
     // mode, hand control to the SCM dispatcher so the daemon answers

@@ -135,6 +135,9 @@ windows-service = "0.7"
 jni = "0.21"
 
 # Development
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [dev-dependencies]
 criterion = "0.5"
 mockall = "0.12"
