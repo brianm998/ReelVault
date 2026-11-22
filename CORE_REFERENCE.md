@@ -199,7 +199,7 @@ cargo clippy
 4. Add supporting logic in appropriate module (db, metadata, etc.)
 
 ### Adding a New Database Table
-1. Add SQL to `schema.sql`
+1. Add SQL to `schema.sql` (fresh catalogs) **and** a new versioned step in `initialize_conn` (`if current < N`, bump `SCHEMA_VERSION`) so existing catalogs get it
 2. Add methods to `db.rs`
 3. Update error handling as needed
 

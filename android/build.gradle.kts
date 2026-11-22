@@ -10,6 +10,13 @@ android {
     namespace = "com.reelvault.android"
     compileSdk = 35
 
+    // :shared is a plain kotlin("jvm") module; lint's checkDependencies looks
+    // for a lint jar from it and fails ("Could not find jar for project
+    // :shared"). Lint only this module.
+    lint {
+        checkDependencies = false
+    }
+
     defaultConfig {
         applicationId = "com.reelvault.android"
 

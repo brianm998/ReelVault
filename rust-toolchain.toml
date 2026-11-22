@@ -1,0 +1,5 @@
+# Pinned so builds (and clippy lints) don't shift under unrelated commits.
+# Bump deliberately, fixing any new clippy warnings in the same change.
+[toolchain]
+channel = "1.96.0"
+components = ["clippy", "rustfmt"]
