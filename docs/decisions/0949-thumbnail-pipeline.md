@@ -3,8 +3,8 @@
 - Extract one frame at up to 800 px (never upscaled); it is the large still verbatim. Small and medium are
   resized from it with the `image` crate (all platforms), so no double JPEG encode of large and no resize launches.
 - Scrub frames: one ffmpeg launch with N fast-seeked inputs and N outputs; the normal path is 2 launches per new
-  video (1 frame + 1 scrub). Only if the batch fails is each position retried alone, so one undecodable position
-  loses only its own frame instead of all ten (the extra launches happen only on that failure path).
+  video (1 frame + 1 scrub). If the batch fails nothing is published, temp files are removed and there is no retry:
+  the bound of 2 launches holds on failure too, and the missing scrub frames regenerate on demand.
   The backend trait gets `extract_frames` (default loops `extract_frame`).
 - All cache writes go to a unique `{id}_..tmpPID-N.jpg` sibling and are renamed into place.
 - Cleanup: `remove_library_location` (hard delete) deletes the video's files; `sweep_orphans` runs once at

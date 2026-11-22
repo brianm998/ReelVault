@@ -644,8 +644,9 @@ fn ffmpeg_extract_frame_to(
 /// Extract several frames in ONE ffmpeg launch: the file is opened once per
 /// `(seek, output)` job as a separate fast-seeked input and each is mapped to its
 /// own output with one frame. Outputs are written to temp names and renamed into
-/// place only if ffmpeg succeeded. If the batch fails, each frame is retried
-/// individually so one bad position loses only its own frame.
+/// place only if ffmpeg succeeded. If the batch fails nothing is published, the
+/// temp files are removed and the error is returned; there is no retry, so a
+/// new video never costs more than one scrub launch.
 pub(crate) fn ffmpeg_extract_frames(
     video_path: &Path,
     color: &ColorInfo,
@@ -670,10 +671,13 @@ pub(crate) fn ffmpeg_extract_frames(
         cmd.arg(tmp);
     }
 
-    let _permit = acquire_ffmpeg_permit();
-    let output = cmd
-        .output_timeout(crate::ffmpeg::FRAME_TIMEOUT)
-        .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to run ffmpeg: {}", e)));
+    // The permit covers only the ffmpeg process; never call anything that
+    // takes a permit while holding one.
+    let output = {
+        let _permit = acquire_ffmpeg_permit();
+        cmd.output_timeout(crate::ffmpeg::FRAME_TIMEOUT)
+    }
+    .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to run ffmpeg: {}", e)));
     let result = match output {
         Ok(o) if o.status.success() => Ok(()),
         Ok(o) => Err(ReelVaultError::ThumbnailGenerationFailed(
@@ -687,16 +691,6 @@ pub(crate) fn ffmpeg_extract_frames(
             continue;
         }
         let _ = std::fs::remove_file(tmp);
-    }
-    if result.is_err() && jobs.len() > 1 {
-        // One undecodable position must not cost every frame: retry each one on
-        // its own (atomic publish). Failed positions are simply left missing.
-        let mut any = false;
-        for (seek, out) in jobs {
-            any |= ffmpeg_extract_frames(video_path, color, &[(*seek, out.clone())], max_px, quality)
-                .is_ok();
-        }
-        return if any { Ok(()) } else { result };
     }
     result
 }
@@ -1046,6 +1040,37 @@ mod color_tests {
 mod cache_tests {
     use super::*;
     use std::collections::HashSet;
+
+    #[cfg(unix)]
+    #[test]
+    fn failed_batched_scrub_publishes_nothing_and_launches_once() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let log = dir.path().join("calls.log");
+        let fake = dir.path().join("fake-ffmpeg");
+        // Logs each launch, leaves a truncated output behind, then fails.
+        std::fs::write(
+            &fake,
+            format!(
+                "#!/bin/sh\necho call >> '{}'\nfor a; do last=$a; done\necho partial > \"$last\"\necho boom >&2\nexit 1\n",
+                log.display()
+            ),
+        )
+        .unwrap();
+        std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let out_dir = dir.path().join("out");
+        std::fs::create_dir(&out_dir).unwrap();
+        let jobs: Vec<(f64, PathBuf)> = (0..10)
+            .map(|i| (i as f64, out_dir.join(format!("s{i}.jpg"))))
+            .collect();
+        crate::ffmpeg::TEST_FFMPEG.with(|c| *c.borrow_mut() = Some(fake));
+        let r = ffmpeg_extract_frames(Path::new("/nonexistent.mov"), &ColorInfo::default(), &jobs, 400, 5);
+        crate::ffmpeg::TEST_FFMPEG.with(|c| *c.borrow_mut() = None);
+        assert!(r.is_err());
+        let calls = std::fs::read_to_string(&log).unwrap();
+        assert_eq!(calls.lines().count(), 1, "exactly one ffmpeg launch");
+        assert_eq!(std::fs::read_dir(&out_dir).unwrap().count(), 0, "no files or temps left");
+    }
 
     #[test]
     fn publish_via_tmp_never_exposes_a_partial_file() {
