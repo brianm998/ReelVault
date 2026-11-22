@@ -44,6 +44,7 @@ mdns-sd = "0.11"
 # HTTPS media server (range download/stream + upload) for remote clients, on
 # the same self-signed identity cert. axum-server provides the rustls binding.
 axum = "0.7"
+tower = { version = "0.4", features = ["util"] }
 axum-server = { version = "0.7", features = ["tls-rustls"] }
 
 # Camera sensor-spec fetch (sensor_cache.rs) — replaces shelling out to `curl`,
@@ -138,7 +139,6 @@ jni = "0.21"
 [dev-dependencies]
 criterion = "0.5"
 mockall = "0.12"
-tower = { version = "0.4", features = ["util"] }
 http-body-util = "0.1"
 
 # Build configuration

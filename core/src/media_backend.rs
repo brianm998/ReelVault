@@ -30,6 +30,7 @@
 //! `set_backend` before first use). Trivially convertible to a threaded field
 //! later if a per-service backend is ever needed.
 
+use crate::ffmpeg::CommandTimeout;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 
@@ -221,7 +222,7 @@ impl MediaBackend for CliMediaBackend {
     fn is_available(&self) -> bool {
         crate::ffmpeg::ffmpeg_command()
             .arg("-version")
-            .output()
+            .output_timeout(crate::ffmpeg::PROBE_TIMEOUT)
             .map(|o| o.status.success())
             .unwrap_or(false)
     }

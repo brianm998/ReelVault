@@ -37,6 +37,27 @@
         <string>--remote</string>
     </array>
 
+    <!--
+      Run unprivileged. install-service.sh creates the `_reelvault` account and
+      chowns the data and log directories to it. The daemon's loopback port has
+      no auth, so it must never run as root.
+    -->
+    <key>UserName</key>
+    <string>_reelvault</string>
+    <key>GroupName</key>
+    <string>_reelvault</string>
+
+    <!--
+      _reelvault's home is /var/empty (not writable), so point HOME at its data
+      dir; the default thumbnail cache (~/Library/Caches/ReelVault) is created
+      beneath it.
+    -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Library/Application Support/ReelVault</string>
+    </dict>
+
     <!-- Start at boot and keep alive if it crashes. -->
     <key>RunAtLoad</key>
     <true/>
