@@ -7,7 +7,6 @@ use crate::error::{Result, ReelVaultError};
 use crate::indexing::IndexingEngine;
 use crate::metadata_keys;
 use crate::path_templates::expand_path_templates;
-use crate::search::SearchEngine;
 use crate::thumbnails::ThumbnailGenerator;
 use crate::watcher::{CatalogChange, LibraryWatcher};
 use std::pin::Pin;
@@ -743,13 +742,17 @@ impl ReelVaultService {
     ///
     /// Missing rows keep the per-row defaults: no metadata → zeros, no marks
     /// → (0, ""), unknown id → online, no group → singleton.
-    fn build_video_summaries(&self, seeds: Vec<SummarySeed>) -> Vec<VideoSummary> {
+    #[allow(clippy::result_large_err)]
+    fn build_video_summaries(
+        &self,
+        seeds: Vec<SummarySeed>,
+    ) -> std::result::Result<Vec<VideoSummary>, Status> {
         use std::collections::HashMap;
 
         if seeds.is_empty() {
-            return Vec::new();
+            return Ok(Vec::new());
         }
-        let conn = self.db.get_connection().ok();
+        let conn = Some(self.db.get_connection().map_err(Status::from)?);
         let ids: Vec<&str> = seeds.iter().map(|s| s.id.as_str()).collect();
 
         // (is_online, group_id, proxy_of, is_derived) straight off the videos row.
@@ -971,7 +974,7 @@ impl ReelVaultService {
         let custom_overrides = self.load_custom_camera_names();
         let mut fullres_memo: HashMap<(String, i32, i32), i32> = HashMap::new();
 
-        seeds
+        Ok(seeds
             .into_iter()
             .map(|seed| {
                 let m = meta.remove(&seed.id).unwrap_or_default();
@@ -1098,7 +1101,7 @@ impl ReelVaultService {
                     is_derived,
                 }
             })
-            .collect()
+            .collect::<Vec<_>>())
     }
 }
 
@@ -1412,7 +1415,7 @@ impl ReelVaultTrait for ReelVaultService {
                     indexed_at: v.indexed_at,
                 })
                 .collect();
-            let video_summaries = svc.build_video_summaries(seeds);
+            let video_summaries = svc.build_video_summaries(seeds)?;
 
             Ok(Response::new(ListVideosResponse {
                 videos: video_summaries,
@@ -1432,26 +1435,38 @@ impl ReelVaultTrait for ReelVaultService {
             let limit = if req.limit <= 0 { 50 } else { req.limit as i64 };
             let offset = req.offset.max(0) as i64;
 
-            let (results, total_count) = SearchEngine::search(
-                svc.db.as_ref(),
-                &req.query,
-                limit,
-                offset,
-                &req.filter_tags,
-            )
-            .map_err(Status::from)?;
-
-            let seeds: Vec<SummarySeed> = results
+            // Delegate to the grid query so search results match the grid:
+            // grouped representatives only, no proxies or deleted rows.
+            let tag_ids: Vec<String> = req
+                .filter_tags
                 .iter()
-                .map(|r| SummarySeed {
-                    id: r.video_id.clone(),
-                    filename: r.filename.clone(),
-                    path: r.path.clone(),
-                    size_bytes: 0,
-                    indexed_at: 0,
+                .filter(|s| !s.is_empty())
+                .map(|s| match svc.db.get_tag_by_name(s) {
+                    Ok(Some(tag)) => tag.id,
+                    _ => s.clone(),
                 })
                 .collect();
-            let video_summaries = svc.build_video_summaries(seeds);
+            let spec = FilterSpec {
+                tag_ids,
+                search_query: req.query.clone(),
+                ..Default::default()
+            };
+            let (videos, total_count) = svc
+                .db
+                .list_videos_grouped(limit, offset, "", false, &spec)
+                .map_err(Status::from)?;
+
+            let seeds: Vec<SummarySeed> = videos
+                .iter()
+                .map(|v| SummarySeed {
+                    id: v.id.clone(),
+                    filename: v.filename.clone(),
+                    path: v.path.clone(),
+                    size_bytes: v.file_size_bytes.unwrap_or(0),
+                    indexed_at: v.indexed_at,
+                })
+                .collect();
+            let video_summaries = svc.build_video_summaries(seeds)?;
 
             Ok(Response::new(SearchResponse {
                 videos: video_summaries,
@@ -2546,7 +2561,7 @@ impl ReelVaultTrait for ReelVaultService {
                     });
                 }
             }
-            let members = svc.build_video_summaries(seeds);
+            let members = svc.build_video_summaries(seeds)?;
 
             let preferred = svc
                 .db
@@ -3183,7 +3198,8 @@ impl ReelVaultTrait for ReelVaultService {
             // request-time decisions (max_native_playback_height,
             // proxy_target_height) are re-read from the config table on every
             // GenerateProxy, so this UPSERT is enough for them.
-            if let Ok(conn) = svc.db.get_connection() {
+            let conn = svc.db.get_connection().map_err(Status::from)?;
+            {
                 let pairs: &[(&str, String)] = &[
                     ("max_native_playback_height", req.max_native_playback_height.clamp(0, 7680).to_string()),
                     ("proxy_target_height", req.proxy_target_height.clamp(144, 4320).to_string()),
@@ -3192,11 +3208,12 @@ impl ReelVaultTrait for ReelVaultService {
                     ("auto_tag_timelapses", req.auto_tag_timelapses.to_string()),
                 ];
                 for (key, value) in pairs {
-                    let _ = conn.execute(
+                    conn.execute(
                         "INSERT INTO config (key, value) VALUES (?, ?)
                          ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP",
                         rusqlite::params![key, value, value],
-                    );
+                    )
+                    .map_err(|e| Status::internal(format!("failed to save config {key}: {e}")))?;
                 }
             }
             Ok(Response::new(reelvault::Response {

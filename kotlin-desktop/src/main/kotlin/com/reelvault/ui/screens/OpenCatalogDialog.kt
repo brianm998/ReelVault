@@ -5,6 +5,7 @@
 
 package com.reelvault.ui.screens
 
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -51,7 +52,7 @@ fun OpenCatalogDialog(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Icons.Default.LibraryBooks,
+                    imageVector = Icons.AutoMirrored.Filled.LibraryBooks,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp)
                 )
@@ -160,7 +161,7 @@ private fun RecentRow(path: String, onOpen: () -> Unit, onForget: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = if (exists) Icons.Default.LibraryBooks else Icons.Default.Error,
+            imageVector = if (exists) Icons.AutoMirrored.Filled.LibraryBooks else Icons.Default.Error,
             contentDescription = null,
             modifier = Modifier.size(18.dp),
             tint = if (exists) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error

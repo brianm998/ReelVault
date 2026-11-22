@@ -336,3 +336,11 @@ async fn get_thumbnail_serves_stale_still_when_regeneration_is_impossible() {
     // Still stale afterwards (regeneration was attempted, not skipped).
     assert!(!reelvault_core::thumbnails::ThumbnailGenerator::stills_current(&thumbs, &id));
 }
+
+#[tokio::test]
+async fn update_config_without_open_catalog_errors() {
+    let h = Harness::new().await;
+    h.db.clear_path();
+    let r = h.svc.update_config(Request::new(UpdateConfigRequest::default())).await;
+    assert!(r.is_err(), "UpdateConfig must not report success with no catalog");
+}

@@ -5,6 +5,7 @@
 
 package com.reelvault.ui.screens
 
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.foundation.*
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -224,7 +225,7 @@ fun DetailScreen(
                             modifier = Modifier.size(28.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.OpenInNew,
+                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                                 contentDescription = "Open in default player",
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1019,7 +1020,7 @@ fun DetailScreen(
                                         modifier = Modifier.size(24.dp),
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.OpenInNew,
+                                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                                             contentDescription = "Open proxy in default player",
                                             modifier = Modifier.size(16.dp),
                                             tint = MaterialTheme.colorScheme.outline,
@@ -1391,6 +1392,7 @@ fun CameraMetadataRow(internalName: String, displayName: String) {
 }
 
 @Composable
+@Suppress("UNUSED_PARAMETER")
 fun FlowRow(
     modifier: Modifier = Modifier,
     horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
