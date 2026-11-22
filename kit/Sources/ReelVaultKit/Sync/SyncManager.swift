@@ -333,46 +333,6 @@ public final class SyncManager: ObservableObject {
 
     // MARK: - Smart-collection tag-UUID rewrite
 
-    /// Rewrites tag UUIDs in a smart-collection filter_json string from
-    /// source-catalog IDs to destination-catalog IDs, matched by tag name.
-    /// Tags with no name match on the destination are dropped silently.
-    ///
-    /// - Parameters:
-    ///   - filterJson: The raw filter_json string from a smart collection
-    ///     (e.g. `{"tagIds":["uuid-a","uuid-b"],"operator":"AND"}`).
-    ///   - srcTags: id → name mapping for all tags in the SOURCE catalog.
-    ///   - dstTags: id → name mapping for all tags in the DESTINATION catalog.
-    /// - Returns: A new JSON string with the tagIds array replaced by
-    ///   destination-side UUIDs. Returns the original string unchanged if it
-    ///   cannot be parsed or contains no tagIds.
-    nonisolated private func rewriteFilterJson(
-        _ filterJson: String,
-        srcTags: [String: String],
-        dstTags: [String: String]
-    ) -> String {
-        guard !filterJson.isEmpty,
-              let data = filterJson.data(using: .utf8),
-              var dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let tagIds = dict["tagIds"] as? [String]
-        else { return filterJson }
-
-        // Build name → dst-id lookup so we can resolve each source UUID to a name,
-        // then find the matching UUID on the destination side.
-        let nameToDst = Dictionary(uniqueKeysWithValues: dstTags.map { ($0.value, $0.key) })
-
-        let remapped: [String] = tagIds.compactMap { srcId in
-            guard let name = srcTags[srcId],
-                  let dstId = nameToDst[name] else { return nil }
-            return dstId
-        }
-        dict["tagIds"] = remapped
-
-        guard let out = try? JSONSerialization.data(withJSONObject: dict, options: [.sortedKeys]),
-              let str = String(data: out, encoding: .utf8)
-        else { return filterJson }
-        return str
-    }
-
     /// Fetches all tags from a live gRPC client and returns an id → name map.
     /// Uses the existing `ListTags` RPC (Reelvault_ListTagsRequest).
     private func fetchTagMap(
@@ -420,7 +380,7 @@ public final class SyncManager: ObservableObject {
         // 3 + 4. For each smart collection, rewrite filter_json and create on dst.
         var syncedCount = 0
         for collection in smartCollections {
-            let rewrittenFilter = rewriteFilterJson(
+            let rewrittenFilter = rewriteSmartFilterTagIds(
                 collection.filterJson,
                 srcTags: srcTags,
                 dstTags: dstTags

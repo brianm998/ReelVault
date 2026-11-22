@@ -531,15 +531,32 @@ public struct SmartCollectionFilters: Sendable {
 
     public static func from(json: String) -> SmartCollectionFilters? {
         guard !json.isEmpty else { return nil }
+        // Reads a JSON string literal whose opening quote is already consumed;
+        // returns the unescaped value and the index just past the closing quote.
+        func readString(from start: String.Index) -> (value: String, end: String.Index)? {
+            var val = ""
+            var i = start
+            var escaped = false
+            while i < json.endIndex {
+                let ch = json[i]
+                i = json.index(after: i)
+                if escaped {
+                    switch ch {
+                    case "n": val.append("\n")
+                    case "t": val.append("\t")
+                    default: val.append(ch)   // \" \\ \/ …
+                    }
+                    escaped = false
+                } else if ch == "\\" { escaped = true }
+                else if ch == "\"" { return (val, i) }
+                else { val.append(ch) }
+            }
+            return nil
+        }
         func strVal(_ key: String) -> String {
-            guard let r = json.range(of: "\"\(key)\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"",
-                                     options: .regularExpression) else { return "" }
-            let matched = String(json[r])
-            let parts = matched.components(separatedBy: "\"")
-            guard parts.count >= 4 else { return "" }
-            return parts[3]
-                .replacingOccurrences(of: "\\\"", with: "\"")
-                .replacingOccurrences(of: "\\\\", with: "\\")
+            guard let r = json.range(of: "\"\(key)\"\\s*:\\s*\"", options: .regularExpression),
+                  let (v, _) = readString(from: r.upperBound) else { return "" }
+            return v
         }
         func intVal(_ key: String) -> Int32 {
             guard let r = json.range(of: "\"\(key)\"\\s*:\\s*([0-9]+)",
@@ -556,34 +573,22 @@ public struct SmartCollectionFilters: Sendable {
             guard let colon = matched.range(of: ":") else { return 0.0 }
             return Double(matched[colon.upperBound...].trimmingCharacters(in: .whitespaces)) ?? 0.0
         }
-        // Parse a JSON array of strings (handles escaped quotes).
+        // Parse a JSON array of strings (handles escaped quotes). Scanning starts
+        // after the opening bracket, so the key name is never read as an element
+        // (that once made every smart collection match nothing).
         func strArray(_ key: String) -> [String] {
-            guard let ar = json.range(of: "\"\(key)\"\\s*:\\s*\\[([^\\]]*)\\]", options: .regularExpression) else { return [] }
+            guard let ar = json.range(of: "\"\(key)\"\\s*:\\s*\\[", options: .regularExpression) else { return [] }
             var out: [String] = []
-            // `ar` spans the whole match, including the `"key":[` prefix. Start
-            // scanning *after* the opening bracket, otherwise the first quoted
-            // token found is the key name itself (e.g. "tagIds"), which would be
-            // injected as a phantom array element — for tagIds that phantom is a
-            // tag id no video carries, so the smart collection matched nothing.
-            var scanning = String(json[ar])
-            if let open = scanning.range(of: "[") {
-                scanning = String(scanning[open.upperBound...])
-            }
-            while let qStart = scanning.range(of: "\"") {
-                scanning = String(scanning[qStart.upperBound...])
-                var val = ""
-                var escaped = false
-                var done = false
-                for ch in scanning {
-                    if escaped { val.append(ch); escaped = false }
-                    else if ch == "\\" { escaped = true }
-                    else if ch == "\"" { done = true; break }
-                    else { val.append(ch) }
+            var i = ar.upperBound
+            while i < json.endIndex {
+                let ch = json[i]
+                if ch == "]" { break }
+                i = json.index(after: i)
+                if ch == "\"" {
+                    guard let (v, end) = readString(from: i) else { break }
+                    out.append(v)
+                    i = end
                 }
-                if done { out.append(val) }
-                if let next = scanning.range(of: "\"") {
-                    scanning = String(scanning[next.upperBound...])
-                } else { break }
             }
             return out
         }
