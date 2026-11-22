@@ -353,6 +353,10 @@ fun GridScreen(
                         val edgeRight = index % columns == columns - 1 || !selectedAt(index + 1)
 
                         // Trigger thumbnail load when card appears
+                        DisposableEffect(video.id) {
+                            viewModel.cardAppeared(video.id)
+                            onDispose { viewModel.cardDisappeared(video.id) }
+                        }
                         LaunchedEffect(video.id) {
                             if (video.hasThumbnail) {
                                 viewModel.loadThumbnail(video.id)
