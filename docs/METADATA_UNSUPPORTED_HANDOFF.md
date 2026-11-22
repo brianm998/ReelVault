@@ -14,7 +14,7 @@ All HIGH and MEDIUM priority items have been successfully implemented and commit
 
 Remaining items (8-13) are LOWER priority and await future work allocation.
 
-## Context
+## Contex
 
 You are working in the ReelVault project at `/Users/brian/git/ReelVault`, checked out on the `develop` branch. ReelVault is a video cataloging app with a Rust core daemon and four client frontends (macOS SwiftUI, iOS SwiftUI, desktop Kotlin Compose, Android Kotlin Compose).
 
@@ -31,7 +31,7 @@ This handoff covers implementing the 13 unsupported metadata types listed in `do
 Every field follows the same 6-step path:
 
 1. **Rust extraction** — a new or modified module in `core/src/` reads the data from the file.
-2. **DB column** — add the column to `schema.sql` for fresh catalogs, and add `ALTER TABLE metadata ADD COLUMN …` in a **new versioned step** in `initialize_conn` (`if current < N { … }`, bump `SCHEMA_VERSION`) in `core/src/db.rs`. Do not append to the old `migrations` list: it is the frozen v1 baseline and never runs on existing catalogs. 
+2. **DB column** — add the column to `schema.sql` for fresh catalogs, and add `ALTER TABLE metadata ADD COLUMN …` in a **new versioned step** in `initialize_conn` (`if current < N { … }`, bump `SCHEMA_VERSION`) in `core/src/db.rs`. Do not append to the old `migrations` list: it is the frozen v1 baseline and never runs on existing catalogs.
 3. **Rust `store_metadata`** — `core/src/metadata.rs` `store_metadata()` populates the new column in the `INSERT … ON CONFLICT DO UPDATE` statement (around line 416–474).
 4. **Proto** — `core/proto/reelvault.proto` adds a field to `VideoSummary` (list-level, for filtering/sorting/grid slots) and/or `VideoMetadata` (detail-level, for the inspector). Use the next available field number (currently 55+ for VideoMetadata, 48+ for VideoSummary). **After editing the proto, run `kit/regen-proto.sh` then immediately `git checkout kit/Sources/ReelVaultKit/grpc/reelvault.grpc.swift` — only commit `reelvault.pb.swift`.**
 5. **Shared Kotlin model** — `shared/src/main/kotlin/com/reelvault/data/models/Video.kt` adds the field to `VideoSummary` and/or `VideoMetadata` data classes, plus any derived labels (like `slowMotionLabel`).
@@ -74,8 +74,8 @@ Proto regen:
 ```bash
 cd kit && ./regen-proto.sh
 # Then:
-git checkout kit/Sources/ReelVaultKit/grpc/reelvault.grpc.swift
-# Only commit reelvault.pb.swift
+git checkout kit/Sources/ReelVaultKit/grpc/reelvault.grpc.swif
+# Only commit reelvault.pb.swif
 ```
 
 ---
@@ -157,15 +157,15 @@ ffmpeg -i test.mp4 -i chapters.txt -map_metadata 1 -codec copy with_chapters.mp4
 #   title=Intro
 
 # Create a synthetic 360° file with spherical metadata:
-ffmpeg -f lavfi -i testsrc=duration=5:size=3840x1920:rate=30 \
+ffmpeg -f lavfi -i testsrc=duration=5:size=3840x1920:rate=30
   -c:v libx264 -metadata:s:v "spherical-video=true" equirect.mp4
-exiftool -XMP-GSpherical:Spherical=true -XMP-GSpherical:Stitched=true \
+exiftool -XMP-GSpherical:Spherical=true -XMP-GSpherical:Stitched=true
   -XMP-GSpherical:ProjectionType=equirectangular equirect.mp4
 ```
 
 ---
 
-## Item 1: GoPro GPMF Inertial Data (ACCL, GYRO, TMPC)  
+## Item 1: GoPro GPMF Inertial Data (ACCL, GYRO, TMPC)
 **Priority: HIGH — GoPro is a top-3 camera brand in most video libraries**
 
 ### What to build
@@ -182,11 +182,11 @@ The immediate deliverable is: **motion intensity over time** — the magnitude o
 
 ```bash
 # Download a GoPro sample with verified GPMF telemetry (free, public domain):
-curl -L "https://raw.githubusercontent.com/gopro/gpmf-parser/main/samples/hero5.mp4" \
+curl -L "https://raw.githubusercontent.com/gopro/gpmf-parser/main/samples/hero5.mp4"
   -o /tmp/hero5.mp4
 
 # Verify ACCL stream is present:
-ffprobe -v quiet -print_format json -show_streams /tmp/hero5.mp4 | \
+ffprobe -v quiet -print_format json -show_streams /tmp/hero5.mp4 |
   jq '.streams[] | select(.codec_tag_string == "gpmd")'
 
 # Extract the raw GPMF binary to inspect manually:
@@ -215,7 +215,7 @@ In `core/src/metadata.rs`:
 ### DB changes (`core/src/db.rs`)
 
 Add to the migration list:
-```rust
+```rus
 ("metadata.accel_magnitude", "ALTER TABLE metadata ADD COLUMN accel_magnitude BLOB"),
 ("metadata.gyro_magnitude",  "ALTER TABLE metadata ADD COLUMN gyro_magnitude BLOB"),
 ```
@@ -239,14 +239,14 @@ Gate the tab on `accel_magnitude.isNotEmpty()` — non-GoPro clips skip it entir
 
 ---
 
-## Item 2: IPTC Keywords and Editorial Metadata  
+## Item 2: IPTC Keywords and Editorial Metadata
 **Priority: HIGH — stock footage, broadcast, and journalism libraries use IPTC universally**
 
 ### What to build
 
 Read IPTC Core / Extension fields from the XMP packet already being parsed in `core/src/xmp.rs`. The fields live in the `Iptc4xmpCore:` and `Iptc4xmpExt:` XML namespaces within the same XMP document.
 
-### Key fields to extract
+### Key fields to extrac
 
 | IPTC XMP field | Useful for |
 |---|---|
@@ -268,12 +268,12 @@ Start with `dc:description`, `dc:creator`, `dc:rights`, and `dc:subject` (keywor
 ```bash
 # Create a test MP4 with IPTC metadata injected:
 ffmpeg -f lavfi -i testsrc=duration=5:size=1280x720:rate=30 -c:v libx264 /tmp/iptc_test.mp4
-exiftool \
-  -XMP-dc:Description="A test clip of a mountain sunrise." \
-  -XMP-dc:Creator="Jane Photographer" \
-  -XMP-dc:Rights="© 2026 Jane Photographer" \
-  -XMP-dc:Subject="mountain,sunrise,landscape" \
-  -XMP-photoshop:Headline="Mountain Sunrise Test" \
+exiftool
+  -XMP-dc:Description="A test clip of a mountain sunrise."
+  -XMP-dc:Creator="Jane Photographer"
+  -XMP-dc:Rights="© 2026 Jane Photographer"
+  -XMP-dc:Subject="mountain,sunrise,landscape"
+  -XMP-photoshop:Headline="Mountain Sunrise Test"
   /tmp/iptc_test.mp4
 
 # Verify it round-tripped:
@@ -282,14 +282,14 @@ exiftool -G /tmp/iptc_test.mp4 | grep -i "description\|creator\|rights\|subject\
 
 Real IPTC-bearing footage:
 - Any video downloaded from Getty, AP, Reuters, or major stock agencies
-- Files touched by Adobe Bridge or Lightroom's video export
+- Files touched by Adobe Bridge or Lightroom's video expor
 - Files processed by exiftool with IPTC injection
 
 ### Rust changes
 
 Extend `core/src/xmp.rs`:
 1. Add fields to `XmpMetadata`:
-   ```rust
+   ```rus
    pub description: Option<String>,
    pub creator: Option<String>,
    pub rights: Option<String>,
@@ -306,7 +306,7 @@ Extend `core/src/xmp.rs`:
 
 ### DB changes
 
-```rust
+```rus
 ("metadata.description",    "ALTER TABLE metadata ADD COLUMN description TEXT"),
 ("metadata.creator",        "ALTER TABLE metadata ADD COLUMN creator TEXT"),
 ("metadata.rights",         "ALTER TABLE metadata ADD COLUMN rights TEXT"),
@@ -342,7 +342,7 @@ Keywords from IPTC should be displayed distinctly from user-applied ReelVault ta
 
 ---
 
-## Item 3: Chapter Tracks and Embedded Subtitles  
+## Item 3: Chapter Tracks and Embedded Subtitles
 **Priority: MEDIUM — common in edited/delivered content, tutorial videos, podcasts**
 
 ### What to build
@@ -358,7 +358,7 @@ Chapter data is in the ffprobe JSON under `format.chapters` (an array of `{id, s
 ffprobe -v quiet -print_format json -show_chapters input.mp4 | jq '.chapters'
 
 # Check subtitle streams:
-ffprobe -v quiet -print_format json -show_streams input.mp4 | \
+ffprobe -v quiet -print_format json -show_streams input.mp4 |
   jq '.streams[] | select(.codec_type == "subtitle")'
 ```
 
@@ -377,7 +377,7 @@ title=Introduction
 TIMEBASE=1/1000
 START=10000
 END=25000
-title=Main Content
+title=Main Conten
 [CHAPTER]
 TIMEBASE=1/1000
 START=25000
@@ -392,7 +392,7 @@ ffmpeg -i /tmp/no_chapters.mp4 -i /tmp/chapters.txt -map_metadata 1 -codec copy 
 ffprobe -v quiet -print_format json -show_chapters /tmp/with_chapters.mp4 | jq '.chapters[].tags.title'
 
 # Add subtitles:
-echo "1\n00:00:00,000 --> 00:00:03,000\nHello, this is a subtitle." > /tmp/sub.srt
+echo "1\n00:00:00,000 --> 00:00:03,000\nHello, this is a subtitle." > /tmp/sub.sr
 ffmpeg -i /tmp/with_chapters.mp4 -i /tmp/sub.srt -c copy -c:s mov_text /tmp/with_subs.mp4
 ```
 
@@ -405,7 +405,7 @@ In `core/src/metadata.rs`, `FFProbeOutput` already has parsed stream list. Add:
 
 ### DB changes
 
-```rust
+```rus
 ("metadata.chapter_count",   "ALTER TABLE metadata ADD COLUMN chapter_count INTEGER DEFAULT 0"),
 ("metadata.chapters_json",   "ALTER TABLE metadata ADD COLUMN chapters_json TEXT"),
 ("metadata.subtitle_tracks", "ALTER TABLE metadata ADD COLUMN subtitle_tracks INTEGER DEFAULT 0"),
@@ -431,7 +431,7 @@ In the inspector's **File** section: show "3 chapters" when chapter count > 0, w
 
 ---
 
-## Item 4: Dolby Vision Detection  
+## Item 4: Dolby Vision Detection
 **Priority: MEDIUM — growing on iPhone, Apple TV, Netflix deliverables**
 
 ### What to build
@@ -446,7 +446,7 @@ Dolby Vision metadata appears in two ways in ffprobe output:
 2. **A `dovi` stream entry** — present in some MKV / TS containers.
 
 ```bash
-ffprobe -v quiet -print_format json -show_streams iphone_dv.mov | \
+ffprobe -v quiet -print_format json -show_streams iphone_dv.mov |
   jq '.streams[0].side_data_list[] | select(.side_data_type | contains("DOVI"))'
 ```
 
@@ -460,7 +460,7 @@ iPhone 12+ records Dolby Vision Profile 8.4 (HLG-compatible base layer, HEVC). A
 
 ```bash
 # Check if any stream has DV side data:
-ffprobe -v quiet -print_format json -show_streams "$FILE" | \
+ffprobe -v quiet -print_format json -show_streams "$FILE" |
   jq 'any(.streams[].side_data_list[]?; .side_data_type == "DOVI configuration record")'
 ```
 
@@ -468,7 +468,7 @@ ffprobe -v quiet -print_format json -show_streams "$FILE" | \
 
 In `core/src/metadata.rs`, inside `store_metadata()`, after the existing `spatial` / `projection` detection block:
 
-```rust
+```rus
 // Dolby Vision: look for a DOVI configuration record in any stream's side_data_list.
 let dovi_profile: Option<i32> = probe_output.streams.iter().find_map(|s| {
     s.side_data_list.as_ref()?.iter().find_map(|sd| {
@@ -486,7 +486,7 @@ You will need to add `dv_profile: Option<u8>` to the `SideData` struct (ffprobe 
 
 ### DB / Proto / UI
 
-```rust
+```rus
 // db.rs migration:
 ("metadata.dolby_vision_profile", "ALTER TABLE metadata ADD COLUMN dolby_vision_profile INTEGER"),
 ```
@@ -502,7 +502,7 @@ Update the `dynamic_range` derivation in Rust (`prettify_log_curve` / the deriva
 
 ---
 
-## Item 5: DJI SRT — Embedded Subtitle Track  
+## Item 5: DJI SRT — Embedded Subtitle Track
 **Priority: MEDIUM — many DJI models put SRT in the container, not as a sidecar**
 
 ### What to build
@@ -512,7 +512,7 @@ When no sidecar `.SRT` file is found (the common case for DJI files copied from 
 ### Detection
 
 ```bash
-ffprobe -v quiet -print_format json -show_streams dji_clip.mp4 | \
+ffprobe -v quiet -print_format json -show_streams dji_clip.mp4 |
   jq '.streams[] | select(.codec_type == "subtitle")'
 # DJI embedded subtitle codec is typically "srt" or "mov_text", sometimes "subrip"
 ```
@@ -523,7 +523,7 @@ If a subtitle stream exists and its first packet looks like DJI SRT content (che
 
 In `core/src/dji.rs`, add `read_embedded_subtitle(video_path: &Path) -> DjiTelemetry`:
 
-```rust
+```rus
 pub fn read_embedded_subtitle(video_path: &Path) -> DjiTelemetry {
     // Use ffmpeg to extract the subtitle stream to stdout:
     let output = std::process::Command::new("ffmpeg")
@@ -542,7 +542,7 @@ In `core/src/metadata.rs`, update the DJI call site: if no sidecar and the file 
 
 ---
 
-## Item 6: Sony Professional XML Sidecar  
+## Item 6: Sony Professional XML Sidecar
 **Priority: MEDIUM — Sony VENICE, FX9, FX6, FX3 libraries**
 
 ### What to build
@@ -585,7 +585,7 @@ cat /path/to/A001C001_220807.XML | xmllint --format - | head -50
 
 Create `core/src/sony_xml.rs`:
 
-```rust
+```rus
 pub struct SonyXmlMetadata {
     pub clip_name: Option<String>,
     pub scene: Option<String>,
@@ -603,7 +603,7 @@ pub fn read_sidecar(video_path: &Path) -> SonyXmlMetadata {
 
 ### DB / Proto
 
-```rust
+```rus
 ("metadata.production_scene",  "ALTER TABLE metadata ADD COLUMN production_scene TEXT"),
 ("metadata.production_take",   "ALTER TABLE metadata ADD COLUMN production_take TEXT"),
 ("metadata.nd_filter",         "ALTER TABLE metadata ADD COLUMN nd_filter TEXT"),
@@ -614,7 +614,7 @@ Add to `VideoMetadata` proto. These are detail-only (not summary-level) for v1.
 
 ---
 
-## Item 7: Extended 360° / Spatial Audio Parameters  
+## Item 7: Extended 360° / Spatial Audio Parameters
 **Priority: MEDIUM — 360° cameras (Insta360, Ricoh Theta, GoPro MAX) are common**
 
 ### What to build
@@ -634,11 +634,11 @@ From the ffprobe spherical video XMP (`streams[video].side_data_list`) and audio
 # https://community.gopro.com/s/article/GoPro-MAX-Sample-Files
 
 # Inspect spherical metadata:
-ffprobe -v quiet -print_format json -show_streams 360video.mp4 | \
+ffprobe -v quiet -print_format json -show_streams 360video.mp4 |
   jq '.streams[0].side_data_list[] | select(.side_data_type | contains("spherical"))'
 
 # Inspect ambisonics audio tags:
-ffprobe -v quiet -print_format json -show_streams 360video.mp4 | \
+ffprobe -v quiet -print_format json -show_streams 360video.mp4 |
   jq '.streams[] | select(.codec_type == "audio") | .tags'
 ```
 
@@ -694,7 +694,7 @@ The Rust test suite must remain at 157 passing (or higher) after your changes.
 
 ```bash
 # Run tests:
-cd core && cargo test
+cd core && cargo tes
 
 # Run a specific module's tests:
 cd core && cargo test gpmf
@@ -729,4 +729,4 @@ In priority order:
 6. `core/src/db.rs` lines 320–470 — migration list (where to add columns)
 7. `core/proto/reelvault.proto` — proto fields (add new fields here)
 8. `shared/src/main/kotlin/com/reelvault/data/models/Video.kt` — Kotlin models
-9. `CLAUDE.md` — project-wide coding rules, 4-client parity requirement
+9. `CLAUDE.md` — project-wide coding rules, 4-client parity requiremen
