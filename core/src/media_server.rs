@@ -131,7 +131,8 @@ pub async fn serve(
     Ok(())
 }
 
-fn router(state: MediaState) -> Router {
+/// The media router (public so integration tests can drive it with `oneshot`).
+pub fn router(state: MediaState) -> Router {
     Router::new()
         .route("/healthz", get(|| async { "ok" }))
         .route("/fingerprint", get(fingerprint))
