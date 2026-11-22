@@ -48,3 +48,134 @@ pub fn check(db: &Database, authorization: Option<&str>) -> AuthResult {
 pub fn is_authorized(db: &Database, authorization: Option<&str>) -> bool {
     check(db, authorization) == AuthResult::Authorized
 }
+
+// ── Admin-RPC gate for the LAN surface ──────────────────────────────────────
+
+/// gRPC methods that reconfigure the daemon's catalog or library roots. A
+/// paired LAN device may read and mark/tag, but these are refused on the LAN
+/// listener unless `--remote-admin` is set (loopback is never gated).
+///
+/// `UpdateConfig` is deliberately NOT listed: the iOS remote client's settings
+/// screen uses it for per-user preferences (auto-tag, proxy quality).
+pub const LAN_ADMIN_METHODS: &[&str] = &[
+    "OpenCatalog",
+    "CloseCatalog",
+    "AddLibraryLocation",
+    "RemoveLibraryLocation",
+];
+
+/// True iff the gRPC request path (`/pkg.Service/Method`) names an admin RPC.
+pub fn is_admin_rpc_path(path: &str) -> bool {
+    path.rsplit('/').next().map(|m| LAN_ADMIN_METHODS.contains(&m)).unwrap_or(false)
+}
+
+/// Tower layer that answers admin RPCs with PERMISSION_DENIED before they
+/// reach the wrapped service.
+#[derive(Clone, Copy)]
+pub struct AdminGateLayer {
+    pub allow_admin: bool,
+}
+
+impl<S> tower::Layer<S> for AdminGateLayer {
+    type Service = AdminGate<S>;
+    fn layer(&self, inner: S) -> AdminGate<S> {
+        AdminGate { inner, allow_admin: self.allow_admin }
+    }
+}
+
+#[derive(Clone)]
+pub struct AdminGate<S> {
+    inner: S,
+    allow_admin: bool,
+}
+
+impl<S, B> tower::Service<tonic::codegen::http::Request<B>> for AdminGate<S>
+where
+    S: tower::Service<
+            tonic::codegen::http::Request<B>,
+            Response = tonic::codegen::http::Response<tonic::body::BoxBody>,
+        > + Clone
+        + Send
+        + 'static,
+    S::Future: Send + 'static,
+    S::Error: Send + 'static,
+    B: Send + 'static,
+{
+    type Response = tonic::codegen::http::Response<tonic::body::BoxBody>;
+    type Error = S::Error;
+    type Future = std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>> + Send>,
+    >;
+
+    fn poll_ready(
+        &mut self,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), Self::Error>> {
+        self.inner.poll_ready(cx)
+    }
+
+    fn call(&mut self, req: tonic::codegen::http::Request<B>) -> Self::Future {
+        if !self.allow_admin && is_admin_rpc_path(req.uri().path()) {
+            let resp = tonic::Status::permission_denied(
+                "catalog administration is not available to remote devices",
+            )
+            .to_http();
+            return Box::pin(std::future::ready(Ok(resp)));
+        }
+        // Swap so the instance that was poll_ready'd is the one that's called.
+        let clone = self.inner.clone();
+        let mut inner = std::mem::replace(&mut self.inner, clone);
+        Box::pin(inner.call(req))
+    }
+}
+
+#[cfg(test)]
+mod admin_gate_tests {
+    use super::*;
+    use tower::{Service, ServiceExt};
+
+    #[derive(Clone)]
+    struct Ok200;
+    impl Service<tonic::codegen::http::Request<()>> for Ok200 {
+        type Response = tonic::codegen::http::Response<tonic::body::BoxBody>;
+        type Error = std::convert::Infallible;
+        type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
+        fn poll_ready(
+            &mut self,
+            _: &mut std::task::Context<'_>,
+        ) -> std::task::Poll<Result<(), Self::Error>> {
+            std::task::Poll::Ready(Ok(()))
+        }
+        fn call(&mut self, _: tonic::codegen::http::Request<()>) -> Self::Future {
+            std::future::ready(Ok(tonic::codegen::http::Response::new(tonic::body::empty_body())))
+        }
+    }
+
+    async fn status_of(allow: bool, path: &str) -> Option<String> {
+        let mut svc = tower::Layer::layer(&AdminGateLayer { allow_admin: allow }, Ok200);
+        let req = tonic::codegen::http::Request::builder().uri(path).body(()).unwrap();
+        let resp = svc.ready().await.unwrap().call(req).await.unwrap();
+        resp.headers().get("grpc-status").map(|v| v.to_str().unwrap().to_string())
+    }
+
+    #[tokio::test]
+    async fn admin_rpcs_denied_on_lan() {
+        // 7 == PERMISSION_DENIED
+        for m in LAN_ADMIN_METHODS {
+            let got = status_of(false, &format!("/reelvault.ReelVault/{m}")).await;
+            assert_eq!(got.as_deref(), Some("7"), "{m}");
+        }
+    }
+
+    #[tokio::test]
+    async fn read_and_mark_rpcs_pass() {
+        for m in ["ListVideos", "GetMetadata", "TagVideos", "UpdateConfig"] {
+            assert_eq!(status_of(false, &format!("/reelvault.ReelVault/{m}")).await, None, "{m}");
+        }
+    }
+
+    #[tokio::test]
+    async fn remote_admin_flag_allows() {
+        assert_eq!(status_of(true, "/reelvault.ReelVault/OpenCatalog").await, None);
+    }
+}

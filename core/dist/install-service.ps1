@@ -71,10 +71,19 @@ function Install-Service {
     if ($Catalog)   { $svcArgs += " --db-path `"$Catalog`"" }
     if ($ImportDir) { $svcArgs += " --import-dir `"$ImportDir`"" }
     $binPath = "`"$InstallBin`" $svcArgs"
+    # Run as the per-service virtual account, not LocalSystem: the loopback
+    # gRPC port is unauthenticated, so the daemon must not hold SYSTEM rights.
+    $svcAccount = "NT SERVICE\$ServiceName"
     & sc.exe create $ServiceName `
         binPath= $binPath `
         start=   auto      `
+        obj=     $svcAccount `
         DisplayName= $DisplayName | Out-Null
+
+    # Give the service account ownership of its data and log directories.
+    foreach ($d in @($DataDir, $LogDir)) {
+        & icacls.exe $d /grant "${svcAccount}:(OI)(CI)F" | Out-Null
+    }
 
     & sc.exe description $ServiceName $Description | Out-Null
 
