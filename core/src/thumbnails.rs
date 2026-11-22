@@ -557,13 +557,18 @@ impl ThumbnailGenerator {
         if jobs.is_empty() {
             return Ok(());
         }
-        // A failed batch publishes nothing and records the backoff. There is
-        // deliberately no per-frame retry or salvage.
+        // A failed batch publishes only the frames that fully decoded and
+        // records the backoff (short when some were salvaged). There is no
+        // per-frame relaunch, so a new video costs one scrub launch.
         match backend().extract_frames(source, &color_info, &jobs, Self::SCRUB_WIDTH, 6) {
             Ok(()) => clear_failure(cache_dir, video_id, SCRUB_FAIL),
             Err(e) => {
                 tracing::warn!("Scrub frames for {} failed as a batch: {}", video_id, e);
-                if let Some(reason) = failure_reason(&e) {
+                // A partial batch (some frames salvaged) retries the missing
+                // ones after the short backoff, not the 24 h decode one.
+                let salvaged = jobs.iter().any(|(_, o)| o.exists());
+                let reason = if salvaged { Some(REASON_IO) } else { failure_reason(&e) };
+                if let Some(reason) = reason {
                     record_failure(cache_dir, video_id, SCRUB_FAIL, source, now, reason);
                 }
             }
@@ -876,8 +881,8 @@ pub(crate) fn batch_timeout(n: usize) -> std::time::Duration {
 /// Extract several frames in ONE ffmpeg launch: the file is opened once per
 /// `(seek, output)` job as a separate fast-seeked input and each is mapped to its
 /// own output with one frame. Outputs are written to temp names and renamed into
-/// place only if ffmpeg succeeded. If the batch fails nothing is published, the
-/// temp files are removed and the error is returned; there is no per-frame
+/// place if ffmpeg succeeded. If the batch fails, only outputs that decode
+/// completely are published, the rest are removed and the error is returned; there is no per-frame
 /// fallback (the deadline scales with the job count, see `batch_timeout`), so a new video costs one scrub launch, failure included.
 pub(crate) fn ffmpeg_extract_frames(
     video_path: &Path,
@@ -938,8 +943,16 @@ pub(crate) fn ffmpeg_extract_frames(
         }
     }
     if result.is_err() {
-        for tmp in &tmps {
-            let _ = std::fs::remove_file(tmp);
+        // Salvage: ffmpeg writes frames one after another, so a failure on one
+        // seek point (or a timeout) can leave the others complete. Publish
+        // every temp output that fully decodes as a JPEG and drop the rest, so
+        // one bad frame near a damaged tail does not cost the other nine.
+        for (tmp, (_, out)) in tmps.iter().zip(jobs) {
+            if tmp.exists() && image::open(tmp).is_ok() {
+                let _ = std::fs::rename(tmp, out);
+            } else {
+                let _ = std::fs::remove_file(tmp);
+            }
         }
     }
     result

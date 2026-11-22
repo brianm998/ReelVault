@@ -2529,6 +2529,9 @@ impl ReelVaultTrait for ReelVaultService {
             }
 
             svc.db.delete_video(&req.video_id).map_err(Status::from)?;
+            // Soft delete keeps the row (undelete is possible) but not its
+            // cache files; thumbnails regenerate lazily if it comes back.
+            let _ = ThumbnailGenerator::cleanup_thumbnails(&svc.config.thumbnail_cache_path, &req.video_id);
 
             Ok(Response::new(reelvault::Response {
                 success: true,

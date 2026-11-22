@@ -4,9 +4,10 @@
   resized from it with the `image` crate (all platforms), so no double JPEG encode of large and no resize launches.
 - Scrub frames: one ffmpeg launch with N fast-seeked inputs and N outputs; the normal path is 2 launches per new
   video (1 frame + 1 scrub), counting every launch: availability is checked by resolving ffmpeg on PATH, never by
-  launching `ffmpeg -version`. The batch is all-or-nothing: if it fails nothing is
-  published (no scrub frames), temp files are removed and the failure backoff is recorded. The budget is at most 2
-  launches per new video, failure included; there is no per-frame salvage or retry.
+  launching `ffmpeg -version`. If the batch fails, outputs that fully decode as
+  JPEGs are still published (one bad seek point does not cost the other frames), the rest are removed, and the
+  failure backoff is recorded (10 min when some frames were salvaged, else by cause). The budget is at most 2
+  launches per new video, failure included; there is no per-frame relaunch.
   The backend trait gets `extract_frames` (default loops `extract_frame`).
 - All cache writes go to a unique `{id}_..tmpPID-N.jpg` sibling and are renamed into place.
 - Cleanup: `remove_library_location` (hard delete) deletes the video's files; `sweep_orphans` runs once at
@@ -50,3 +51,12 @@
   requested frame): 24 h. The marker stores the reason; an unknown reason counts as expired. There is no per-frame
   salvage or retry of a failed scrub batch. Indexing probes color once and passes it to stills and scrub.
 - Risk (owner-accepted): one bad seek point drops all 10 scrub frames for that video until the backoff expires.
+
+## Review notes (round 7)
+- Cleanup: removed library locations, photo prunes and the user `DeleteVideo` RPC (soft delete) all remove the
+  video's cache files; they regenerate lazily if the row is undeleted. The orphan sweep covers the rest.
+- The sweep runs once per service start and per catalog open, not periodically (accepted: orphans made in a long
+  session wait for the next start).
+- Migration cost: small/medium are re-encoded by the `image` crate at its default JPEG quality (not `-q:v 5`),
+  and every pre-existing cache has no version marker, so each old video's stills are re-extracted lazily on first
+  request or re-index (one ffprobe + one ffmpeg each). On a large NAS library, browsing alone spreads that cost.
