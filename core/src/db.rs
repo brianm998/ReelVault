@@ -20,6 +20,18 @@ use uuid::Uuid;
 /// turns those into `FailedPrecondition` for the client.
 pub struct Database {
     pool: RwLock<Option<Arc<ConnPool>>>,
+    /// In-memory copy of paired-device token hashes so the per-request auth
+    /// check never touches SQLite. Loaded lazily from the open catalog and
+    /// reset whenever the catalog changes.
+    paired: Mutex<PairedCache>,
+}
+
+/// Cached paired-token hashes plus the ones seen since the last `last_seen` flush.
+#[derive(Default)]
+struct PairedCache {
+    loaded: bool,
+    hashes: HashSet<String>,
+    seen: HashSet<String>,
 }
 
 /// Most idle connections kept around per catalog. Excess connections returned
@@ -361,6 +373,7 @@ impl Database {
     pub fn new(path: &Path) -> Result<Self> {
         Ok(Database {
             pool: RwLock::new(Some(Arc::new(ConnPool::new(path.to_path_buf())))),
+            paired: Mutex::new(PairedCache::default()),
         })
     }
 
@@ -369,6 +382,7 @@ impl Database {
     pub fn new_empty() -> Self {
         Database {
             pool: RwLock::new(None),
+            paired: Mutex::new(PairedCache::default()),
         }
     }
 
@@ -393,6 +407,7 @@ impl Database {
             ReelVaultError::DatabaseError("Database pool lock poisoned".to_string())
         })?;
         *guard = Some(Arc::new(ConnPool::new(new_path.to_path_buf())));
+        self.reset_paired_cache();
         tracing::info!("Catalog opened: {}", new_path.display());
         Ok(())
     }
@@ -405,6 +420,7 @@ impl Database {
                 tracing::info!("Catalog closed: {}", p.path.display());
             }
         }
+        self.reset_paired_cache();
     }
 
     /// The path currently backing this database, if any.
@@ -782,20 +798,77 @@ impl Database {
             params![token_hash, device_name, now],
         )
         .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        if let Ok(mut c) = self.paired.lock() {
+            if c.loaded {
+                c.hashes.insert(token_hash.to_string());
+            }
+        }
         Ok(())
     }
 
-    /// True iff `token_hash` belongs to a paired device; bumps `last_seen`.
+    fn reset_paired_cache(&self) {
+        if let Ok(mut c) = self.paired.lock() {
+            *c = PairedCache::default();
+        }
+    }
+
+    /// True iff `token_hash` belongs to a paired device. Answered from memory
+    /// (loaded from SQLite with a read the first time, or after the catalog
+    /// changes) — no SQLite write on this path. `last_seen` is recorded in
+    /// memory and written by [`Database::flush_last_seen`]. Returns `Err` when
+    /// the database can't be read, so callers can answer UNAVAILABLE rather than
+    /// "not paired".
     pub fn is_paired_token(&self, token_hash: &str) -> Result<bool> {
+        let mut c = self
+            .paired
+            .lock()
+            .map_err(|_| ReelVaultError::DatabaseError("paired cache poisoned".to_string()))?;
+        if !c.loaded {
+            let conn = self.get_connection()?;
+            let mut stmt = conn
+                .prepare("SELECT token_hash FROM paired_devices")
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            let rows = stmt
+                .query_map([], |r| r.get::<_, String>(0))
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            let mut set = HashSet::new();
+            for r in rows {
+                set.insert(r.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?);
+            }
+            c.hashes = set;
+            c.loaded = true;
+        }
+        if c.hashes.contains(token_hash) {
+            c.seen.insert(token_hash.to_string());
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    /// Write the `last_seen` of every token used since the last flush. Meant to
+    /// run every few minutes off the request path.
+    pub fn flush_last_seen(&self) -> Result<usize> {
+        let seen: Vec<String> = {
+            let mut c = self
+                .paired
+                .lock()
+                .map_err(|_| ReelVaultError::DatabaseError("paired cache poisoned".to_string()))?;
+            c.seen.drain().collect()
+        };
+        if seen.is_empty() {
+            return Ok(0);
+        }
         let conn = self.get_connection()?;
         let now = chrono::Utc::now().timestamp();
-        let updated = conn
-            .execute(
+        for h in &seen {
+            conn.execute(
                 "UPDATE paired_devices SET last_seen = ?2 WHERE token_hash = ?1",
-                params![token_hash, now],
+                params![h, now],
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
-        Ok(updated > 0)
+        }
+        Ok(seen.len())
     }
 
     /// List paired devices as `(device_name, paired_at, last_seen)`.
@@ -819,6 +892,10 @@ impl Database {
                 params![token_hash],
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        if let Ok(mut c) = self.paired.lock() {
+            c.hashes.remove(token_hash);
+            c.seen.remove(token_hash);
+        }
         Ok(n > 0)
     }
 
