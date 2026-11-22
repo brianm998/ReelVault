@@ -88,7 +88,7 @@ command = "cd core && cargo test 2>&1"
 parser = "regex"
 pass_regex = '^test (.+) \.\.\. ok$'
 fail_regex = '^test (.+) \.\.\. FAILED$'
-min_tests = 175 # measured 178 on 2026-11-14
+min_tests = 250 # 178 unit + 1 new unit + 71 new in core/tests (T1, #914), 2026-11-22
 level = "t1"
 uses = { compile = 1 }
 
