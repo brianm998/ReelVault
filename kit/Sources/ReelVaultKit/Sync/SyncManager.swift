@@ -60,6 +60,10 @@ public final class SyncManager: ObservableObject {
 
     public func startSync(profile: SyncProfile) async {
         guard !isRunning else { return }
+        guard CatalogSyncFeature.isEnabled else {
+            lastResult = SyncRunResult(errors: [SyncError.notAvailable.localizedDescription])
+            return
+        }
         isRunning = true
         defer { isRunning = false }
         jobs = []
@@ -178,6 +182,10 @@ public final class SyncManager: ObservableObject {
     }
 
     private func pushEntry(entry: Reelvault_SyncManifestEntry, profile: SyncProfile) async throws {
+        // The upload is not implemented: never report success for a transfer that
+        // did not happen. (Real fix: audit item O2.)
+        throw SyncError.notAvailable
+        #if false
         var job = SyncJob(videoId: entry.videoID, filename: entry.filename, direction: .toRemote)
         jobs.append(job)
 
@@ -200,6 +208,7 @@ public final class SyncManager: ObservableObject {
             jobs[idx].progress = 1.0
         }
         _ = job  // suppress unused warning until fully wired
+        #endif
     }
 
     // MARK: - Pull (remote -> local)
@@ -288,6 +297,11 @@ public final class SyncManager: ObservableObject {
     }
 
     private func pullEntry(entry: Reelvault_SyncManifestEntry, profile: SyncProfile) async throws {
+        // /media/<id>/original does not exist on the server and the download used
+        // an unpinned session; ingest and catalog apply are TODO. Never report
+        // success. (Real fix: audit item O2.)
+        throw SyncError.notAvailable
+        #if false
         var job = SyncJob(videoId: entry.videoID, filename: entry.filename, direction: .fromRemote)
         jobs.append(job)
 
@@ -329,6 +343,7 @@ public final class SyncManager: ObservableObject {
             jobs[idx].progress = 1.0
         }
         _ = job  // suppress unused warning until fully wired
+        #endif
     }
 
     // MARK: - Smart-collection tag-UUID rewrite
@@ -494,6 +509,7 @@ public enum SyncError: LocalizedError {
     case invalidURL(String)
     case insufficientStorage(needed: Int64)
     case prepareFailed(String)
+    case notAvailable
 
     public var errorDescription: String? {
         switch self {
@@ -501,6 +517,8 @@ public enum SyncError: LocalizedError {
             return "Invalid URL: \(url)"
         case .insufficientStorage(let needed):
             return "Insufficient storage: need \(needed / 1_000_000) MB"
+        case .notAvailable:
+            return "Catalog sync is not available yet"
         case .prepareFailed(let detail):
             return "PrepareRendition failed: \(detail)"
         }

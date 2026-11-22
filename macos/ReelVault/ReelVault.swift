@@ -87,6 +87,7 @@ struct ReelVaultApp: App {
                     appState.requestPairDevice()
                 }
 
+                if CatalogSyncFeature.isEnabled {
                 Divider()
 
                 // Catalog sync: enabled when a local daemon is connected.
@@ -100,6 +101,7 @@ struct ReelVaultApp: App {
                     .help(appState.isLocalCatalog
                         ? "Sync from a paired remote device to local catalog"
                         : "Desktop sync requires a local catalog (coming soon)")
+                }
             }
 
             // Replace the default Help menu so we can launch our own panel.
