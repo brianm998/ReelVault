@@ -119,6 +119,8 @@ struct Args {
     /// launcher holds a pipe it never writes) or the parent pid changing.
     /// Lets a desktop app that crashed or was force-killed take its daemon
     /// with it instead of leaving a stale one holding the catalog and port.
+    /// Callers must give the daemon a live stdin pipe: /dev/null or a closed
+    /// stdin reads EOF at once and the daemon exits immediately.
     #[arg(long, default_value_t = false)]
     exit_with_parent: bool,
 }
@@ -133,6 +135,9 @@ fn spawn_parent_watchdog() {
         let mut stdin = std::io::stdin();
         loop {
             match stdin.read(&mut buf) {
+                // Rust's Stdin::read does not retry on EINTR; a signal landing
+                // on this thread must not be mistaken for the parent going away.
+                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
                 Ok(0) | Err(_) => {
                     eprintln!("stdin closed; parent gone, exiting");
                     std::process::exit(0);
