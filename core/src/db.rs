@@ -4987,7 +4987,7 @@ mod tests {
             .collect();
         assert_eq!(
             left,
-            vec!["/lib/Project_0070/e.mov", "/lib/ProjectX007/b.mov", "/lib/project_007/c.mov"]
+            vec!["/lib/ProjectX007/b.mov", "/lib/Project_0070/e.mov", "/lib/project_007/c.mov"]
         );
         let locs: i64 = conn
             .query_row("SELECT COUNT(*) FROM library_locations WHERE path = '/lib/Project_007'", [], |r| r.get(0))
