@@ -365,15 +365,14 @@ impl IndexingEngine {
 
         // Check if already indexed — if so, reuse the existing location row and
         // just refresh metadata. We now key on video_locations, not videos.path.
+        let mut restore_after_ingest: Option<String> = None;
         let video_id = if let Some(loc) = db.get_location_by_path(video_path.to_str().unwrap_or(""))? {
             // Already a known location — sync file size on both the location and
             // the master videos row. A tombstoned video that is re-ingested
             // (e.g. restored from Recently Deleted) comes back to life.
             // Only Photos assets are restored; a file-path video deleted from
             // the catalog must stay deleted across rescans.
-            if video_path.to_str().unwrap_or("").starts_with("photos://") {
-                db.undelete_video(&loc.video_id)?;
-            }
+            restore_after_ingest = Some(loc.video_id.clone());
             if let Some(sz) = file_size {
                 db.update_location_size(&loc.id, sz)?;
                 db.update_video_file_size(&loc.video_id, sz)?;
@@ -466,6 +465,11 @@ impl IndexingEngine {
             }
         }
 
+        // Ingest succeeded: only now bring a tombstoned Photos asset back.
+        if let Some(id) = restore_after_ingest {
+            restore_if_photos(db, &id, video_path.to_str().unwrap_or(""))?;
+        }
+
         Ok(video_id)
     }
 
@@ -488,9 +492,11 @@ impl IndexingEngine {
     ) -> Result<String> {
         let probe_output = backend().probe(source)?;
 
+        let mut restore_after_ingest: Option<String> = None;
         let video_id = if let Ok(Some(existing)) = db.get_video_by_path(display_path) {
-            // A Photos asset restored from Recently Deleted comes back to life.
-            db.undelete_video(&existing.id)?;
+            // A Photos asset restored from Recently Deleted comes back to
+            // life, but only once the ingest below has succeeded.
+            restore_after_ingest = Some(existing.id.clone());
             existing.id
         } else {
             db.add_video(display_path, filename, None, None, None)?
@@ -524,6 +530,10 @@ impl IndexingEngine {
             ) {
                 tracing::warn!("index_media_source: scrub frames failed for {video_id}: {e}");
             }
+        }
+
+        if let Some(id) = restore_after_ingest {
+            restore_if_photos(db, &id, display_path)?;
         }
 
         Ok(video_id)
@@ -626,6 +636,16 @@ impl IndexingEngine {
     }
 }
 
+/// Re-ingesting a tombstoned row revives it only for `photos://` assets
+/// (restored from Recently Deleted). A file-path or bookmark video deleted
+/// from the catalog must stay deleted across rescans.
+fn restore_if_photos(db: &Database, video_id: &str, display_path: &str) -> Result<()> {
+    if display_path.starts_with("photos://") {
+        db.undelete_video(video_id)?;
+    }
+    Ok(())
+}
+
 #[derive(Debug, Clone)]
 pub struct ScanProgress {
     pub status: String,
@@ -721,6 +741,33 @@ mod tests {
         let again = IndexingEngine::index_video(&db, &clip, &cache, None).unwrap();
         assert_eq!(id, again);
         assert!(db.is_video_deleted(&id), "rescan must not resurrect it");
+        assert_eq!(visible(&db), 0);
+    }
+
+    #[test]
+    fn non_photos_media_sources_stay_deleted_after_index_media_source() {
+        let tmp = tempfile::tempdir().unwrap();
+        let Some(clip) = make_clip(tmp.path()) else {
+            panic!("ffmpeg is required for this test but was not found");
+        };
+        let db = Database::new_empty();
+        db.set_path(&tmp.path().join("t.db")).unwrap();
+        let cache = tmp.path().join("cache");
+        std::fs::create_dir_all(&cache).unwrap();
+        let src = MediaSource::Path(clip);
+        for (path, kind) in [("/lib/a.mp4", "path"), ("bookmark://b", "bookmark")] {
+            let id = IndexingEngine::index_media_source(
+                &db, &src, path, "a.mp4", kind, "x", &cache,
+            )
+            .unwrap();
+            db.delete_video(&id).unwrap();
+            let again = IndexingEngine::index_media_source(
+                &db, &src, path, "a.mp4", kind, "x", &cache,
+            )
+            .unwrap();
+            assert_eq!(id, again);
+            assert!(db.is_video_deleted(&id), "{kind} must stay deleted");
+        }
         assert_eq!(visible(&db), 0);
     }
 }
