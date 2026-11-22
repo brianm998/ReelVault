@@ -41,8 +41,7 @@ CREATE INDEX IF NOT EXISTS idx_videos_group_id ON videos(group_id);
 CREATE INDEX IF NOT EXISTS idx_video_groups_base_name ON video_groups(base_name);
 
 CREATE INDEX IF NOT EXISTS idx_videos_filename ON videos(filename);
-CREATE INDEX IF NOT EXISTS idx_videos_path ON videos(path);
-CREATE INDEX IF NOT EXISTS idx_videos_hash ON videos(hash);
+-- (videos.path / videos.hash are UNIQUE: their autoindexes serve lookups)
 CREATE INDEX IF NOT EXISTS idx_videos_indexed_at ON videos(indexed_at);
 
 -- Video metadata (technical details from FFprobe + photo-EXIF from embedded XMP)

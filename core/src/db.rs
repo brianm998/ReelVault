@@ -24,7 +24,21 @@ pub struct Database {
     /// check never touches SQLite. Loaded lazily from the open catalog and
     /// reset whenever the catalog changes.
     paired: Mutex<PairedCache>,
+    /// Memoised grid `total_count`s, see [`Database::list_videos_grouped`].
+    counts: Mutex<CountCache>,
 }
+
+/// Grid totals keyed by the filter spec, valid while the catalog files'
+/// fingerprint (see [`Database::catalog_fingerprint`]) is unchanged.
+#[derive(Default)]
+struct CountCache {
+    fingerprint: Option<CatalogFingerprint>,
+    totals: std::collections::HashMap<String, i64>,
+    /// COUNT queries actually executed (tests assert later pages skip it).
+    queries_run: u64,
+}
+
+type CatalogFingerprint = (PathBuf, Vec<Option<(u64, std::time::SystemTime)>>);
 
 /// Cached paired-token hashes plus the ones seen since the last `last_seen` flush.
 #[derive(Default)]
@@ -85,6 +99,11 @@ fn open_configured(path: &Path) -> Result<Connection> {
     let _ = conn.pragma_update(None, "journal_mode", "WAL");
     let _ = conn.pragma_update(None, "synchronous", "NORMAL");
     let _ = conn.pragma_update(None, "foreign_keys", "ON");
+    // Page cache: negative = KiB. 64 MB holds a 100k-video catalog's hot
+    // pages (the default 2,000 pages is ~8 MB); mmap serves the rest without
+    // copying through the pager.
+    let _ = conn.pragma_update(None, "cache_size", -65536);
+    let _ = conn.pragma_update(None, "mmap_size", 268_435_456i64);
     Ok(conn)
 }
 
@@ -134,7 +153,7 @@ impl Drop for PooledConnection {
 /// Soft-deleted rows (`deleted_at` set) are never representatives, and a deleted
 /// preferred member (or MIN id) is skipped: the representative is chosen among
 /// live members only, so deleting a stack's top card promotes the next member.
-pub(crate) const REPRESENTATIVE_FILTER: &str = "v.proxy_of IS NULL \
+pub const REPRESENTATIVE_FILTER: &str = "v.proxy_of IS NULL \
      AND v.deleted_at IS NULL \
      AND (v.group_id IS NULL \
      OR v.id = (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) \
@@ -144,6 +163,32 @@ pub(crate) const REPRESENTATIVE_FILTER: &str = "v.proxy_of IS NULL \
                        AND vp.deleted_at IS NULL) \
         AND v.id = (SELECT MIN(v2.id) FROM videos v2 \
                     WHERE v2.group_id = v.group_id AND v2.deleted_at IS NULL)))";
+
+/// True when `sql` references table alias `alias` (as `alias.`), ignoring
+/// matches that are the tail of a longer identifier (`um.` is not `m.`). A
+/// false positive only keeps a join that wasn't needed, never drops one.
+fn references_alias(sql: &str, alias: &str) -> bool {
+    let pat = format!("{alias}.");
+    let b = sql.as_bytes();
+    sql.match_indices(&pat).any(|(i, _)| {
+        i == 0 || !(b[i - 1].is_ascii_alphanumeric() || b[i - 1] == b'_' || b[i - 1] == b'.')
+    })
+}
+
+/// The LEFT JOINs (`metadata m`, `video_user_marks um`) a query needs,
+/// judged from its WHERE / ORDER BY / select text. Both are 1:1 on video_id,
+/// so omitting an unreferenced one changes no rows, but SQLite doesn't prune
+/// them itself and each costs ~25% of a 100k-row count.
+fn optional_joins(sql: &str) -> String {
+    let mut j = String::new();
+    if references_alias(sql, "m") {
+        j.push_str(" LEFT JOIN metadata m ON v.id = m.video_id");
+    }
+    if references_alias(sql, "um") {
+        j.push_str(" LEFT JOIN video_user_marks um ON v.id = um.video_id");
+    }
+    j
+}
 
 /// Separator joining a metadata column's multiple selected facet tokens into a
 /// single `MetadataFilter.value` over the wire. ASCII Unit Separator (0x1F),
@@ -163,7 +208,7 @@ pub(crate) const METADATA_NEGATE_PREFIX: char = '\u{1e}';
 /// [`Database::distinct_facet_values`], and
 /// [`Database::metadata_keys_with_data`] so the WHERE clause is assembled in
 /// exactly one place ([`Database::build_filter_clauses`]).
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct FilterSpec {
     /// Directory prefix (recursive). Empty = all locations. Tilde-expanded.
     pub location_filter: String,
@@ -205,7 +250,7 @@ pub struct FilterSpec {
 /// turns that into a plain in-query membership test, which keeps pagination
 /// and counts correct without storing a derived column that could go stale
 /// when camera mappings or the sensor cache change.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FullResolutionFilter {
     /// `true` keeps only videos whose `(camera, w, h)` is in `full_tuples`;
     /// `false` keeps only those that are NOT (which includes UNSPECIFIED).
@@ -375,7 +420,7 @@ pub struct SyncRunItem {
 
 /// Current schema version stored in `PRAGMA user_version`. 1 = baseline
 /// schema + column/index/trigger migrations; 2 = one-time backfills.
-const SCHEMA_VERSION: i64 = 2;
+const SCHEMA_VERSION: i64 = 3;
 
 impl Database {
     /// Build a `Database` that already points at `path`. Callers should still
@@ -385,6 +430,7 @@ impl Database {
         Ok(Database {
             pool: RwLock::new(Some(Arc::new(ConnPool::new(path.to_path_buf())))),
             paired: Mutex::new(PairedCache::default()),
+            counts: Mutex::new(CountCache::default()),
         })
     }
 
@@ -394,6 +440,7 @@ impl Database {
         Database {
             pool: RwLock::new(None),
             paired: Mutex::new(PairedCache::default()),
+            counts: Mutex::new(CountCache::default()),
         }
     }
 
@@ -835,6 +882,19 @@ impl Database {
             for (label, sql) in backfills {
                 tx.execute(sql, []).map_err(|e| fail(label, e))?;
             }
+        }
+        if current < 3 {
+            // `path` and `hash` are UNIQUE, so SQLite already keeps an
+            // autoindex for each; the explicit indexes were pure write cost.
+            // `idx_videos_rep` covers every column of REPRESENTATIVE_FILTER's
+            // outer test so the grid / facet counts scan a narrow index
+            // instead of the wide `videos` rows.
+            tx.execute_batch(
+                "DROP INDEX IF EXISTS idx_videos_path; DROP INDEX IF EXISTS idx_videos_hash;
+                 CREATE INDEX IF NOT EXISTS idx_videos_rep
+                   ON videos(proxy_of, deleted_at, group_id, id);",
+            )
+            .map_err(|e| fail("drop duplicate indexes", e))?;
         }
         tx.pragma_update(None, "user_version", SCHEMA_VERSION)
             .map_err(|e| fail("user_version", e))?;
@@ -2861,26 +2921,50 @@ impl Database {
         let (filter_sql, bind) = self.build_filter_clauses(spec);
         let rep = REPRESENTATIVE_FILTER;
 
-        // ---- COUNT(*) ----
-        let count_sql = format!(
-            "SELECT COUNT(*) FROM videos v
-             LEFT JOIN metadata m ON v.id = m.video_id
-             LEFT JOIN video_user_marks um ON v.id = um.video_id
-             WHERE ({rep}){filter_sql} AND v.deleted_at IS NULL"
-        );
-        let count_params: Vec<&dyn rusqlite::ToSql> =
-            bind.iter().map(|b| b.as_ref() as &dyn rusqlite::ToSql).collect();
-        let total: i64 = conn
-            .query_row(&count_sql, count_params.as_slice(), |row| row.get(0))
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        // ---- COUNT(*) ---- (memoised per filter spec until the catalog
+        // files change, so pages after the first don't re-run it)
+        let cache_key = format!("{spec:?}");
+        let fingerprint = self.catalog_fingerprint();
+        let cached = {
+            let mut cc = self.counts.lock().unwrap_or_else(|e| e.into_inner());
+            if cc.fingerprint != fingerprint {
+                cc.totals.clear();
+                cc.fingerprint = fingerprint.clone();
+            }
+            cc.totals.get(&cache_key).copied()
+        };
+        let total: i64 = match cached {
+            Some(t) => t,
+            None => {
+                let count_where = format!("({rep}){filter_sql} AND v.deleted_at IS NULL");
+                let count_sql = format!(
+                    "SELECT COUNT(*) FROM videos v{} WHERE {count_where}",
+                    optional_joins(&count_where)
+                );
+                let count_params: Vec<&dyn rusqlite::ToSql> =
+                    bind.iter().map(|b| b.as_ref() as &dyn rusqlite::ToSql).collect();
+                let t: i64 = conn
+                    .query_row(&count_sql, count_params.as_slice(), |row| row.get(0))
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                let mut cc = self.counts.lock().unwrap_or_else(|e| e.into_inner());
+                cc.queries_run += 1;
+                if cc.fingerprint == fingerprint {
+                    if cc.totals.len() >= 32 {
+                        cc.totals.clear();
+                    }
+                    cc.totals.insert(cache_key, t);
+                }
+                t
+            }
+        };
 
         // ---- SELECT page ----
+        let page_where = format!("({rep}){filter_sql} AND v.deleted_at IS NULL");
+        let joins = optional_joins(&format!("{page_where} {order_by}"));
         let sql = format!(
             "SELECT v.id, v.path, v.filename, v.volume_id, v.hash, v.file_size_bytes, v.indexed_at, v.is_online, v.is_derived
-             FROM videos v
-             LEFT JOIN metadata m ON v.id = m.video_id
-             LEFT JOIN video_user_marks um ON v.id = um.video_id
-             WHERE ({rep}){filter_sql} AND v.deleted_at IS NULL
+             FROM videos v{joins}
+             WHERE {page_where}
              ORDER BY {order_by}, v.id LIMIT ? OFFSET ?"
         );
 
@@ -2891,7 +2975,7 @@ impl Database {
             bind_with_limit.iter().map(|b| b.as_ref() as &dyn rusqlite::ToSql).collect();
 
         let mut stmt = conn
-            .prepare(&sql)
+            .prepare_cached(&sql)
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let videos = stmt
@@ -2913,6 +2997,32 @@ impl Database {
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok((videos, total))
+    }
+
+    /// Cheap change detector for the catalog: size + mtime of the main file
+    /// and its WAL (every commit appends to / rewrites one of them). `None`
+    /// when no catalog is open or it can't be stat'ed; `None` never matches a
+    /// stored fingerprint of a real catalog, and a stored `None` is only
+    /// ever replaced, so an unreadable catalog just recounts.
+    fn catalog_fingerprint(&self) -> Option<CatalogFingerprint> {
+        let path = self.current_path()?;
+        let stat = |p: &Path| {
+            std::fs::metadata(p)
+                .ok()
+                .and_then(|m| m.modified().ok().map(|t| (m.len(), t)))
+        };
+        let mut wal = path.as_os_str().to_owned();
+        wal.push("-wal");
+        let main = stat(&path);
+        main.as_ref()?;
+        let wal = stat(Path::new(&wal));
+        Some((path, vec![main, wal]))
+    }
+
+    /// Number of grid COUNT queries actually executed (cache misses).
+    #[cfg(test)]
+    fn count_queries_run(&self) -> u64 {
+        self.counts.lock().unwrap().queries_run
     }
 
     /// Build the AND-fragment (everything after `WHERE (<representative>)`)
@@ -3200,11 +3310,10 @@ impl Database {
 
         // Keyword is tag-backed: token = tag id, display = tag name.
         if key == "keyword" {
+            let joins = optional_joins(&format!("({rep}){filter_sql}"));
             let sql = format!(
                 "SELECT t.id, t.name, COUNT(DISTINCT v.id) AS c
-                 FROM videos v
-                 LEFT JOIN metadata m ON v.id = m.video_id
-                 LEFT JOIN video_user_marks um ON v.id = um.video_id
+                 FROM videos v{joins}
                  JOIN video_tags vt ON vt.video_id = v.id
                  JOIN tags t ON t.id = vt.tag_id
                  WHERE ({rep}){filter_sql}
@@ -3235,11 +3344,10 @@ impl Database {
             return Ok(Vec::new());
         };
         let order = mk.distinct_order();
+        let joins = optional_joins(&format!("{expr} ({rep}) AND {guard}{filter_sql}"));
         let sql = format!(
             "SELECT {expr} AS val, COUNT(*) AS c
-             FROM videos v
-             LEFT JOIN metadata m ON v.id = m.video_id
-             LEFT JOIN video_user_marks um ON v.id = um.video_id
+             FROM videos v{joins}
              WHERE ({rep}) AND {guard}{filter_sql}
              GROUP BY val
              ORDER BY val {order}"
@@ -5550,6 +5658,42 @@ mod tests {
         // A repeated id collapses to one distinct video — not enough.
         assert!(db.attach_proxies(&[a.clone(), a.clone()]).is_err());
         assert!(db.attach_proxies(std::slice::from_ref(&a)).is_err());
+    }
+
+    #[test]
+    fn optional_joins_only_when_referenced() {
+        assert_eq!(optional_joins("v.filename ASC"), "");
+        assert!(optional_joins("COALESCE(m.fps, 0)").contains("metadata m"));
+        let um = optional_joins("COALESCE(um.rating, 0)");
+        assert!(um.contains("video_user_marks um") && !um.contains("metadata m"));
+    }
+
+    #[test]
+    fn total_count_is_identical_on_every_page_and_counted_once() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        for i in 0..7 {
+            let n = format!("v{i}.mov");
+            seed_meta(&db, &format!("/l/{n}"), &n, Some("Sony A7"), None, None);
+        }
+        let spec = FilterSpec::default();
+        let base = db.count_queries_run();
+        let mut totals = Vec::new();
+        for offset in [0, 3, 6] {
+            let (_, t) = db.list_videos_grouped(3, offset, "name", true, &spec).unwrap();
+            totals.push(t);
+        }
+        assert_eq!(totals, vec![7, 7, 7]);
+        assert_eq!(db.count_queries_run() - base, 1, "later pages must reuse the count");
+
+        // A catalog write invalidates the cached total.
+        seed_meta(&db, "/l/extra.mov", "extra.mov", Some("Sony A7"), None, None);
+        let (_, t) = db.list_videos_grouped(3, 3, "name", true, &spec).unwrap();
+        assert_eq!(t, 8);
+
+        // Sorting by a joined column still works with the joins pruned elsewhere.
+        let (v, _) = db.list_videos_grouped(3, 0, "duration", true, &spec).unwrap();
+        assert_eq!(v.len(), 3);
     }
 
     #[test]
