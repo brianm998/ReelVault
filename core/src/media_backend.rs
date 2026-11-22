@@ -210,13 +210,10 @@ impl MediaBackend for CliMediaBackend {
         quality: u8,
     ) -> Result<()> {
         let path = src.require_path()?;
-        // Exactly one launch, no per-frame retry: the "at most 2 ffmpeg launches per
-        // video" bound must hold on failure too. Frames missing after a failed run
-        // are simply absent (scrub is best-effort) and regenerate on demand.
-        if let Err(e) = crate::thumbnails::ffmpeg_extract_frames(path, color, jobs, max_px, quality) {
-            tracing::warn!("batched scrub extraction failed: {}", e);
-        }
-        Ok(())
+        // Exactly one launch, all-or-nothing, no per-frame retry: the "at most 2
+        // ffmpeg launches per video" bound must hold on failure too. The caller
+        // records the failure so later requests back off.
+        crate::thumbnails::ffmpeg_extract_frames(path, color, jobs, max_px, quality)
     }
 
     fn transcode_proxy(

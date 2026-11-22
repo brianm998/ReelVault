@@ -31,8 +31,9 @@
   the next index, or on the next small/medium/large GetThumbnail (old bytes are served if regeneration fails).
   No startup job. Bump `STILL_VERSION` to force regeneration after future output changes. Markers are swept and
   cleaned up like jpgs.
-- Registry entries whose catalog file no longer exists (its directory does) are pruned on the next sweep; a missing
-  directory (unmounted drive) still skips the sweep.
+- Registry entries whose catalog file no longer exists (its directory does) are skipped in memory on each sweep (and
+  duplicates deduped); the sweep never rewrites `.catalogs`, so it cannot race `register_catalog`'s O_APPEND writes.
+  A missing directory (unmounted drive) still skips the sweep.
 - Known gap vs the task text: prune stays soft-delete, so it keeps thumbnails; only hard delete and the orphan sweep
   remove files.
 - The sweep logs one WARN naming the catalog when it is skipped because a registered catalog cannot be read.
@@ -43,3 +44,9 @@
   paths are stored as the scanner emitted them, and the UI passes back the stored string, so normal use is
   unaffected; a mismatched case removes nothing rather than too much).
 - "Large still" criterion means: source width, capped at 800 px, never upscaled.
+- Failure backoff: when a scrub batch fails (the CLI `extract_frames` returns the error; it is all-or-nothing) or a
+  still regeneration fails, `{id}_scrubfail_thumbv.ok` / `{id}_stillfail_thumbv.ok` records
+  `STILL_VERSION`, the time and the source's size+mtime. While it is younger than 24 h, for the same cache version
+  and an unchanged source, no ffmpeg is launched (stills serve the stale bytes, scrub serves nothing). Success clears
+  it; the `_at` variants take an injected clock for tests. Markers are swept/cleaned like other cache files.
+- No dependency or Cargo.lock change is part of this diff.

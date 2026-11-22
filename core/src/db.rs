@@ -2419,21 +2419,6 @@ impl Database {
         Ok(ids)
     }
 
-    /// Every video id in the catalog, soft-deleted rows included (their
-    /// thumbnails are kept until the row is hard-deleted).
-    pub fn all_video_ids(&self) -> Result<std::collections::HashSet<String>> {
-        let conn = self.get_connection()?;
-        let mut stmt = conn
-            .prepare("SELECT id FROM videos")
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
-        let ids = stmt
-            .query_map([], |r| r.get::<_, String>(0))
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
-            .collect::<std::result::Result<std::collections::HashSet<_>, _>>()
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
-        Ok(ids)
-    }
-
     pub fn remove_library_location(&self, path: &str) -> Result<usize> {
         let conn = self.get_connection()?;
 

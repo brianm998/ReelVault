@@ -14,6 +14,65 @@ use std::sync::OnceLock;
 /// a 400 px frame).
 const STILL_VERSION: &str = "2";
 
+/// How long a recorded generation failure suppresses retries.
+const FAILURE_BACKOFF_SECS: u64 = 24 * 60 * 60;
+const STILL_FAIL: &str = "stillfail";
+const SCRUB_FAIL: &str = "scrubfail";
+
+fn now_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+/// Failure marker `{id}_{kind}_thumbv.ok` (the suffix makes the orphan sweep and
+/// `cleanup_thumbnails` collect it like any other cache file). Content:
+/// `version \t unix-secs \t source signature`.
+fn failure_marker(cache_dir: &Path, video_id: &str, kind: &str) -> PathBuf {
+    cache_dir.join(format!("{}_{}_thumbv.ok", video_id, kind))
+}
+
+/// Size + mtime of a path source; empty for sources that have no file.
+fn source_signature(source: &MediaSource) -> String {
+    source
+        .as_path()
+        .and_then(|p| std::fs::metadata(p).ok())
+        .map(|m| {
+            let mt = m
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|d| d.as_nanos())
+                .unwrap_or(0);
+            format!("{}-{}", m.len(), mt)
+        })
+        .unwrap_or_default()
+}
+
+/// True while a failure for this video/kind is recorded for the current cache
+/// version, is younger than the backoff, and the source file is unchanged.
+fn failure_active(cache_dir: &Path, video_id: &str, kind: &str, source: &MediaSource, now: u64) -> bool {
+    let Ok(body) = std::fs::read_to_string(failure_marker(cache_dir, video_id, kind)) else {
+        return false;
+    };
+    let mut parts = body.splitn(3, '\t');
+    let (Some(ver), Some(ts), Some(sig)) = (parts.next(), parts.next(), parts.next()) else {
+        return false;
+    };
+    let Ok(ts) = ts.parse::<u64>() else { return false };
+    ver == STILL_VERSION && now < ts.saturating_add(FAILURE_BACKOFF_SECS) && sig == source_signature(source)
+}
+
+fn record_failure(cache_dir: &Path, video_id: &str, kind: &str, source: &MediaSource, now: u64) {
+    let body = format!("{}\t{}\t{}", STILL_VERSION, now, source_signature(source));
+    let _ = write_atomic(&failure_marker(cache_dir, video_id, kind), body.as_bytes());
+}
+
+fn clear_failure(cache_dir: &Path, video_id: &str, kind: &str) {
+    let _ = std::fs::remove_file(failure_marker(cache_dir, video_id, kind));
+}
+
 pub struct ThumbnailGenerator;
 
 impl ThumbnailGenerator {
@@ -42,6 +101,37 @@ impl ThumbnailGenerator {
     /// unused) so the service can regenerate a missing still on demand without a
     /// `Database` handle, mirroring the on-demand scrub-frame path.
     pub fn generate_default_sizes(
+        source: &MediaSource,
+        video_id: &str,
+        cache_dir: &Path,
+        duration_secs: f64,
+    ) -> Result<()> {
+        Self::generate_default_sizes_at(source, video_id, cache_dir, duration_secs, now_secs())
+    }
+
+    /// [`generate_default_sizes`](Self::generate_default_sizes) with an injected
+    /// clock (unix seconds) for the failure-backoff expiry.
+    pub fn generate_default_sizes_at(
+        source: &MediaSource,
+        video_id: &str,
+        cache_dir: &Path,
+        duration_secs: f64,
+        now: u64,
+    ) -> Result<()> {
+        if failure_active(cache_dir, video_id, STILL_FAIL, source, now) {
+            return Err(ReelVaultError::ThumbnailGenerationFailed(
+                "recent failure; backing off".to_string(),
+            ));
+        }
+        let r = Self::generate_default_sizes_inner(source, video_id, cache_dir, duration_secs);
+        match &r {
+            Ok(_) => clear_failure(cache_dir, video_id, STILL_FAIL),
+            Err(_) => record_failure(cache_dir, video_id, STILL_FAIL, source, now),
+        }
+        r
+    }
+
+    fn generate_default_sizes_inner(
         source: &MediaSource,
         video_id: &str,
         cache_dir: &Path,
@@ -240,22 +330,24 @@ impl ThumbnailGenerator {
         let since = std::fs::metadata(cache_dir.join(".catalogs_since"))
             .and_then(|m| m.modified())
             .ok()?;
-        let reg_path = cache_dir.join(".catalogs");
-        let reg = std::fs::read_to_string(&reg_path).ok()?;
+        let reg = std::fs::read_to_string(cache_dir.join(".catalogs")).ok()?;
         let mut ids = std::collections::HashSet::new();
-        let mut keep: Vec<&str> = Vec::new();
-        let mut pruned = false;
+        let mut seen = std::collections::HashSet::new();
         for line in reg.lines().filter(|l| !l.is_empty()) {
             // A catalog file that was moved or deleted (its directory is
-            // still there) can never be read again: unregister it so it
+            // still there) can never be read again: skip it so it
             // doesn't disable the sweep forever. A missing directory may just
             // be an unmounted drive, so that still blocks the sweep.
+            // The registry file itself is never rewritten here (a rewrite
+            // would race `register_catalog`'s appends); stale entries are just
+            // skipped in memory on every sweep.
             let p = Path::new(line);
-            if !p.exists() && p.parent().map(|d| d.is_dir()).unwrap_or(false) {
-                pruned = true;
+            if !seen.insert(line) {
                 continue;
             }
-            keep.push(line);
+            if !p.exists() && p.parent().map(|d| d.is_dir()).unwrap_or(false) {
+                continue;
+            }
             let conn = rusqlite::Connection::open_with_flags(
                 line,
                 rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
@@ -265,15 +357,6 @@ impl ThumbnailGenerator {
             let rows = stmt.query_map([], |r| r.get::<_, String>(0)).ok()?;
             for r in rows {
                 ids.insert(r.ok()?);
-            }
-        }
-        if pruned {
-            let tmp = cache_dir.join(format!(".catalogs.{}.tmp", std::process::id()));
-            let body: String = keep.iter().map(|l| format!("\n{l}\n")).collect();
-            if std::fs::write(&tmp, body).is_ok()
-                && std::fs::rename(&tmp, &reg_path).is_err()
-            {
-                let _ = std::fs::remove_file(&tmp);
             }
         }
         Some((ids, since))
@@ -291,6 +374,21 @@ impl ThumbnailGenerator {
         cache_dir: &Path,
         duration_secs: f64,
     ) -> Result<()> {
+        Self::generate_scrub_thumbnails_at(source, video_id, cache_dir, duration_secs, now_secs())
+    }
+
+    /// [`generate_scrub_thumbnails`](Self::generate_scrub_thumbnails) with an
+    /// injected clock (unix seconds) for the failure-backoff expiry.
+    pub fn generate_scrub_thumbnails_at(
+        source: &MediaSource,
+        video_id: &str,
+        cache_dir: &Path,
+        duration_secs: f64,
+        now: u64,
+    ) -> Result<()> {
+        if failure_active(cache_dir, video_id, SCRUB_FAIL, source, now) {
+            return Ok(());
+        }
         if !backend().is_available() {
             return Err(ReelVaultError::FfmpegError(
                 "media backend unavailable (ffmpeg not found in PATH?)".to_string(),
@@ -379,10 +477,12 @@ impl ThumbnailGenerator {
         if jobs.is_empty() {
             return Ok(());
         }
-        if let Err(e) =
-            backend().extract_frames(source, &color_info, &jobs, Self::SCRUB_WIDTH, 6)
-        {
-            tracing::warn!("Scrub frames for {} failed: {}", video_id, e);
+        match backend().extract_frames(source, &color_info, &jobs, Self::SCRUB_WIDTH, 6) {
+            Ok(()) => clear_failure(cache_dir, video_id, SCRUB_FAIL),
+            Err(e) => {
+                tracing::warn!("Scrub frames for {} failed: {}", video_id, e);
+                record_failure(cache_dir, video_id, SCRUB_FAIL, source, now);
+            }
         }
         Ok(())
     }
@@ -1113,6 +1213,77 @@ mod cache_tests {
         assert_eq!(std::fs::read_dir(&out_dir).unwrap().count(), 0, "no files or temps left");
     }
 
+    /// Installs a fake ffmpeg that logs every launch except `-version`, then
+    /// fails. Returns (tempdir, log path, cache dir, real source file).
+    #[cfg(unix)]
+    fn failing_ffmpeg_fixture() -> (tempfile::TempDir, PathBuf, PathBuf, PathBuf) {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let log = dir.path().join("calls.log");
+        let fake = dir.path().join("fake-ffmpeg");
+        std::fs::write(
+            &fake,
+            format!(
+                "#!/bin/sh\nif [ \"$1\" = \"-version\" ]; then exit 0; fi\necho call >> '{}'\necho boom >&2\nexit 1\n",
+                log.display()
+            ),
+        )
+        .unwrap();
+        std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let cache = dir.path().join("cache");
+        std::fs::create_dir(&cache).unwrap();
+        let src = dir.path().join("clip.mov");
+        std::fs::write(&src, b"not a video").unwrap();
+        crate::ffmpeg::TEST_FFMPEG.with(|c| *c.borrow_mut() = Some(fake));
+        (dir, log, cache, src)
+    }
+
+    #[cfg(unix)]
+    fn launches(log: &Path) -> usize {
+        std::fs::read_to_string(log).map(|s| s.lines().count()).unwrap_or(0)
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn failing_scrub_batch_backs_off_until_expiry_or_source_change() {
+        let (_d, log, cache, src) = failing_ffmpeg_fixture();
+        let source = MediaSource::path(&src);
+        let t0 = 1_000_000u64;
+        for i in 0..5 {
+            ThumbnailGenerator::generate_scrub_thumbnails_at(&source, "vid", &cache, 60.0, t0 + i).unwrap();
+        }
+        assert_eq!(launches(&log), 1, "repeated scrub requests launch ffmpeg once");
+        // Expiry retries.
+        ThumbnailGenerator::generate_scrub_thumbnails_at(&source, "vid", &cache, 60.0, t0 + FAILURE_BACKOFF_SECS + 1).unwrap();
+        assert_eq!(launches(&log), 2);
+        // A changed source retries immediately.
+        std::fs::write(&src, b"a different, longer file").unwrap();
+        ThumbnailGenerator::generate_scrub_thumbnails_at(&source, "vid", &cache, 60.0, t0 + FAILURE_BACKOFF_SECS + 2).unwrap();
+        assert_eq!(launches(&log), 3);
+        crate::ffmpeg::TEST_FFMPEG.with(|c| *c.borrow_mut() = None);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn failing_still_regeneration_backs_off_until_expiry_or_source_change() {
+        let (_d, log, cache, src) = failing_ffmpeg_fixture();
+        let source = MediaSource::path(&src);
+        let t0 = 2_000_000u64;
+        for i in 0..5 {
+            assert!(ThumbnailGenerator::generate_default_sizes_at(&source, "vid", &cache, 60.0, t0 + i).is_err());
+        }
+        assert_eq!(launches(&log), 1, "repeated still regenerations launch ffmpeg once");
+        let _ = ThumbnailGenerator::generate_default_sizes_at(&source, "vid", &cache, 60.0, t0 + FAILURE_BACKOFF_SECS + 1);
+        assert_eq!(launches(&log), 2);
+        std::fs::write(&src, b"a different, longer file").unwrap();
+        let _ = ThumbnailGenerator::generate_default_sizes_at(&source, "vid", &cache, 60.0, t0 + FAILURE_BACKOFF_SECS + 2);
+        assert_eq!(launches(&log), 3);
+        // Markers are collected with the video's other files.
+        ThumbnailGenerator::cleanup_thumbnails(&cache, "vid").unwrap();
+        assert_eq!(std::fs::read_dir(&cache).unwrap().count(), 0);
+        crate::ffmpeg::TEST_FFMPEG.with(|c| *c.borrow_mut() = None);
+    }
+
     #[test]
     fn publish_via_tmp_never_exposes_a_partial_file() {
         let dir = tempfile::tempdir().unwrap();
@@ -1288,12 +1459,14 @@ mod cache_tests {
         assert!(dir.path().join(format!("{other}_small.jpg")).exists());
         assert!(dir.path().join(format!("{legacy}_small.jpg")).exists());
         assert!(!dir.path().join(format!("{gone}_small.jpg")).exists());
-        // A deleted catalog file is unregistered; the sweep still works.
+        // A deleted catalog file is skipped; the sweep still works and the
+        // registry file is left untouched (never rewritten).
+        let reg_before = std::fs::read_to_string(dir.path().join(".catalogs")).unwrap();
         std::fs::remove_file(&paths[1]).unwrap();
         let (ids, _) = ThumbnailGenerator::shared_known_ids(dir.path()).unwrap();
         assert!(ids.contains(mine) && !ids.contains(other));
         let reg = std::fs::read_to_string(dir.path().join(".catalogs")).unwrap();
-        assert!(!reg.contains("b.db") && reg.contains("a.db"));
+        assert_eq!(reg, reg_before, "sweep must not rewrite .catalogs");
         // An unreadable (corrupt) registered catalog disables the sweep.
         std::fs::write(&paths[0], b"not a database at all, just garbage bytes").unwrap();
         assert!(ThumbnailGenerator::shared_known_ids(dir.path()).is_none());
