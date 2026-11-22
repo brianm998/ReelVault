@@ -19,6 +19,16 @@ HEADERS="$CORE_DIR/include"
 PROFILE="${PROFILE:-debug}"
 LIB=libreelvault_core.a
 
+# The repo pins its toolchain (rust-toolchain.toml). Make sure the iOS targets exist
+# for it; if they can't be installed (offline), fall back to `stable` when it has them.
+ios_targets="aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios"
+(cd "$CORE_DIR" && rustup target add $ios_targets >/dev/null 2>&1) || {
+  if rustup +stable target list --installed 2>/dev/null | grep -q '^aarch64-apple-ios$'; then
+    echo "warning: pinned toolchain lacks iOS targets; using stable" >&2
+    export RUSTUP_TOOLCHAIN=stable
+  fi
+}
+
 build_flag=""
 [ "$PROFILE" = "release" ] && build_flag="--release"
 

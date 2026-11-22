@@ -29,7 +29,7 @@ impl SearchEngine {
              FROM videos v
              LEFT JOIN video_tags vt ON v.id = vt.video_id
              LEFT JOIN video_notes vn ON v.id = vn.video_id
-             WHERE (v.filename LIKE ? OR vn.notes LIKE ?)
+             WHERE v.deleted_at IS NULL AND (v.filename LIKE ? OR vn.notes LIKE ?)
         "
         );
 
@@ -80,7 +80,7 @@ impl SearchEngine {
             "SELECT COUNT(DISTINCT v.id) FROM videos v
              LEFT JOIN video_tags vt ON v.id = vt.video_id
              LEFT JOIN video_notes vn ON v.id = vn.video_id
-             WHERE (v.filename LIKE ? OR vn.notes LIKE ?){}",
+             WHERE v.deleted_at IS NULL AND (v.filename LIKE ? OR vn.notes LIKE ?){}",
             if !filter_tags.is_empty() {
                 let mut tag_sql = String::from(" AND (");
                 for (i, _) in filter_tags.iter().enumerate() {
@@ -129,7 +129,7 @@ impl SearchEngine {
              FROM videos v
              LEFT JOIN metadata m ON v.id = m.video_id
              LEFT JOIN video_tags vt ON v.id = vt.video_id
-             WHERE 1=1"
+             WHERE v.deleted_at IS NULL"
         );
 
         let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
