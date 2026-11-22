@@ -240,9 +240,22 @@ impl ThumbnailGenerator {
         let since = std::fs::metadata(cache_dir.join(".catalogs_since"))
             .and_then(|m| m.modified())
             .ok()?;
-        let reg = std::fs::read_to_string(cache_dir.join(".catalogs")).ok()?;
+        let reg_path = cache_dir.join(".catalogs");
+        let reg = std::fs::read_to_string(&reg_path).ok()?;
         let mut ids = std::collections::HashSet::new();
+        let mut keep: Vec<&str> = Vec::new();
+        let mut pruned = false;
         for line in reg.lines().filter(|l| !l.is_empty()) {
+            // A catalog file that was moved or deleted (its directory is
+            // still there) can never be read again: unregister it so it
+            // doesn't disable the sweep forever. A missing directory may just
+            // be an unmounted drive, so that still blocks the sweep.
+            let p = Path::new(line);
+            if !p.exists() && p.parent().map(|d| d.is_dir()).unwrap_or(false) {
+                pruned = true;
+                continue;
+            }
+            keep.push(line);
             let conn = rusqlite::Connection::open_with_flags(
                 line,
                 rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
@@ -252,6 +265,15 @@ impl ThumbnailGenerator {
             let rows = stmt.query_map([], |r| r.get::<_, String>(0)).ok()?;
             for r in rows {
                 ids.insert(r.ok()?);
+            }
+        }
+        if pruned {
+            let tmp = cache_dir.join(format!(".catalogs.{}.tmp", std::process::id()));
+            let body: String = keep.iter().map(|l| format!("\n{l}\n")).collect();
+            if std::fs::write(&tmp, body).is_ok()
+                && std::fs::rename(&tmp, &reg_path).is_err()
+            {
+                let _ = std::fs::remove_file(&tmp);
             }
         }
         Some((ids, since))
@@ -1266,8 +1288,14 @@ mod cache_tests {
         assert!(dir.path().join(format!("{other}_small.jpg")).exists());
         assert!(dir.path().join(format!("{legacy}_small.jpg")).exists());
         assert!(!dir.path().join(format!("{gone}_small.jpg")).exists());
-        // An unreadable registered catalog disables the sweep.
+        // A deleted catalog file is unregistered; the sweep still works.
         std::fs::remove_file(&paths[1]).unwrap();
+        let (ids, _) = ThumbnailGenerator::shared_known_ids(dir.path()).unwrap();
+        assert!(ids.contains(mine) && !ids.contains(other));
+        let reg = std::fs::read_to_string(dir.path().join(".catalogs")).unwrap();
+        assert!(!reg.contains("b.db") && reg.contains("a.db"));
+        // An unreadable (corrupt) registered catalog disables the sweep.
+        std::fs::write(&paths[0], b"not a database at all, just garbage bytes").unwrap();
         assert!(ThumbnailGenerator::shared_known_ids(dir.path()).is_none());
     }
 }

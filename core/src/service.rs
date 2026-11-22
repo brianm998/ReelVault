@@ -1525,13 +1525,22 @@ impl ReelVaultTrait for ReelVaultService {
             let _gen_guard = lock.lock().await;
 
             // Double-check: another waiter may have generated it meanwhile.
-            thumbnail_data = read_cached_thumbnail(
-                self.config.thumbnail_cache_path.clone(),
-                req.video_id.clone(),
-                req.size.clone(),
-                0,
-            )
-            .await?;
+            // A stale still on disk counts as a miss unless it was refreshed
+            // meanwhile (stills_current), so regeneration actually runs.
+            if stale_fallback.is_none()
+                || ThumbnailGenerator::stills_current(
+                    &self.config.thumbnail_cache_path,
+                    &req.video_id,
+                )
+            {
+                thumbnail_data = read_cached_thumbnail(
+                    self.config.thumbnail_cache_path.clone(),
+                    req.video_id.clone(),
+                    req.size.clone(),
+                    0,
+                )
+                .await?;
+            }
 
             if thumbnail_data.is_none() {
                 if let Ok(Some(_video)) = self.db.get_video(&req.video_id) {

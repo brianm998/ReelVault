@@ -261,12 +261,6 @@ impl Config {
         }
     }
 
-    /// True when `dir` is the per-user default cache directory, which every
-    /// catalog without its own `thumbnail_cache_path` shares.
-    pub fn is_default_cache_path(dir: &std::path::Path) -> bool {
-        Self::default_cache_path().map(|d| d == dir).unwrap_or(true)
-    }
-
     fn default_cache_path() -> Result<PathBuf> {
         let cache_dir = if cfg!(target_os = "macos") {
             dirs::home_dir()

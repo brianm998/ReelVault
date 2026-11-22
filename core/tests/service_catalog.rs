@@ -301,3 +301,38 @@ async fn catalog_closed_returns_error_not_panic() {
     h.db.clear_path();
     assert!(h.svc.list_videos(Request::new(list_req(10, 0, "name", true))).await.is_err());
 }
+
+async fn fetch_still(h: &Harness, id: &str) -> Option<Vec<u8>> {
+    use tokio_stream::StreamExt;
+    let resp = h
+        .svc
+        .get_thumbnail(Request::new(GetThumbnailRequest {
+            video_id: id.to_string(),
+            size: "large".into(),
+            max_width: 0,
+        }))
+        .await
+        .ok()?;
+    let mut s = resp.into_inner();
+    let mut out = Vec::new();
+    while let Some(c) = s.next().await {
+        out.extend(c.ok()?.data);
+    }
+    Some(out)
+}
+
+#[tokio::test]
+async fn get_thumbnail_serves_stale_still_when_regeneration_is_impossible() {
+    let h = Harness::new().await;
+    let id = h.add_video("a.mov", 1);
+    let thumbs = h.dir.path().join("thumbs");
+    for s in ["small", "medium", "large"] {
+        std::fs::write(thumbs.join(format!("{id}_{s}.jpg")), b"old").unwrap();
+    }
+    // No version marker: made by the old pipeline. The fake backend can't
+    // regenerate (and the row has no duration), so the old bytes are the
+    // fallback instead of NOT_FOUND.
+    assert_eq!(fetch_still(&h, &id).await.as_deref(), Some(&b"old"[..]));
+    // Still stale afterwards (regeneration was attempted, not skipped).
+    assert!(!reelvault_core::thumbnails::ThumbnailGenerator::stills_current(&thumbs, &id));
+}

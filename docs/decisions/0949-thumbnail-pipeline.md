@@ -22,7 +22,6 @@
 - Every cache dir, custom or default, is swept via the `.catalogs` registry (appended with O_APPEND, no read-modify-write),
   because the open catalog may not be the one whose config chose the directory.
 - Library-root prefix matching uses `substr(path,1,length(?))=?` (exact, case-sensitive), not LIKE.
-- The Cargo.lock change drops an unreferenced `rusqlite_migration` entry (unrelated cleanup).
 - Large is "at most 800 px wide, never upscaled": narrower sources give a narrower large still.
 - Publishing uses `rename`, atomic on Linux/macOS; on Windows a rename over a file a reader has open can fail
   with a sharing violation, in which case generation fails for that attempt and is retried on the next request.
@@ -32,6 +31,10 @@
   the next index, or on the next small/medium/large GetThumbnail (old bytes are served if regeneration fails).
   No startup job. Bump `STILL_VERSION` to force regeneration after future output changes. Markers are swept and
   cleaned up like jpgs.
+- Registry entries whose catalog file no longer exists (its directory does) are pruned on the next sweep; a missing
+  directory (unmounted drive) still skips the sweep.
+- Known gap vs the task text: prune stays soft-delete, so it keeps thumbnails; only hard delete and the orphan sweep
+  remove files.
 - The sweep logs one WARN naming the catalog when it is skipped because a registered catalog cannot be read.
 - Known limits (owner-accepted): orphans older than the registry (`.catalogs_since`) are not swept; `prune_photos`
   stays soft-delete only and keeps thumbnails, so "cleanup on prune" is deliberately only "cleanup on hard
