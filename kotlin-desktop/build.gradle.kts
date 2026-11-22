@@ -83,6 +83,17 @@ kotlin {
     jvmToolchain(21)
 }
 
+tasks.test {
+    useJUnit()
+    // Always run: a cached/up-to-date result prints no per-test lines for MASON to count.
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+    testLogging {
+        events("passed", "failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+}
+
 sourceSets {
     main {
         java {

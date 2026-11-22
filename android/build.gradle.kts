@@ -73,6 +73,18 @@ android {
         jvmTarget = "17"
     }
 
+    testOptions {
+        unitTests.all {
+            it.useJUnit()
+            // Always run so MASON sees a PASSED line per test.
+            it.outputs.upToDateWhen { false }
+            it.testLogging {
+                events("passed", "failed")
+                exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+            }
+        }
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
