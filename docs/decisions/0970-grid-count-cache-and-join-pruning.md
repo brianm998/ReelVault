@@ -26,10 +26,22 @@ other ~50 statements.
 Also in schema v3: `idx_videos_rep(proxy_of, deleted_at, group_id, id)` covers
 the representative test so counts scan a narrow index.
 
-Measured (`cargo bench --bench catalog_queries`, 100k synthetic catalog):
-| | before | after |
+Measured (`cargo bench --bench catalog_queries`, 100k synthetic catalog, same
+session and machine; "before" = the same bench run on develop 213f558 with only
+`REPRESENTATIVE_FILTER` made `pub` so it compiles; criterion midpoints):
+| | before (develop) | after |
 |---|---|---|
-| grid page 2+ (count + page) | 212 ms | 69 ms |
-| unfiltered count (same index, joins on vs off) | 91 ms | 34 ms |
-| 5-column facet request | 1285 ms | 632 ms |
-Before-index unfiltered count was ~150 ms (212 ms page-2 minus 60 ms page).
+| unfiltered count (develop SQL: joins on, old schema vs new SQL: pruned, idx_videos_rep) | 137 ms | 26 ms (19%) |
+| grid page 2+ (count + page) | 276 ms | 46 ms |
+| grid first page, count miss | 336 ms | 213 ms |
+| 5-column facet request | 970 ms | 430 ms (2.3x faster) |
+(The machine was noisy; the in-tree `count_unfiltered_with_joins` row runs the
+old SQL on the new index and is not the baseline.)
+
+Memory note: `cache_size = -65536` applies per pooled connection and the pool
+keeps idle connections, so N idle connections may hold up to N x 64 MB. That is
+fine for the desktop daemon; the embedded iOS/Android cores are not bounded by
+it and should cap the pool or lower the cache if memory pressure appears.
+
+The count memo is neither read nor written when the catalog fingerprint is
+`None` (file can't be stat'ed), so a total never outlives writes.

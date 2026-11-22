@@ -295,7 +295,7 @@ pub struct FacetCount {
 /// Build the half-open `[lower, upper)` byte range that contains every
 /// string starting with `prefix`.  Used by per-video post-index queries
 /// to find all videos in a given parent directory: a range query on
-/// `videos.path` is guaranteed to use `idx_videos_path` (where a `LIKE`
+/// `videos.path` is guaranteed to use the `path` UNIQUE autoindex (where a `LIKE`
 /// would only do so under `case_sensitive_like = ON`, which this
 /// catalog doesn't enable).
 ///
@@ -3072,13 +3072,18 @@ impl Database {
         // files change, so pages after the first don't re-run it)
         let cache_key = format!("{spec:?}");
         let fingerprint = self.catalog_fingerprint();
-        let cached = {
-            let mut cc = self.counts.lock().unwrap_or_else(|e| e.into_inner());
-            if cc.fingerprint != fingerprint {
-                cc.totals.clear();
-                cc.fingerprint = fingerprint.clone();
+        // No fingerprint (catalog unreadable): never look up or store, so a
+        // total can't outlive writes made through an open connection.
+        let cached = match &fingerprint {
+            None => None,
+            Some(_) => {
+                let mut cc = self.counts.lock().unwrap_or_else(|e| e.into_inner());
+                if cc.fingerprint != fingerprint {
+                    cc.totals.clear();
+                    cc.fingerprint = fingerprint.clone();
+                }
+                cc.totals.get(&cache_key).copied()
             }
-            cc.totals.get(&cache_key).copied()
         };
         let total: i64 = match cached {
             Some(t) => t,
@@ -3095,7 +3100,7 @@ impl Database {
                     .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
                 let mut cc = self.counts.lock().unwrap_or_else(|e| e.into_inner());
                 cc.queries_run += 1;
-                if cc.fingerprint == fingerprint {
+                if fingerprint.is_some() && cc.fingerprint == fingerprint {
                     if cc.totals.len() >= 32 {
                         cc.totals.clear();
                     }
@@ -3148,9 +3153,9 @@ impl Database {
 
     /// Cheap change detector for the catalog: size + mtime of the main file
     /// and its WAL (every commit appends to / rewrites one of them). `None`
-    /// when no catalog is open or it can't be stat'ed; `None` never matches a
-    /// stored fingerprint of a real catalog, and a stored `None` is only
-    /// ever replaced, so an unreadable catalog just recounts.
+    /// when no catalog is open or it can't be stat'ed; Callers
+    /// must neither look up nor store a total under `None`, so an unreadable
+    /// catalog just recounts.
     fn catalog_fingerprint(&self) -> Option<CatalogFingerprint> {
         let path = self.current_path()?;
         let stat = |p: &Path| {
@@ -3684,7 +3689,7 @@ impl Database {
         let prefix_len = prefix.len() as i64;
         // A video lives in a subdirectory when the path remainder after the
         // prefix still contains a '/'. The half-open [lower, upper) range lets
-        // SQLite seek the idx_videos_path index instead of scanning.
+        // SQLite seek the path UNIQUE autoindex instead of scanning.
         let sql = format!(
             "SELECT EXISTS(\
                SELECT 1 FROM videos v \
@@ -4224,7 +4229,7 @@ impl Database {
     ///
     /// Uses the same half-open prefix range trick as
     /// [`Self::list_proxy_candidates_in_dir`] so SQLite can use
-    /// `idx_videos_path` instead of scanning the table.
+    /// the `path` UNIQUE autoindex instead of scanning the table.
     pub fn list_for_proxy_detection_under_path(
         &self,
         base_path: &str,
@@ -4339,7 +4344,7 @@ impl Database {
     /// master to existing proxies it matches.
     ///
     /// Uses a half-open range query on `v.path` so SQLite can use
-    /// `idx_videos_path` rather than a full table scan — important
+    /// the `path` UNIQUE autoindex rather than a full table scan — important
     /// when this is called per-video during a scan. The Rust-side
     /// post-filter eliminates rows in *nested* subdirectories that
     /// share the same prefix.
@@ -4505,7 +4510,7 @@ impl Database {
     ///
     /// Uses the same half-open range query on `v.path` as
     /// [`Self::list_proxy_candidates_in_dir`] so SQLite can use
-    /// `idx_videos_path` and the call is cheap per-video.
+    /// the `path` UNIQUE autoindex and the call is cheap per-video.
     pub fn list_group_candidates_in_dir(
         &self,
         parent_dir: &str,
@@ -5937,6 +5942,24 @@ mod tests {
         let (_, t) = db.list_videos_grouped(3, 3, "name", true, &spec).unwrap();
         assert_eq!(t, 8);
 
+        // With the catalog unstat-able (file unlinked under an open
+        // connection) nothing is cached: every call recounts.
+        std::fs::remove_file(tmp.path().join("catalog.db")).unwrap();
+        let base = db.count_queries_run();
+        db.list_videos_grouped(3, 0, "name", true, &spec).unwrap();
+        db.list_videos_grouped(3, 3, "name", true, &spec).unwrap();
+        assert_eq!(db.count_queries_run() - base, 2, "no fingerprint, no caching");
+    }
+
+    #[test]
+    fn total_count_sort_by_joined_column() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        for i in 0..4 {
+            let n = format!("v{i}.mov");
+            seed_meta(&db, &format!("/l/{n}"), &n, Some("Sony A7"), None, None);
+        }
+        let spec = FilterSpec::default();
         // Sorting by a joined column still works with the joins pruned elsewhere.
         let (v, _) = db.list_videos_grouped(3, 0, "duration", true, &spec).unwrap();
         assert_eq!(v.len(), 3);
