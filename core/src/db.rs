@@ -22,7 +22,7 @@ pub(crate) fn now_ms() -> i64 {
     unix_ms(time::OffsetDateTime::now_utc())
 }
 
-/// Unix milliseconds of `dt` (floored, like chrono's `timestamp_millis`).
+/// Unix milliseconds of `dt` (floored, matching the previous `timestamp_millis` behaviour).
 pub(crate) fn unix_ms(dt: time::OffsetDateTime) -> i64 {
     dt.unix_timestamp_nanos().div_euclid(1_000_000) as i64
 }
