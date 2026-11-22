@@ -1120,6 +1120,50 @@ impl Database {
         Ok(result)
     }
 
+    /// All `(video_id, path)` pairs of live videos with a location matching
+    /// `filename` + `file_size`, excluding `exclude_path`. Online first.
+    /// Candidates only: callers must verify content before merging.
+    pub fn find_locations_by_filename_size(
+        &self,
+        filename: &str,
+        file_size: i64,
+        exclude_path: &str,
+    ) -> Result<Vec<(String, String)>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT vl.video_id, vl.path FROM video_locations vl \
+                 JOIN videos v ON v.id = vl.video_id AND v.deleted_at IS NULL \
+                 WHERE vl.filename = ?1 AND vl.file_size_bytes = ?2 AND vl.path != ?3 \
+                 ORDER BY vl.is_online DESC",
+            )
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let rows = stmt
+            .query_map(params![filename, file_size, exclude_path], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let mut out = Vec::new();
+        for r in rows {
+            out.push(r.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?);
+        }
+        Ok(out)
+    }
+
+    /// The stored sparse content hash of a video, if computed.
+    pub fn get_content_hash(&self, video_id: &str) -> Result<Option<String>> {
+        let conn = self.get_connection()?;
+        let r: Option<Option<String>> = conn
+            .query_row(
+                "SELECT content_hash FROM videos WHERE id = ?1",
+                params![video_id],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(r.flatten())
+    }
+
     /// Mark the location at `path` offline, then update `videos.is_online` and
     /// the canonical path accordingly.
     ///
