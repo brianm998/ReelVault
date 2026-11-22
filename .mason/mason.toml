@@ -73,10 +73,11 @@ parser = "regex"
 pass_regex = "^DIFF-CHECK-OK$"
 level = "t0"
 
-# CI runs `cargo clippy -- -D warnings` on unpinned stable Rust, so a new lint can redden this
-# on a change that did not touch the flagged code; fix the lint rather than skipping the suite.
+# CI runs `cargo clippy --locked -- -D warnings` on the Rust pinned in rust-toolchain.toml (1.96.0),
+# so a stale core/Cargo.lock fails here too instead of being silently rewritten; fix the lock or
+# lint rather than skipping the suite.
 [suite.core-clippy]
-command = "cd core && cargo clippy -- -D warnings 2>&1 && echo CORE-CLIPPY-OK"
+command = "cd core && cargo clippy --locked -- -D warnings 2>&1 && echo CORE-CLIPPY-OK"
 parser = "regex"
 pass_regex = "^CORE-CLIPPY-OK$"
 fail_regex = "^error"
@@ -84,7 +85,7 @@ level = "t1"
 uses = { compile = 1 }
 
 [suite.core-test]
-command = "cd core && cargo test 2>&1"
+command = "cd core && cargo test --locked 2>&1"
 parser = "regex"
 pass_regex = '^test (.+) \.\.\. ok$'
 fail_regex = '^test (.+) \.\.\. FAILED$'
