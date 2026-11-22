@@ -2748,34 +2748,15 @@ class GridViewModel(
 
     /** The live Library Filter as a [SmartCollectionFilters] — what would be
      *  saved if the user created/updated a smart collection right now. */
-    private fun currentSmartFilters(): com.reelvault.data.models.SmartCollectionFilters {
-        val tagId = _filterTagId.value
-        // Capture every narrowed metadata column (camera, lens, codec, year,
-        // iso, exposure, … — not just the four the old format knew). The
-        // "location" virtual key is captured as geo below, not as a column.
-        val columns = _metadataColumns.value
-            .filter {
-                it.key.isNotEmpty() &&
-                    it.key != com.reelvault.data.models.LOCATION_METADATA_KEY &&
-                    it.values.isNotEmpty()
-            }
-            .map { com.reelvault.data.models.SmartCollectionColumn(it.key, it.values.toList(), it.negate) }
-        val geo = _filterLocation.value
-        return com.reelvault.data.models.SmartCollectionFilters(
-            columns = columns,
+    private fun currentSmartFilters(): com.reelvault.data.models.SmartCollectionFilters =
+        buildSmartFilters(
+            tagId = _filterTagId.value,
+            filterTags = filterTags,
+            metadataColumns = _metadataColumns.value,
+            geo = _filterLocation.value,
             minRating = _filterMinRating.value,
             colorLabel = _filterColorLabel.value,
             searchQuery = _searchQuery.value,
-            // Capture the full active tag set (the multi-tag filter writes
-            // `filterTags`, not just `_filterTagId`) so keyword-based smart
-            // collections actually reproduce their results.
-            tagIds = filterTags.ifEmpty { if (tagId.isEmpty()) emptyList() else listOf(tagId) },
-            // Map-proximity (geo) filter — (lat, lon, radiusKm).
-            geoLat = geo?.first ?: 0.0,
-            geoLon = geo?.second ?: 0.0,
-            geoRadiusKm = geo?.third ?: 0.0,
-            // Library-folder selection and the tri-state attribute filters are
-            // part of the collection too.
             locationPaths = _selectedLocationPaths.value,
             hasLocation = _filterHasLocation.value,
             hasKeywords = _filterHasKeywords.value,
@@ -2784,7 +2765,6 @@ class GridViewModel(
             hasAudio = _filterHasAudio.value,
             orientation = _filterOrientation.value,
         )
-    }
 
     fun buildSmartCollectionFilterJson(): String = currentSmartFilters().toJson()
 
@@ -3937,4 +3917,50 @@ class GridViewModel(
         currentPage = 0
         collapseAllStacks()
     }
+}
+
+/** Pure mapping from the live Library Filter state to a smart-collection
+ *  spec. Extracted from [GridViewModel] so it can be unit tested. */
+internal fun buildSmartFilters(
+    tagId: String,
+    filterTags: List<String>,
+    metadataColumns: List<com.reelvault.data.models.MetadataColumn>,
+    geo: Triple<Double, Double, Double>?,
+    minRating: Int,
+    colorLabel: String,
+    searchQuery: String,
+    locationPaths: List<String>,
+    hasLocation: com.reelvault.data.models.AttributeFilterState,
+    hasKeywords: com.reelvault.data.models.AttributeFilterState,
+    hasProxies: com.reelvault.data.models.AttributeFilterState,
+    fullResolution: com.reelvault.data.models.AttributeFilterState,
+    hasAudio: com.reelvault.data.models.AttributeFilterState,
+    orientation: com.reelvault.data.models.OrientationFilterState,
+): com.reelvault.data.models.SmartCollectionFilters {
+    // Every narrowed metadata column is captured; the "location" virtual key
+    // is captured as geo instead.
+    val columns = metadataColumns
+        .filter {
+            it.key.isNotEmpty() &&
+                it.key != com.reelvault.data.models.LOCATION_METADATA_KEY &&
+                it.values.isNotEmpty()
+        }
+        .map { com.reelvault.data.models.SmartCollectionColumn(it.key, it.values.toList(), it.negate) }
+    return com.reelvault.data.models.SmartCollectionFilters(
+        columns = columns,
+        minRating = minRating,
+        colorLabel = colorLabel,
+        searchQuery = searchQuery,
+        tagIds = filterTags.ifEmpty { if (tagId.isEmpty()) emptyList() else listOf(tagId) },
+        geoLat = geo?.first ?: 0.0,
+        geoLon = geo?.second ?: 0.0,
+        geoRadiusKm = geo?.third ?: 0.0,
+        locationPaths = locationPaths,
+        hasLocation = hasLocation,
+        hasKeywords = hasKeywords,
+        hasProxies = hasProxies,
+        fullResolution = fullResolution,
+        hasAudio = hasAudio,
+        orientation = orientation,
+    )
 }
