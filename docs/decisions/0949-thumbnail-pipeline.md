@@ -7,10 +7,10 @@
   frames absent (best-effort, regenerated on demand).
   The backend trait gets `extract_frames` (default loops `extract_frame`).
 - All cache writes go to a unique `{id}_..tmpPID-N.jpg` sibling and are renamed into place.
-- Cleanup: `remove_library_location` and `prune_photos` delete the video's files; `sweep_orphans` runs once at
-  service start (max 5000 files, files younger than 10 min skipped). `prune_photos` soft-deletes the row (`deleted_at`) but
-  deliberately removes its thumbnails too (the asset is gone); if a row is restored they regenerate on demand.
-  The sweep treats soft-deleted rows as known, so it never deletes their files itself.
+- Cleanup: `remove_library_location` (hard delete) deletes the video's files; `sweep_orphans` runs once at
+  service start (max 5000 files, files younger than 10 min skipped). `prune_photos` only soft-deletes the row
+  (`deleted_at`) and deliberately KEEPS its thumbnails, so a restored row still has them. The sweep treats
+  soft-deleted rows as known, so it never deletes their files; files go only when the row is really removed.
 - Publishing uses `rename`, atomic on Linux/macOS; on Windows a rename over a file a reader has open can fail
   with a sharing violation, in which case generation fails for that attempt and is retried on the next request.
 - Probes (ffprobe) are not counted among "ffmpeg launches".
