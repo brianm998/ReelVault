@@ -19,3 +19,18 @@ final class ServerEndpointTests: XCTestCase {
         XCTAssertNotEqual(a.security, .plaintext)
     }
 }
+
+final class LoopbackProxyTargetTests: XCTestCase {
+    func testAllowsHlsAndVideoGet() {
+        XCTAssertTrue(LoopbackMediaProxy.isAllowedRequest(method: "GET", target: "/hls/abc/720/master.m3u8"))
+        XCTAssertTrue(LoopbackMediaProxy.isAllowedRequest(method: "GET", target: "/video/abc?x=1"))
+    }
+
+    func testRejectsAbsoluteAndOtherTargets() {
+        XCTAssertFalse(LoopbackMediaProxy.isAllowedRequest(method: "GET", target: "http://evil.example/hls/a"))
+        XCTAssertFalse(LoopbackMediaProxy.isAllowedRequest(method: "GET", target: "//evil.example/hls/a"))
+        XCTAssertFalse(LoopbackMediaProxy.isAllowedRequest(method: "GET", target: "/pair/request"))
+        XCTAssertFalse(LoopbackMediaProxy.isAllowedRequest(method: "GET", target: "/hls/../upload"))
+        XCTAssertFalse(LoopbackMediaProxy.isAllowedRequest(method: "POST", target: "/hls/a"))
+    }
+}
