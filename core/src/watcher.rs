@@ -405,6 +405,14 @@ fn current_file_size(path: &Path) -> Option<u64> {
     std::fs::metadata(path).ok().map(|m| m.len())
 }
 
+/// Pure settle predicate: a pending file is ready to index once its size has
+/// been stable AND no event has touched it for `settle`, and it could be stat'd.
+fn is_settled(pf: &PendingFile, now: Instant, settle: Duration) -> bool {
+    let stable_long_enough = now.duration_since(pf.last_seen_size_at) >= settle;
+    let quiet_long_enough = now.duration_since(pf.last_event_at) >= settle;
+    stable_long_enough && quiet_long_enough && pf.last_seen_size != u64::MAX
+}
+
 /// Walk the pending map and (re-)scan any file whose size has been stable
 /// for at least `settle_ms` ms.
 fn sweep_pending(
@@ -430,9 +438,7 @@ fn sweep_pending(
         let settled: Vec<PathBuf> = map
             .iter()
             .filter_map(|(p, pf)| {
-                let stable_long_enough = now.duration_since(pf.last_seen_size_at) >= settle;
-                let quiet_long_enough = now.duration_since(pf.last_event_at) >= settle;
-                if stable_long_enough && quiet_long_enough && pf.last_seen_size != u64::MAX {
+                if is_settled(pf, now, settle) {
                     Some(p.clone())
                 } else {
                     None
@@ -651,4 +657,28 @@ pub fn now_ms() -> i64 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod settle_tests {
+    use super::*;
+
+    fn pf(size: u64, seen_ago_ms: u64, event_ago_ms: u64, now: Instant) -> PendingFile {
+        PendingFile {
+            last_seen_size: size,
+            last_seen_size_at: now - Duration::from_millis(seen_ago_ms),
+            last_event_at: now - Duration::from_millis(event_ago_ms),
+        }
+    }
+
+    #[test]
+    fn settled_only_when_stable_and_quiet() {
+        let now = Instant::now() + Duration::from_secs(100);
+        let s = Duration::from_millis(1000);
+        assert!(is_settled(&pf(10, 2000, 2000, now), now, s));
+        assert!(!is_settled(&pf(10, 500, 2000, now), now, s), "size changed recently");
+        assert!(!is_settled(&pf(10, 2000, 500, now), now, s), "recent event");
+        assert!(!is_settled(&pf(u64::MAX, 2000, 2000, now), now, s), "unstatable");
+        assert!(is_settled(&pf(10, 1000, 1000, now), now, s), "boundary is inclusive");
+    }
 }
