@@ -1586,7 +1586,7 @@ impl Database {
             "SELECT v.id, v.path, v.filename, v.volume_id, v.hash, v.file_size_bytes, v.indexed_at, v.is_online, v.is_derived
              FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
              WHERE v.deleted_at IS NULL
-             ORDER BY {} LIMIT ? OFFSET ?",
+             ORDER BY {}, v.id LIMIT ? OFFSET ?",
             order_by
         );
 
@@ -2865,7 +2865,7 @@ impl Database {
              LEFT JOIN metadata m ON v.id = m.video_id
              LEFT JOIN video_user_marks um ON v.id = um.video_id
              WHERE ({rep}){filter_sql} AND v.deleted_at IS NULL
-             ORDER BY {order_by} LIMIT ? OFFSET ?"
+             ORDER BY {order_by}, v.id LIMIT ? OFFSET ?"
         );
 
         let mut bind_with_limit: Vec<Box<dyn rusqlite::ToSql>> = bind;
@@ -2915,7 +2915,9 @@ impl Database {
         // multi-select); a video matches if it's under ANY of them. A single
         // directory has no '\n' → one LIKE, exactly as before.
         if !spec.location_filter.is_empty() {
-            let patterns: Vec<String> = spec
+            // Exact byte-range prefix (not LIKE): `_`/`%` in folder names are
+            // literal and matching is case-sensitive.
+            let ranges: Vec<(String, String)> = spec
                 .location_filter
                 .split('\n')
                 .filter(|p| !p.is_empty())
@@ -2924,16 +2926,17 @@ impl Database {
                     if !prefix.ends_with('/') {
                         prefix.push('/');
                     }
-                    format!("{prefix}%")
+                    path_prefix_range(&prefix)
                 })
                 .collect();
-            if !patterns.is_empty() {
-                let ors = std::iter::repeat_n("v.path LIKE ?", patterns.len())
+            if !ranges.is_empty() {
+                let ors = std::iter::repeat_n("(v.path >= ? AND v.path < ?)", ranges.len())
                     .collect::<Vec<_>>()
                     .join(" OR ");
                 sql.push_str(&format!(" AND ({ors})"));
-                for p in patterns {
-                    bind.push(Box::new(p));
+                for (lo, hi) in ranges {
+                    bind.push(Box::new(lo));
+                    bind.push(Box::new(hi));
                 }
             }
         }
@@ -3151,10 +3154,15 @@ impl Database {
         // (a LIKE over both) so folding search into the listing keeps the same
         // matching semantics while letting it compose with every other filter.
         if !spec.search_query.is_empty() {
-            let like = format!("%{}%", spec.search_query);
+            let escaped = spec
+                .search_query
+                .replace('\\', "\\\\")
+                .replace('%', "\\%")
+                .replace('_', "\\_");
+            let like = format!("%{escaped}%");
             sql.push_str(
-                " AND (v.filename LIKE ? OR EXISTS \
-                 (SELECT 1 FROM video_notes vn WHERE vn.video_id = v.id AND vn.notes LIKE ?))",
+                " AND (v.filename LIKE ? ESCAPE '\\' OR EXISTS \
+                 (SELECT 1 FROM video_notes vn WHERE vn.video_id = v.id AND vn.notes LIKE ? ESCAPE '\\'))",
             );
             bind.push(Box::new(like.clone()));
             bind.push(Box::new(like));
@@ -3345,16 +3353,16 @@ impl Database {
         if !prefix.ends_with('/') {
             prefix.push('/');
         }
-        let pattern = format!("{}%", prefix);
+        let (lo, hi) = path_prefix_range(&prefix);
         // Reuse the exact representative_filter used by list_videos_grouped so
         // the count reflects the same set of items the grid actually shows:
         //   • Proxies are excluded — they surface only through the "P×N" badge.
         //   • Each stack counts as one video (the group representative).
         let count_sql = format!(
-            "SELECT COUNT(*) FROM videos v WHERE v.path LIKE ? AND ({REPRESENTATIVE_FILTER})"
+            "SELECT COUNT(*) FROM videos v WHERE v.path >= ? AND v.path < ? AND ({REPRESENTATIVE_FILTER})"
         );
         let count: i64 = conn
-            .query_row(&count_sql, params![pattern], |row| row.get(0))
+            .query_row(&count_sql, params![lo, hi], |row| row.get(0))
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(count)
     }
@@ -6093,5 +6101,34 @@ mod tests {
             rev1 > rev0,
             "marks_rev must increase after collection membership remove (was {rev0}, now {rev1})"
         );
+    }
+
+    #[test]
+    fn location_filter_and_search_treat_like_metachars_literally() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        db.add_video("/v/Project_007/a.mov", "a.mov", None, None, None).unwrap();
+        db.add_video("/v/ProjectX007/b.mov", "b.mov", None, None, None).unwrap();
+        db.add_video("/v/project_007/c.mov", "c.mov", None, None, None).unwrap();
+        db.add_video("/v/p/a_b.mov", "a_b.mov", None, None, None).unwrap();
+        db.add_video("/v/p/axb.mov", "axb.mov", None, None, None).unwrap();
+
+        let names = |spec: &FilterSpec| -> Vec<String> {
+            db.list_videos_grouped(50, 0, "name", true, spec)
+                .unwrap()
+                .0
+                .into_iter()
+                .map(|v| v.filename)
+                .collect()
+        };
+        let loc = |l: &str| FilterSpec { location_filter: l.to_string(), ..Default::default() };
+        assert_eq!(names(&loc("/v/Project_007/")), vec!["a.mov"]);
+        assert_eq!(names(&loc("/v/Project_007")), vec!["a.mov"]);
+        assert_eq!(db.count_videos_in_path("/v/Project_007").unwrap(), 1);
+        assert_eq!(db.count_videos_in_path("/v/project_007/").unwrap(), 1);
+
+        let q = |s: &str| FilterSpec { search_query: s.to_string(), ..Default::default() };
+        assert_eq!(names(&q("a_b")), vec!["a_b.mov"]);
+        assert!(names(&q("%")).is_empty());
     }
 }
