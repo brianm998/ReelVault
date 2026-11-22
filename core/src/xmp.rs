@@ -439,16 +439,11 @@ pub(crate) fn parse_rational(s: &str) -> Option<f64> {
 /// ffprobe-derived dates.
 fn parse_exif_datetime(s: &str) -> Option<i64> {
     let t = s.trim();
-    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(t) {
-        return Some(dt.timestamp_millis());
+    if let Ok(dt) = time::OffsetDateTime::parse(t, &time::format_description::well_known::Rfc3339) {
+        return Some(crate::db::unix_ms(dt));
     }
-    if let Ok(naive) = chrono::NaiveDateTime::parse_from_str(t, "%Y:%m:%d %H:%M:%S") {
-        return Some(naive.and_utc().timestamp_millis());
-    }
-    if let Ok(naive) = chrono::NaiveDateTime::parse_from_str(t, "%Y-%m-%dT%H:%M:%S") {
-        return Some(naive.and_utc().timestamp_millis());
-    }
-    None
+    crate::db::parse_naive_utc_ms(t, "[year]:[month padding:none]:[day padding:none] [hour padding:none]:[minute padding:none]:[second padding:none]")
+        .or_else(|| crate::db::parse_naive_utc_ms(t, "[year]-[month padding:none]-[day padding:none]T[hour padding:none]:[minute padding:none]:[second padding:none]"))
 }
 
 /// EXIF `ExposureMode` integer code → human-readable label.
@@ -532,6 +527,16 @@ fn decode_entities(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn exif_datetime_formats() {
+        assert_eq!(parse_exif_datetime("2026:01:18 16:22:02"), Some(1768753322000));
+        assert_eq!(parse_exif_datetime("2026-01-18T16:22:02"), Some(1768753322000));
+        assert_eq!(parse_exif_datetime("2026-01-18T18:22:02+02:00"), Some(1768753322000));
+        assert_eq!(parse_exif_datetime("2026:1:18 6:22:02"), Some(1768717322000));
+        assert_eq!(parse_exif_datetime("2026-1-8T16:2:2"), Some(1767888122000));
+        assert_eq!(parse_exif_datetime("garbage"), None);
+    }
 
     /// A minimal but realistic XMP packet that mirrors what exiftool
     /// writes when given the standard EXIF flags. Used by the

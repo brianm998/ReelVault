@@ -239,12 +239,23 @@ fn parse_shutter(text: &str) -> Option<f64> {
     }
 }
 
+/// Calendar fields (UTC) → Unix ms; `None` on any invalid field.
+fn ymd_hms_ms(y: i32, mo: u32, d: u32, h: u32, mi: u32, s: u32) -> Option<i64> {
+    let month = time::Month::try_from(u8::try_from(mo).ok()?).ok()?;
+    let date = time::Date::from_calendar_date(y, month, u8::try_from(d).ok()?).ok()?;
+    let t = time::Time::from_hms(u8::try_from(h).ok()?, u8::try_from(mi).ok()?, u8::try_from(s).ok()?).ok()?;
+    Some(crate::db::unix_ms(date.with_time(t).assume_utc()))
+}
+
 /// Capture timestamp → Unix ms (UTC). Modern `2022-08-07 13:40:40`; older
 /// `2017.08.05 14:11:51` (also single-digit `2017.8.5`).
 fn parse_datetime(text: &str) -> Option<i64> {
     if let Some(s) = first_capture(text, r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})") {
-        if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S") {
-            return Some(dt.and_utc().timestamp_millis());
+        if let Some(ms) = crate::db::parse_naive_utc_ms(
+            &s,
+            "[year]-[month]-[day] [hour]:[minute]:[second]",
+        ) {
+            return Some(ms);
         }
     }
     if let Ok(re) = Regex::new(r"(\d{4})\.(\d{1,2})\.(\d{1,2}) (\d{1,2}):(\d{2}):(\d{2})") {
@@ -253,10 +264,8 @@ fn parse_datetime(text: &str) -> Option<i64> {
             if let (Some(y), Some(mo), Some(d), Some(h), Some(mi), Some(s)) =
                 (g(1), g(2), g(3), g(4), g(5), g(6))
             {
-                if let Some(date) = chrono::NaiveDate::from_ymd_opt(y as i32, mo, d) {
-                    if let Some(t) = date.and_hms_opt(h, mi, s) {
-                        return Some(t.and_utc().timestamp_millis());
-                    }
+                if let Some(ms) = ymd_hms_ms(y as i32, mo, d, h, mi, s) {
+                    return Some(ms);
                 }
             }
         }
@@ -267,6 +276,13 @@ fn parse_datetime(text: &str) -> Option<i64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parse_datetime_modern_legacy_invalid() {
+        assert_eq!(parse_datetime("x 2022-08-07 13:40:40 y"), Some(1659879640000));
+        assert_eq!(parse_datetime("2017.8.5 14:11:51"), Some(1501942311000));
+        assert_eq!(parse_datetime("2017.13.5 14:11:51"), None);
+    }
 
     #[test]
     fn parses_modern_format() {
