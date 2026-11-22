@@ -23,7 +23,7 @@
   files of rows that are really gone are swept (bounded to 5000 files per run).
 - Every cache dir, custom or default, is swept via the `.catalogs` registry (appended with O_APPEND, no read-modify-write),
   because the open catalog may not be the one whose config chose the directory.
-- Library-root prefix matching uses `substr(path,1,length(?))=?` (exact, case-sensitive), not LIKE.
+- Library-root prefix matching uses the base's byte range (`path >= prefix AND path < prefix_end`, decision 0963), not LIKE; `video_ids_under` uses the same rule.
 - Large is "at most 800 px wide, never upscaled": narrower sources give a narrower large still.
 - Publishing uses `rename`, atomic on Linux/macOS; on Windows a rename over a file a reader has open can fail
   with a sharing violation, in which case generation fails for that attempt and is retried on the next request.
@@ -37,10 +37,7 @@
   duplicates deduped); the sweep never rewrites `.catalogs`, so it cannot race `register_catalog`'s O_APPEND writes.
   A missing directory (unmounted drive) still skips the sweep.
 - The sweep logs one WARN naming the catalog when it is skipped because a registered catalog cannot be read.
-- Known limits (owner-accepted): orphans older than the registry (`.catalogs_since`) are not swept; `remove_library_location` now matches paths case-sensitively (`substr`, not LIKE),
-  so on a case-insensitive filesystem a differently-cased root string no longer matches stored paths (library
-  paths are stored as the scanner emitted them, and the UI passes back the stored string, so normal use is
-  unaffected; a mismatched case removes nothing rather than too much).
+- Known limits (owner-accepted): orphans older than the registry (`.catalogs_since`) are not swept.
 - "Large still" criterion means: source width, capped at 800 px, never upscaled.
 - Failure backoff: when a scrub batch fails (the CLI `extract_frames` returns the error; it is all-or-nothing) or a
   still regeneration fails, `{id}_scrubfail_thumbv.ok` / `{id}_stillfail_thumbv.ok` records
@@ -48,3 +45,7 @@
   and an unchanged source, no ffmpeg is launched (stills serve the stale bytes, scrub serves nothing). Success clears
   it; the `_at` variants take an injected clock for tests. Markers are swept/cleaned like other cache files.
 - No dependency or Cargo.lock change is part of this diff.
+- Backoff by cause (owner rules, 2026-11-22): backend unavailable (ffmpeg missing) writes no marker, so it retries once
+  ffmpeg exists; timeout/I-O error: 10 min; decode failure (ffmpeg ran and failed, or exited 0 without writing every
+  requested frame): 24 h. The marker stores the reason; an unknown reason counts as expired. There is no per-frame
+  salvage or retry of a failed scrub batch. Indexing probes color once and passes it to stills and scrub.

@@ -14,12 +14,36 @@ use std::sync::OnceLock;
 /// a 400 px frame).
 const STILL_VERSION: &str = "2";
 
-/// How long a recorded generation failure suppresses retries.
-const FAILURE_BACKOFF_SECS: u64 = 24 * 60 * 60;
+/// Backoff after a decode failure (ffmpeg ran and failed).
+const DECODE_BACKOFF_SECS: u64 = 24 * 60 * 60;
+/// Backoff after a timeout or I/O error launching/running ffmpeg.
+const IO_BACKOFF_SECS: u64 = 10 * 60;
+const REASON_DECODE: &str = "decode";
+const REASON_IO: &str = "io";
 const STILL_FAIL: &str = "stillfail";
 const SCRUB_FAIL: &str = "scrubfail";
 
-fn now_secs() -> u64 {
+fn backoff_secs(reason: &str) -> Option<u64> {
+    match reason {
+        REASON_DECODE => Some(DECODE_BACKOFF_SECS),
+        REASON_IO => Some(IO_BACKOFF_SECS),
+        _ => None,
+    }
+}
+
+/// Marker reason for a failure, or `None` when no marker should be written
+/// (the backend is unavailable, so the next request retries once it exists).
+fn failure_reason(e: &ReelVaultError) -> Option<&'static str> {
+    match e {
+        ReelVaultError::FfmpegError(m) if m.starts_with(BACKEND_UNAVAILABLE) => None,
+        ReelVaultError::FfmpegError(_) | ReelVaultError::IoError(_) => Some(REASON_IO),
+        _ => Some(REASON_DECODE),
+    }
+}
+
+const BACKEND_UNAVAILABLE: &str = "media backend unavailable";
+
+pub(crate) fn now_secs() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
@@ -28,7 +52,7 @@ fn now_secs() -> u64 {
 
 /// Failure marker `{id}_{kind}_thumbv.ok` (the suffix makes the orphan sweep and
 /// `cleanup_thumbnails` collect it like any other cache file). Content:
-/// `version \t unix-secs \t source signature`.
+/// `version \t unix-secs \t source signature \t reason`.
 fn failure_marker(cache_dir: &Path, video_id: &str, kind: &str) -> PathBuf {
     cache_dir.join(format!("{}_{}_thumbv.ok", video_id, kind))
 }
@@ -51,26 +75,35 @@ fn source_signature(source: &MediaSource) -> String {
 }
 
 /// True while a failure for this video/kind is recorded for the current cache
-/// version, is younger than the backoff, and the source file is unchanged.
+/// version, is younger than its reason's backoff, and the source file is
+/// unchanged. A marker with an unknown reason counts as expired.
 fn failure_active(cache_dir: &Path, video_id: &str, kind: &str, source: &MediaSource, now: u64) -> bool {
     let Ok(body) = std::fs::read_to_string(failure_marker(cache_dir, video_id, kind)) else {
         return false;
     };
-    let mut parts = body.splitn(3, '\t');
-    let (Some(ver), Some(ts), Some(sig)) = (parts.next(), parts.next(), parts.next()) else {
+    let mut parts = body.splitn(4, '\t');
+    let (Some(ver), Some(ts), Some(sig), Some(reason)) =
+        (parts.next(), parts.next(), parts.next(), parts.next())
+    else {
         return false;
     };
-    let Ok(ts) = ts.parse::<u64>() else { return false };
-    ver == STILL_VERSION && now < ts.saturating_add(FAILURE_BACKOFF_SECS) && sig == source_signature(source)
+    let (Ok(ts), Some(backoff)) = (ts.parse::<u64>(), backoff_secs(reason)) else {
+        return false;
+    };
+    ver == STILL_VERSION && now < ts.saturating_add(backoff) && sig == source_signature(source)
 }
 
-fn record_failure(cache_dir: &Path, video_id: &str, kind: &str, source: &MediaSource, now: u64) {
-    let body = format!("{}\t{}\t{}", STILL_VERSION, now, source_signature(source));
+fn record_failure(cache_dir: &Path, video_id: &str, kind: &str, source: &MediaSource, now: u64, reason: &str) {
+    let body = format!("{}\t{}\t{}\t{}", STILL_VERSION, now, source_signature(source), reason);
     let _ = write_atomic(&failure_marker(cache_dir, video_id, kind), body.as_bytes());
 }
 
 fn clear_failure(cache_dir: &Path, video_id: &str, kind: &str) {
     let _ = std::fs::remove_file(failure_marker(cache_dir, video_id, kind));
+}
+
+fn unavailable() -> ReelVaultError {
+    ReelVaultError::FfmpegError(format!("{} (ffmpeg not found in PATH?)", BACKEND_UNAVAILABLE))
 }
 
 pub struct ThumbnailGenerator;
@@ -80,6 +113,12 @@ impl ThumbnailGenerator {
     pub const SMALL_WIDTH: i32 = 200;
     pub const MEDIUM_WIDTH: i32 = 400;
     pub const LARGE_WIDTH: i32 = 800;
+
+    /// Probe a source's color info once, to share across the still and scrub
+    /// generators (`*_with_color`).
+    pub fn probe_color(source: &MediaSource) -> ColorInfo {
+        backend().probe_color(source)
+    }
 
     /// Number of evenly-distributed frames generated per video for Lightroom-style
     /// hover-scrubbing in the grid.
@@ -118,15 +157,36 @@ impl ThumbnailGenerator {
         duration_secs: f64,
         now: u64,
     ) -> Result<()> {
+        Self::generate_default_sizes_with_color(source, video_id, cache_dir, duration_secs, None, now)
+    }
+
+    /// Like [`generate_default_sizes_at`](Self::generate_default_sizes_at) but
+    /// with a color probe the caller already has (`None` probes here).
+    pub fn generate_default_sizes_with_color(
+        source: &MediaSource,
+        video_id: &str,
+        cache_dir: &Path,
+        duration_secs: f64,
+        color: Option<&ColorInfo>,
+        now: u64,
+    ) -> Result<()> {
+        if !backend().is_available() {
+            // No marker: retry as soon as ffmpeg exists.
+            return Err(unavailable());
+        }
         if failure_active(cache_dir, video_id, STILL_FAIL, source, now) {
             return Err(ReelVaultError::ThumbnailGenerationFailed(
                 "recent failure; backing off".to_string(),
             ));
         }
-        let r = Self::generate_default_sizes_inner(source, video_id, cache_dir, duration_secs);
+        let r = Self::generate_default_sizes_inner(source, video_id, cache_dir, duration_secs, color);
         match &r {
             Ok(_) => clear_failure(cache_dir, video_id, STILL_FAIL),
-            Err(_) => record_failure(cache_dir, video_id, STILL_FAIL, source, now),
+            Err(e) => {
+                if let Some(reason) = failure_reason(e) {
+                    record_failure(cache_dir, video_id, STILL_FAIL, source, now, reason);
+                }
+            }
         }
         r
     }
@@ -136,17 +196,12 @@ impl ThumbnailGenerator {
         video_id: &str,
         cache_dir: &Path,
         duration_secs: f64,
+        color: Option<&ColorInfo>,
     ) -> Result<()> {
-        if !backend().is_available() {
-            return Err(ReelVaultError::FfmpegError(
-                "media backend unavailable (ffmpeg not found in PATH?)".to_string(),
-            ));
-        }
-
         // One frame from the middle of the video, extracted at the largest
         // size (never upscaled). It is published as the large still as-is, and
         // the small/medium sizes are derived from it in-process.
-        let thumbnail_frame = Self::extract_frame(source, cache_dir, video_id, duration_secs)?;
+        let thumbnail_frame = Self::extract_frame(source, cache_dir, video_id, duration_secs, color)?;
         let result = Self::derive_sizes(&thumbnail_frame, video_id, cache_dir);
         let _ = std::fs::remove_file(&thumbnail_frame);
         result?;
@@ -183,7 +238,13 @@ impl ThumbnailGenerator {
         Ok(())
     }
 
-    fn extract_frame(source: &MediaSource, cache_dir: &Path, video_id: &str, duration_secs: f64) -> Result<PathBuf> {
+    fn extract_frame(
+        source: &MediaSource,
+        cache_dir: &Path,
+        video_id: &str,
+        duration_secs: f64,
+        color: Option<&ColorInfo>,
+    ) -> Result<PathBuf> {
         // Extract frame at 50% through the video
         // Unique per call so concurrent generations never share a scratch file.
         let temp_path = tmp_sibling(&cache_dir.join(format!("{}_temp.jpg", video_id)));
@@ -195,7 +256,10 @@ impl ThumbnailGenerator {
             0.0
         };
 
-        let color_info = backend().probe_color(source);
+        let color_info = match color {
+            Some(c) => c.clone(),
+            None => backend().probe_color(source),
+        };
 
         // ProRes RAW on macOS: ffmpeg can't develop it, so source the frame from
         // QuickLook (the OS decoder) at a size big enough for the largest cached
@@ -386,13 +450,26 @@ impl ThumbnailGenerator {
         duration_secs: f64,
         now: u64,
     ) -> Result<()> {
+        Self::generate_scrub_thumbnails_with_color(source, video_id, cache_dir, duration_secs, None, now)
+    }
+
+    /// Like [`generate_scrub_thumbnails_at`](Self::generate_scrub_thumbnails_at)
+    /// but with a color probe the caller already has (`None` probes here), so a
+    /// new video is probed once across stills and scrub frames.
+    pub fn generate_scrub_thumbnails_with_color(
+        source: &MediaSource,
+        video_id: &str,
+        cache_dir: &Path,
+        duration_secs: f64,
+        color: Option<&ColorInfo>,
+        now: u64,
+    ) -> Result<()> {
+        if !backend().is_available() {
+            // No marker: retry as soon as ffmpeg exists.
+            return Err(unavailable());
+        }
         if failure_active(cache_dir, video_id, SCRUB_FAIL, source, now) {
             return Ok(());
-        }
-        if !backend().is_available() {
-            return Err(ReelVaultError::FfmpegError(
-                "media backend unavailable (ffmpeg not found in PATH?)".to_string(),
-            ));
         }
         if duration_secs <= 0.5 {
             // Too short to meaningfully scrub; skip.
@@ -400,7 +477,10 @@ impl ThumbnailGenerator {
         }
 
         // Probe color info once — applied to every scrub frame from this video.
-        let color_info = backend().probe_color(source);
+        let color_info = match color {
+            Some(c) => c.clone(),
+            None => backend().probe_color(source),
+        };
 
         // ProRes RAW on macOS: ffmpeg can't develop it. Prefer real per-position
         // frames via the embedded AVFoundation helper (the OS decoder seeks to a
@@ -477,29 +557,14 @@ impl ThumbnailGenerator {
         if jobs.is_empty() {
             return Ok(());
         }
+        // A failed batch publishes nothing and records the backoff. There is
+        // deliberately no per-frame retry or salvage.
         match backend().extract_frames(source, &color_info, &jobs, Self::SCRUB_WIDTH, 6) {
             Ok(()) => clear_failure(cache_dir, video_id, SCRUB_FAIL),
             Err(e) => {
                 tracing::warn!("Scrub frames for {} failed as a batch: {}", video_id, e);
-                // One bad seek (e.g. past EOF) fails the whole batch. Salvage
-                // the good frames one launch each, in order, stopping at the
-                // first failure: a wholly bad file costs 1 extra launch, and
-                // only a batch failure ever adds launches.
-                let mut all_ok = true;
-                for job in &jobs {
-                    let one = std::slice::from_ref(job);
-                    if backend()
-                        .extract_frames(source, &color_info, one, Self::SCRUB_WIDTH, 6)
-                        .is_err()
-                    {
-                        all_ok = false;
-                        break;
-                    }
-                }
-                if all_ok {
-                    clear_failure(cache_dir, video_id, SCRUB_FAIL);
-                } else {
-                    record_failure(cache_dir, video_id, SCRUB_FAIL, source, now);
+                if let Some(reason) = failure_reason(&e) {
+                    record_failure(cache_dir, video_id, SCRUB_FAIL, source, now, reason);
                 }
             }
         }
@@ -805,8 +870,8 @@ fn ffmpeg_extract_frame_to(
 /// `(seek, output)` job as a separate fast-seeked input and each is mapped to its
 /// own output with one frame. Outputs are written to temp names and renamed into
 /// place only if ffmpeg succeeded. If the batch fails nothing is published, the
-/// temp files are removed and the error is returned; the caller decides on any
-/// per-frame fallback, so a successful new video costs one scrub launch.
+/// temp files are removed and the error is returned; there is no per-frame
+/// fallback, so a new video costs one scrub launch, failure included.
 pub(crate) fn ffmpeg_extract_frames(
     video_path: &Path,
     color: &ColorInfo,
@@ -839,18 +904,36 @@ pub(crate) fn ffmpeg_extract_frames(
     }
     .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to run ffmpeg: {}", e)));
     let result = match output {
-        Ok(o) if o.status.success() => Ok(()),
+        Ok(o) if o.status.success() => {
+            // Exit 0 is not enough: every requested output must exist, or the
+            // batch counts as a (decode) failure and publishes nothing.
+            if tmps.iter().all(|t| t.exists()) {
+                Ok(())
+            } else {
+                Err(ReelVaultError::ThumbnailGenerationFailed(
+                    "ffmpeg exited 0 but did not write every requested frame".to_string(),
+                ))
+            }
+        }
         Ok(o) => Err(ReelVaultError::ThumbnailGenerationFailed(
             String::from_utf8_lossy(&o.stderr).to_string(),
         )),
         Err(e) => Err(e),
     };
     // A failed run may leave truncated outputs, so publish only after success.
-    for (tmp, (_, out)) in tmps.iter().zip(jobs) {
-        if result.is_ok() && std::fs::rename(tmp, out).is_ok() {
-            continue;
+    let mut result = result;
+    if result.is_ok() {
+        for (tmp, (_, out)) in tmps.iter().zip(jobs) {
+            if let Err(e) = std::fs::rename(tmp, out) {
+                result = Err(ReelVaultError::IoError(e));
+                break;
+            }
         }
-        let _ = std::fs::remove_file(tmp);
+    }
+    if result.is_err() {
+        for tmp in &tmps {
+            let _ = std::fs::remove_file(tmp);
+        }
     }
     result
 }
@@ -1271,15 +1354,14 @@ mod cache_tests {
         for i in 0..5 {
             ThumbnailGenerator::generate_scrub_thumbnails_at(&source, "vid", &cache, 60.0, t0 + i).unwrap();
         }
-        // Each failing request: the batch plus one per-frame salvage attempt.
-        assert_eq!(launches(&log), 2, "repeated scrub requests launch ffmpeg once");
+        assert_eq!(launches(&log), 1, "repeated scrub requests launch ffmpeg once");
         // Expiry retries.
-        ThumbnailGenerator::generate_scrub_thumbnails_at(&source, "vid", &cache, 60.0, t0 + FAILURE_BACKOFF_SECS + 1).unwrap();
-        assert_eq!(launches(&log), 4);
+        ThumbnailGenerator::generate_scrub_thumbnails_at(&source, "vid", &cache, 60.0, t0 + DECODE_BACKOFF_SECS + 1).unwrap();
+        assert_eq!(launches(&log), 2);
         // A changed source retries immediately.
         std::fs::write(&src, b"a different, longer file").unwrap();
-        ThumbnailGenerator::generate_scrub_thumbnails_at(&source, "vid", &cache, 60.0, t0 + FAILURE_BACKOFF_SECS + 2).unwrap();
-        assert_eq!(launches(&log), 6);
+        ThumbnailGenerator::generate_scrub_thumbnails_at(&source, "vid", &cache, 60.0, t0 + DECODE_BACKOFF_SECS + 2).unwrap();
+        assert_eq!(launches(&log), 3);
         crate::ffmpeg::TEST_FFMPEG.with(|c| *c.borrow_mut() = None);
     }
 
@@ -1320,6 +1402,63 @@ mod cache_tests {
         assert!(cache.join("vid_scrub_9.jpg").exists());
     }
 
+    /// ffmpeg that exits 0 but writes only the first output.
+    #[cfg(unix)]
+    #[test]
+    fn exit_zero_with_missing_outputs_is_a_failure_with_one_launch() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let log = dir.path().join("calls.log");
+        let fake = dir.path().join("fake-ffmpeg");
+        std::fs::write(
+            &fake,
+            format!(
+                "#!/bin/sh\necho call >> '{}'\nfor a; do case \"$a\" in *.jpg) echo x > \"$a\"; exit 0;; esac; done\nexit 0\n",
+                log.display()
+            ),
+        )
+        .unwrap();
+        std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let cache = dir.path().join("cache");
+        std::fs::create_dir(&cache).unwrap();
+        let src = dir.path().join("clip.mov");
+        std::fs::write(&src, b"not a video").unwrap();
+        crate::ffmpeg::TEST_FFMPEG.with(|c| *c.borrow_mut() = Some(fake));
+        let source = MediaSource::path(&src);
+        for i in 0..5 {
+            ThumbnailGenerator::generate_scrub_thumbnails_at(&source, "vid", &cache, 60.0, 3_000_000 + i).unwrap();
+        }
+        crate::ffmpeg::TEST_FFMPEG.with(|c| *c.borrow_mut() = None);
+        assert_eq!(launches(&log), 1);
+        let jpgs = std::fs::read_dir(&cache)
+            .unwrap()
+            .filter(|e| e.as_ref().unwrap().file_name().to_string_lossy().ends_with(".jpg"))
+            .count();
+        assert_eq!(jpgs, 0, "nothing published");
+        assert!(failure_marker(&cache, "vid", SCRUB_FAIL).exists());
+    }
+
+    #[test]
+    fn backoff_length_depends_on_the_marker_reason() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("clip.mov");
+        std::fs::write(&src, b"x").unwrap();
+        let source = MediaSource::path(&src);
+        let t0 = 5_000_000u64;
+        record_failure(dir.path(), "a", SCRUB_FAIL, &source, t0, REASON_IO);
+        record_failure(dir.path(), "b", SCRUB_FAIL, &source, t0, REASON_DECODE);
+        record_failure(dir.path(), "c", SCRUB_FAIL, &source, t0, "something-else");
+        let active = |id: &str, dt: u64| failure_active(dir.path(), id, SCRUB_FAIL, &source, t0 + dt);
+        assert!(active("a", IO_BACKOFF_SECS - 1) && !active("a", IO_BACKOFF_SECS));
+        assert!(active("b", IO_BACKOFF_SECS + 1) && !active("b", DECODE_BACKOFF_SECS));
+        assert!(!active("c", 0), "unknown reason is expired");
+        // Unavailable backend never writes a marker.
+        let e = unavailable();
+        assert!(failure_reason(&e).is_none());
+        assert_eq!(failure_reason(&ReelVaultError::FfmpegError("Failed to run ffmpeg: timed out".into())), Some(REASON_IO));
+        assert_eq!(failure_reason(&ReelVaultError::ThumbnailGenerationFailed("x".into())), Some(REASON_DECODE));
+    }
+
     #[cfg(unix)]
     #[test]
     fn failing_still_regeneration_backs_off_until_expiry_or_source_change() {
@@ -1330,10 +1469,10 @@ mod cache_tests {
             assert!(ThumbnailGenerator::generate_default_sizes_at(&source, "vid", &cache, 60.0, t0 + i).is_err());
         }
         assert_eq!(launches(&log), 1, "repeated still regenerations launch ffmpeg once");
-        let _ = ThumbnailGenerator::generate_default_sizes_at(&source, "vid", &cache, 60.0, t0 + FAILURE_BACKOFF_SECS + 1);
+        let _ = ThumbnailGenerator::generate_default_sizes_at(&source, "vid", &cache, 60.0, t0 + DECODE_BACKOFF_SECS + 1);
         assert_eq!(launches(&log), 2);
         std::fs::write(&src, b"a different, longer file").unwrap();
-        let _ = ThumbnailGenerator::generate_default_sizes_at(&source, "vid", &cache, 60.0, t0 + FAILURE_BACKOFF_SECS + 2);
+        let _ = ThumbnailGenerator::generate_default_sizes_at(&source, "vid", &cache, 60.0, t0 + DECODE_BACKOFF_SECS + 2);
         assert_eq!(launches(&log), 3);
         // Markers are collected with the video's other files.
         ThumbnailGenerator::cleanup_thumbnails(&cache, "vid").unwrap();

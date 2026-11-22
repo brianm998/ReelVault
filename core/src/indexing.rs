@@ -6,7 +6,7 @@ use crate::error::{Result, ReelVaultError};
 use crate::media_backend::{backend, MediaSource};
 use crate::metadata::MetadataExtractor;
 use crate::post_index;
-use crate::thumbnails::ThumbnailGenerator;
+use crate::thumbnails::{ColorInfo, ThumbnailGenerator};
 use rayon::prelude::*;
 use std::path::Path;
 use std::sync::atomic::{AtomicI64, Ordering};
@@ -341,6 +341,48 @@ impl IndexingEngine {
     ///
     /// Returned by `scan_single_file` alongside the video ID so the caller
     /// can include both in the event payload.
+    /// Find an existing video that `video_path` is a true copy of. Name + size
+    /// only nominate candidates; the sparse content hash decides. A candidate
+    /// whose hash is missing is hashed from its own file (and stored); if that
+    /// can't be done, it is not merged.
+    pub(crate) fn find_verified_copy(
+        db: &Database,
+        video_path: &Path,
+        filename: &str,
+        file_size: i64,
+    ) -> Option<String> {
+        let path_str = video_path.to_str().unwrap_or("");
+        let candidates = db
+            .find_locations_by_filename_size(filename, file_size, path_str)
+            .ok()?;
+        if candidates.is_empty() {
+            return None;
+        }
+        let new_hash = match crate::content_hash::sparse_content_hash(video_path) {
+            Ok(h) => h,
+            Err(e) => {
+                tracing::warn!("hash failed for {}: {e}; not merging", video_path.display());
+                return None;
+            }
+        };
+        for (vid, cand_path) in candidates {
+            let existing = match db.get_content_hash(&vid) {
+                Ok(Some(h)) => Some(h),
+                _ => match crate::content_hash::sparse_content_hash(Path::new(&cand_path)) {
+                    Ok(h) => {
+                        let _ = db.set_content_hash(&vid, &h);
+                        Some(h)
+                    }
+                    Err(_) => None,
+                },
+            };
+            if existing.as_deref() == Some(new_hash.as_str()) {
+                return Some(vid);
+            }
+        }
+        None
+    }
+
     pub fn index_video(
         db: &Database,
         video_path: &Path,
@@ -381,13 +423,8 @@ impl IndexingEngine {
         } else {
             // New path. Check if this is a copy/move of an existing video:
             // same filename + same file size → same content.
-            let copy_id = if let Some(sz) = file_size {
-                db.find_location_by_filename_size(filename, sz, video_path.to_str().unwrap_or(""))
-                    .ok()
-                    .flatten()
-            } else {
-                None
-            };
+            let copy_id = file_size
+                .and_then(|sz| Self::find_verified_copy(db, video_path, filename, sz));
 
             if let Some(existing_id) = copy_id {
                 tracing::info!(
@@ -437,8 +474,14 @@ impl IndexingEngine {
         let duration_secs = probe_output.format.duration.unwrap_or(0.0);
 
         // Generate thumbnail (skip if already exists, ffmpeg overwrite would be redundant)
+        // Probe the color once, lazily, and share it between stills and scrub.
+        let mut color: Option<ColorInfo> = None;
+        let first_scrub = thumbnail_cache.join(format!("{}_scrub_0.jpg", video_id));
         if !ThumbnailGenerator::stills_current(thumbnail_cache, &video_id) {
-            match ThumbnailGenerator::generate(db, &source, &video_id, thumbnail_cache, duration_secs) {
+            let c = color.get_or_insert_with(|| ThumbnailGenerator::probe_color(&source));
+            match ThumbnailGenerator::generate_default_sizes_with_color(
+                &source, &video_id, thumbnail_cache, duration_secs, Some(c), crate::thumbnails::now_secs(),
+            ) {
                 Ok(_) => {
                     tracing::debug!("Generated thumbnail for {}", video_id);
                 }
@@ -451,13 +494,15 @@ impl IndexingEngine {
         // Generate scrub-frame previews (idempotent — skips already-existing).
         // Done after the regular thumbnail so users see *something* in the grid
         // even if scrub generation is mid-flight.
-        let first_scrub = thumbnail_cache.join(format!("{}_scrub_0.jpg", video_id));
         if !first_scrub.exists() {
-            match ThumbnailGenerator::generate_scrub_thumbnails(
+            let c = color.get_or_insert_with(|| ThumbnailGenerator::probe_color(&source));
+            match ThumbnailGenerator::generate_scrub_thumbnails_with_color(
                 &source,
                 &video_id,
                 thumbnail_cache,
                 duration_secs,
+                Some(c),
+                crate::thumbnails::now_secs(),
             ) {
                 Ok(_) => tracing::debug!("Generated scrub frames for {}", video_id),
                 Err(e) => tracing::warn!("Failed to generate scrub frames for {}: {}", video_id, e),
@@ -683,6 +728,40 @@ mod tests {
             .unwrap()
             .0
             .len()
+    }
+
+    #[test]
+    fn copy_detection_requires_matching_content() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = Database::new_empty();
+        db.set_path(&tmp.path().join("t.db")).unwrap();
+        for d in ["a", "b", "c"] {
+            std::fs::create_dir_all(tmp.path().join(d)).unwrap();
+        }
+        let orig = tmp.path().join("a/C0001.mp4");
+        std::fs::write(&orig, vec![1u8; 4096]).unwrap();
+        let other = tmp.path().join("b/C0001.mp4"); // same name+size, different bytes
+        std::fs::write(&other, vec![2u8; 4096]).unwrap();
+        let copy = tmp.path().join("c/C0001.mp4"); // true copy
+        std::fs::write(&copy, vec![1u8; 4096]).unwrap();
+
+        let p = |x: &Path| x.to_str().unwrap().to_string();
+        let id = db
+            .add_video(&p(&orig), "C0001.mp4", None, None, Some(4096))
+            .unwrap();
+        db.add_video_location(&id, &p(&orig), "C0001.mp4", Some(4096))
+            .unwrap();
+
+        assert_eq!(
+            IndexingEngine::find_verified_copy(&db, &other, "C0001.mp4", 4096),
+            None
+        );
+        assert_eq!(
+            IndexingEngine::find_verified_copy(&db, &copy, "C0001.mp4", 4096),
+            Some(id.clone())
+        );
+        // The missing hash was computed and stored on the way.
+        assert!(db.get_content_hash(&id).unwrap().is_some());
     }
 
     #[test]
