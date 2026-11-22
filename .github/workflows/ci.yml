@@ -90,9 +90,9 @@ jobs:
         shell: bash
         run: ./gradlew :shared:compileKotlin :kotlin-desktop:compileKotlin --no-daemon
 
-      - name: Test shared
+      - name: Test shared and desktop
         shell: bash
-        run: ./gradlew :shared:test --no-daemon
+        run: ./gradlew :shared:test :kotlin-desktop:test --no-daemon
 
   # ── SwiftUI macOS: build check ────────────────────────────────────────────
   macos-swift:
