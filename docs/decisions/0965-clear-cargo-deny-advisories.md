@@ -3,5 +3,5 @@
 - tonic 0.12 (not later): smallest jump onto hyper 1 / h2 0.4 / tokio-rustls 0.26, removing rustls 0.22, webpki 0.102 and h2 0.3.
 - rusqlite 0.41: first release bundling patched SQLite (>= 3.54.0, RUSTSEC-2026-0459).
 - chrono is not migrated; RUSTSEC-2026-0543 (unmaintained) is ignored with a reason, migration to jiff/time is a follow-up.
-- rustls-pemfile (unmaintained, transitive via tonic and axum-server) is not an ignore entry: `unmaintained = "workspace"` in deny.toml is a deliberate scope setting limiting unmaintained notices to direct dependencies. Task #984 removes chrono; drop the chrono ignore once it lands.
+- rustls-pemfile (unmaintained, transitive via tonic and axum-server) is ignored by id (RUSTSEC-2025-0134) with a reason, as is chrono (RUSTSEC-2026-0543); drop each when the crate is migrated or upstream moves off it. No `unmaintained = "workspace"` scope setting: it would hide future unmaintained transitive crates.
 - No vulnerability advisory is ignored.
