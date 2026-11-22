@@ -143,9 +143,7 @@ fn walk<R: Read + Seek>(
 /// boxes prefix a 4-byte version/flags FullBox header. Detect by checking
 /// whether a known child atom type sits at the start of the payload.
 fn meta_child_start<R: Read + Seek>(reader: &mut R, payload_start: u64, payload_end: u64) -> u64 {
-    if payload_start + 8 <= payload_end
-        && reader.seek(SeekFrom::Start(payload_start)).is_ok()
-    {
+    if payload_start + 8 <= payload_end && reader.seek(SeekFrom::Start(payload_start)).is_ok() {
         let mut hdr = [0u8; 8];
         if reader.read_exact(&mut hdr).is_ok() && is_known_meta_child(&hdr[4..8]) {
             return payload_start; // QuickTime layout
@@ -204,7 +202,11 @@ fn parse_meta<R: Read + Seek>(
 /// Parse the `keys` table: a version/flags + count header, then `count`
 /// entries of `[size][namespace][key bytes]`. Returns the key strings in
 /// declaration order (they're referenced 1-based from `ilst`).
-fn parse_keys<R: Read + Seek>(reader: &mut R, start: u64, end: u64) -> std::io::Result<Vec<String>> {
+fn parse_keys<R: Read + Seek>(
+    reader: &mut R,
+    start: u64,
+    end: u64,
+) -> std::io::Result<Vec<String>> {
     if start + 8 > end {
         return Ok(Vec::new());
     }
@@ -333,7 +335,11 @@ fn decode_data_value(type_indicator: u32, bytes: &[u8]) -> Option<String> {
         }
         21 => {
             // signed big-endian integer (1..8 bytes), sign-extended
-            let mut v: i64 = if bytes.first().is_some_and(|b| b & 0x80 != 0) { -1 } else { 0 };
+            let mut v: i64 = if bytes.first().is_some_and(|b| b & 0x80 != 0) {
+                -1
+            } else {
+                0
+            };
             for &b in bytes {
                 v = (v << 8) | (b as i64 & 0xff);
             }
@@ -423,14 +429,23 @@ mod tests {
         let moov = atom(b"moov", &trak);
 
         let mut out = HashMap::new();
-        walk(&mut Cursor::new(moov.clone()), 0, moov.len() as u64, 0, &mut out).unwrap();
+        walk(
+            &mut Cursor::new(moov.clone()),
+            0,
+            moov.len() as u64,
+            0,
+            &mut out,
+        )
+        .unwrap();
 
         assert_eq!(
-            out.get("com.apple.quicktime.camera.lens_model").map(String::as_str),
+            out.get("com.apple.quicktime.camera.lens_model")
+                .map(String::as_str),
             Some(lens)
         );
         assert_eq!(
-            out.get("com.apple.quicktime.camera.lens_irisfnumber").map(String::as_str),
+            out.get("com.apple.quicktime.camera.lens_irisfnumber")
+                .map(String::as_str),
             Some("F1.78")
         );
     }
@@ -447,8 +462,18 @@ mod tests {
         let moov = atom(b"moov", &meta);
 
         let mut out = HashMap::new();
-        walk(&mut Cursor::new(moov.clone()), 0, moov.len() as u64, 0, &mut out).unwrap();
-        assert_eq!(out.get("com.apple.quicktime.make").map(String::as_str), Some("Apple"));
+        walk(
+            &mut Cursor::new(moov.clone()),
+            0,
+            moov.len() as u64,
+            0,
+            &mut out,
+        )
+        .unwrap();
+        assert_eq!(
+            out.get("com.apple.quicktime.make").map(String::as_str),
+            Some("Apple")
+        );
     }
 
     #[test]
@@ -469,7 +494,8 @@ mod tests {
         }
         let m = read_quicktime_metadata(p);
         assert_eq!(
-            m.get("com.apple.quicktime.camera.lens_model").map(String::as_str),
+            m.get("com.apple.quicktime.camera.lens_model")
+                .map(String::as_str),
             Some("iPhone 16 Pro back camera 6.765mm f/1.78")
         );
     }

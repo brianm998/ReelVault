@@ -399,7 +399,12 @@ pub(crate) fn ingest_bookmark(bytes: Vec<u8>, filename: Option<String>) -> i32 {
 /// is the sparse blake3 hash of the peer's original; `derived_height` is the
 /// height of this downscaled copy (0 if it is the original).
 /// Returns 0 on success, negative on error (-1 not booted, -2 bad args, -3 failed).
-pub(crate) fn ingest_synced(path: &str, filename: &str, origin_hash: &str, derived_height: i32) -> i32 {
+pub(crate) fn ingest_synced(
+    path: &str,
+    filename: &str,
+    origin_hash: &str,
+    derived_height: i32,
+) -> i32 {
     let ctx = match INGEST.get() {
         Some(c) => c,
         None => return -1,
@@ -431,7 +436,11 @@ pub(crate) fn ingest_synced(path: &str, filename: &str, origin_hash: &str, deriv
             // Stamp provenance: mark as derived and record the origin hash.
             let db = &ctx.db;
             let oh = origin_hash.to_string();
-            let dh: Option<i32> = if derived_height > 0 { Some(derived_height) } else { None };
+            let dh: Option<i32> = if derived_height > 0 {
+                Some(derived_height)
+            } else {
+                None
+            };
             if let Ok(conn) = db.get_connection() {
                 if let Err(e) = conn.execute(
                     "UPDATE videos SET is_derived = 1, origin_hash = ?1 WHERE id = ?2",
@@ -542,11 +551,17 @@ mod prune_tests {
         let tmp = tempfile::tempdir().unwrap();
         let db = Database::new_empty();
         db.set_path(&tmp.path().join("t.db")).unwrap();
-        let id = db.add_video("photos://gone", "gone.mov", None, None, Some(1)).unwrap();
-        db.add_video_location(&id, "photos://gone", "gone.mov", Some(1)).unwrap();
+        let id = db
+            .add_video("photos://gone", "gone.mov", None, None, Some(1))
+            .unwrap();
+        db.add_video_location(&id, "photos://gone", "gone.mov", Some(1))
+            .unwrap();
         db.get_connection()
             .unwrap()
-            .execute("UPDATE videos SET source_kind='photo', source_id='gone' WHERE id=?", [&id])
+            .execute(
+                "UPDATE videos SET source_kind='photo', source_id='gone' WHERE id=?",
+                [&id],
+            )
             .unwrap();
         let (tx, mut rx) = tokio::sync::broadcast::channel(16);
         let present = std::collections::HashSet::new();

@@ -111,8 +111,12 @@ pub struct NativeMediaCallbacks {
         out_path: *const c_char,
     ) -> i32,
     /// Transcode an H.264/AAC proxy at `target_height` to `out_path`. 0 = ok.
-    pub transcode_proxy:
-        extern "C" fn(kind: i32, src_id: *const c_char, out_path: *const c_char, target_height: i32) -> i32,
+    pub transcode_proxy: extern "C" fn(
+        kind: i32,
+        src_id: *const c_char,
+        out_path: *const c_char,
+        target_height: i32,
+    ) -> i32,
     /// Compute an audio loudness-over-time envelope (one normalized 0..1 value
     /// per time slice). Writes up to `max_samples` little-endian f32 into `out`
     /// and returns the count written, or -1 on failure / no audio track. `out`
@@ -150,10 +154,13 @@ impl MediaBackend for NativeMediaBackend {
             ));
         }
         // SAFETY: Swift returns a valid NUL-terminated string or NULL (checked).
-        let json = unsafe { CStr::from_ptr(ptr) }.to_string_lossy().into_owned();
+        let json = unsafe { CStr::from_ptr(ptr) }
+            .to_string_lossy()
+            .into_owned();
         (self.cb.free_string)(ptr);
-        serde_json::from_str(&json)
-            .map_err(|e| ReelVaultError::MetadataExtractionFailed(format!("native probe JSON: {e}")))
+        serde_json::from_str(&json).map_err(|e| {
+            ReelVaultError::MetadataExtractionFailed(format!("native probe JSON: {e}"))
+        })
     }
 
     fn probe_color(&self, _src: &MediaSource) -> ColorInfo {
@@ -262,10 +269,7 @@ pub extern "C" fn reelvault_register_media_backend(callbacks: NativeMediaCallbac
 /// `local_id` / `filename` must be NUL-terminated C strings (filename may be null).
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)] // FFI boundary; pointers validated via `cstring`
-pub extern "C" fn reelvault_ingest_photo(
-    local_id: *const c_char,
-    filename: *const c_char,
-) -> i32 {
+pub extern "C" fn reelvault_ingest_photo(local_id: *const c_char, filename: *const c_char) -> i32 {
     embed::ffi_guard("ingest_photo", -99, || {
         let local_id = match unsafe { cstring(local_id) } {
             Some(s) if !s.is_empty() => s,

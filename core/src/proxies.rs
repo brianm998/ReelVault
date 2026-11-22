@@ -334,13 +334,17 @@ fn run_detection_with_cache(
                     if let Err(e) = db.set_proxy_of(&candidate.id, &master.id, conf, true) {
                         tracing::warn!(
                             "Failed to link {} as proxy of {}: {}",
-                            candidate.filename, master.filename, e,
+                            candidate.filename,
+                            master.filename,
+                            e,
                         );
                         continue;
                     }
                     tracing::info!(
                         "Auto-detected proxy: {} → {} (confidence {:.3})",
-                        candidate.filename, master.filename, conf,
+                        candidate.filename,
+                        master.filename,
+                        conf,
                     );
                     summary.proxies_marked += 1;
                 }
@@ -388,7 +392,10 @@ fn detect_proxies_folder_pairs(
             continue;
         }
         // Originals live in the directory that contains the Proxies folder.
-        let Some(parent_dir) = Path::new(&proxy.parent_dir).parent().and_then(|p| p.to_str()) else {
+        let Some(parent_dir) = Path::new(&proxy.parent_dir)
+            .parent()
+            .and_then(|p| p.to_str())
+        else {
             continue;
         };
         let Some(originals) = by_dir.get(parent_dir) else {
@@ -429,13 +436,19 @@ fn detect_proxies_folder_pairs(
                 if let Err(e) = db.set_proxy_of(&proxy.id, &original.id, conf, true) {
                     tracing::warn!(
                         "Failed to link {} as Proxies-folder proxy of {}: {}",
-                        proxy.filename, original.filename, e,
+                        proxy.filename,
+                        original.filename,
+                        e,
                     );
                     continue;
                 }
                 tracing::info!(
                     "Auto-detected Proxies-folder proxy: {} → {} (confidence {:.3}, fps {} vs {})",
-                    proxy.filename, original.filename, conf, proxy.fps, original.fps,
+                    proxy.filename,
+                    original.filename,
+                    conf,
+                    proxy.fps,
+                    original.fps,
                 );
                 summary.proxies_marked += 1;
             }
@@ -475,7 +488,10 @@ pub(crate) fn proxies_folder_pair_gates_pass(
         return false;
     }
     // …directly beneath the original's directory.
-    match Path::new(&proxy.parent_dir).parent().and_then(|p| p.to_str()) {
+    match Path::new(&proxy.parent_dir)
+        .parent()
+        .and_then(|p| p.to_str())
+    {
         Some(grandparent) if grandparent == original.parent_dir => {}
         _ => return false,
     }
@@ -524,7 +540,10 @@ fn filename_mentions_proxy(filename: &str) -> bool {
 /// proxy" relationship — e.g. ProRes-444 UHQ master vs ProRes-422 MQ
 /// at the same dimensions but ~4× lighter). Equal-pixel-and-similar-
 /// size pairs belong in a stack instead.
-pub(crate) fn is_master_of(master: &ProxyDetectCandidate, candidate: &ProxyDetectCandidate) -> bool {
+pub(crate) fn is_master_of(
+    master: &ProxyDetectCandidate,
+    candidate: &ProxyDetectCandidate,
+) -> bool {
     let m_px = (master.width as i64) * (master.height as i64);
     let c_px = (candidate.width as i64) * (candidate.height as i64);
     if m_px > c_px {
@@ -629,10 +648,7 @@ fn shares_dimension_value(a: &ProxyDetectCandidate, b: &ProxyDetectCandidate) ->
     if a.width == b.width && a.height == b.height {
         return false;
     }
-    a.width == b.width
-        || a.width == b.height
-        || a.height == b.width
-        || a.height == b.height
+    a.width == b.width || a.width == b.height || a.height == b.width || a.height == b.height
 }
 
 // ---- Public thumbnail comparison API -----------------------------------
@@ -861,8 +877,14 @@ pub(crate) fn compare_thumb_sets(a: &ThumbImages, b: &ThumbImages) -> f64 {
 /// Pattern: `<original_stem>_proxy_<height>p.<ext>`. Same extension as
 /// the source so file managers / editors recognize it.
 pub fn proxy_path_beside(source: &Path, height: u32) -> PathBuf {
-    let parent = source.parent().map(PathBuf::from).unwrap_or_else(|| PathBuf::from("."));
-    let stem = source.file_stem().and_then(|s| s.to_str()).unwrap_or("proxy");
+    let parent = source
+        .parent()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."));
+    let stem = source
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("proxy");
     let ext = source.extension().and_then(|s| s.to_str()).unwrap_or("mp4");
     parent.join(format!("{}_proxy_{}p.{}", stem, height, ext))
 }
@@ -943,7 +965,10 @@ pub(crate) fn ffmpeg_transcode_proxy(
     // band; "indexing"/"complete" cover 90-100% after ffmpeg exits.
     let stdout = child.stdout.take().expect("stdout was piped");
     use std::io::BufRead;
-    for line in std::io::BufReader::new(stdout).lines().map_while(|l| l.ok()) {
+    for line in std::io::BufReader::new(stdout)
+        .lines()
+        .map_while(|l| l.ok())
+    {
         if let Some(frame_str) = line.strip_prefix("frame=") {
             if let Ok(frame) = frame_str.trim().parse::<i64>() {
                 let percent = if total_frames > 0 {
@@ -1156,15 +1181,24 @@ mod tests {
         let candidates = vec![
             mk(
                 "05_16_2026-a7sii-1_ProRes-444_OriRes_30_UHQ.mov",
-                4240, 2832, 900, 4000,
+                4240,
+                2832,
+                900,
+                4000,
             ),
             mk(
                 "05_16_2026-a7sii-1_ProRes-422_1080p_30_HQ.mov",
-                1920, 1080, 900, 400,
+                1920,
+                1080,
+                900,
+                400,
             ),
             mk(
                 "05_16_2026-a7sii-1_ProRes-422_720p_30_MQ.mov",
-                1280, 720, 900, 80,
+                1280,
+                720,
+                900,
+                80,
             ),
         ];
         for c in &candidates {
@@ -1192,15 +1226,24 @@ mod tests {
         let mut candidates = vec![
             mk(
                 "05_16_2026-a7sii-1_ProRes-444_OriRes_30_UHQ.mov",
-                4240, 2832, 900, 4000,
+                4240,
+                2832,
+                900,
+                4000,
             ),
             mk(
                 "05_16_2026-a7sii-1_ProRes-422_1080p_30_HQ.mov",
-                1920, 1080, 900, 400,
+                1920,
+                1080,
+                900,
+                400,
             ),
             mk(
                 "05_16_2026-a7sii-1_ProRes-422_720p_30_MQ.mov",
-                1280, 720, 900, 80,
+                1280,
+                720,
+                900,
+                80,
             ),
         ];
         candidates[1].already_proxy = true;
@@ -1213,7 +1256,10 @@ mod tests {
         let summary = run_detection_with_cache(&Database::new_empty(), &cache, candidates).unwrap();
 
         assert_eq!(summary.already_linked_skipped, 2);
-        assert_eq!(summary.pairs_compared, 0, "settled proxies aren't re-tested");
+        assert_eq!(
+            summary.pairs_compared, 0,
+            "settled proxies aren't re-tested"
+        );
         assert_eq!(cache.loads(), 0, "and nothing is decoded off disk");
         assert_eq!(summary.thumbnails_loaded, 0);
     }
@@ -1226,17 +1272,26 @@ mod tests {
         let mut candidates = vec![
             mk(
                 "05_16_2026-a7sii-1_ProRes-444_OriRes_30_UHQ.mov",
-                4240, 2832, 900, 4000,
+                4240,
+                2832,
+                900,
+                4000,
             ),
             // Already linked on a previous scan.
             mk(
                 "05_16_2026-a7sii-1_ProRes-422_1080p_30_HQ.mov",
-                1920, 1080, 900, 400,
+                1920,
+                1080,
+                900,
+                400,
             ),
             // Copied in since — still an open question.
             mk(
                 "05_16_2026-a7sii-1_ProRes-422_720p_30_MQ.mov",
-                1280, 720, 900, 80,
+                1280,
+                720,
+                900,
+                80,
             ),
         ];
         candidates[1].already_proxy = true;
@@ -1262,11 +1317,21 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut original = mk_at(
             "/lib/shoot/05_16_2026-a7sii-1_ProRes-444_OriRes_30_UHQ.mov",
-            4240, 2832, 900, 4000, 30.0, 2,
+            4240,
+            2832,
+            900,
+            4000,
+            30.0,
+            2,
         );
         let mut proxy = mk_at(
             "/lib/shoot/Proxies/05_16_2026-a7sii-1_proxy_720p.mov",
-            1280, 720, 900, 80, 24.0, 0,
+            1280,
+            720,
+            900,
+            80,
+            24.0,
+            0,
         );
         // mk_at ids are paths; the thumbnail cache keys on the id as a bare
         // filename, so give these two slug ids it can actually write.
@@ -1278,7 +1343,8 @@ mod tests {
 
         let cache = ThumbCache::new(dir.path());
         let summary =
-            run_detection_with_cache(&Database::new_empty(), &cache, vec![original, proxy]).unwrap();
+            run_detection_with_cache(&Database::new_empty(), &cache, vec![original, proxy])
+                .unwrap();
 
         assert_eq!(summary.already_linked_skipped, 1);
         assert_eq!(summary.pairs_compared, 0);
@@ -1343,11 +1409,17 @@ mod tests {
     fn proxy_gate_rejects_cross_lineage_pair() {
         let master_aurora = mk(
             "05_16_2026-a7sii-1-aurora_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
-            4240, 2832, 900, 4000,
+            4240,
+            2832,
+            900,
+            4000,
         );
         let proxy_plain = mk(
             "05_16_2026-a7sii-1_ProRes-422_Rec.709F_720p_30_MQ.mov",
-            1080, 720, 900, 80,
+            1080,
+            720,
+            900,
+            80,
         );
         // Frame counts match, camera_model empty on both — every gate but
         // name_part would let this through.
@@ -1359,11 +1431,17 @@ mod tests {
     fn proxy_gate_accepts_same_lineage_pair() {
         let master = mk(
             "05_16_2026-a7sii-1_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
-            4240, 2832, 900, 4000,
+            4240,
+            2832,
+            900,
+            4000,
         );
         let proxy = mk(
             "05_16_2026-a7sii-1_ProRes-422_Rec.709F_720p_30_MQ.mov",
-            1080, 720, 900, 80,
+            1080,
+            720,
+            900,
+            80,
         );
         assert!(proxy_pair_gates_pass(&master, &proxy));
     }
@@ -1385,11 +1463,17 @@ mod tests {
     fn proxy_gate_rejects_deeper_lineage_split() {
         let aurora = mk(
             "04_18_2026-a9-2-aurora_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
-            6000, 4000, 900, 4000,
+            6000,
+            4000,
+            900,
+            4000,
         );
         let star_v = mk(
             "04_18_2026-a9-2-aurora-star-v-0_10_8_ProRes-422_Rec.709F_720p_30_MQ.mov",
-            1080, 720, 900, 80,
+            1080,
+            720,
+            900,
+            80,
         );
         assert!(!proxy_pair_gates_pass(&aurora, &star_v));
     }
@@ -1404,11 +1488,17 @@ mod tests {
     fn proxy_gate_rejects_cross_axis_shared_dimension() {
         let p_variant = mk(
             "07_27_2024-a9-1-aurora-topaz_ProRes-422_Rec.709F_2160p_30_MQ.mov",
-            3840, 2160, 900, 800,
+            3840,
+            2160,
+            900,
+            800,
         );
         let w_variant = mk(
             "07_27_2024-a9-1-aurora-topaz_ProRes-422_Rec.709F_2160w_30_MQ.mov",
-            2160, 1440, 900, 600,
+            2160,
+            1440,
+            900,
+            600,
         );
         assert!(!proxy_pair_gates_pass(&p_variant, &w_variant));
         // Symmetric — order shouldn't matter.
@@ -1423,11 +1513,17 @@ mod tests {
     fn proxy_gate_rejects_720_tier_cross_axis_collision() {
         let p720 = mk(
             "07_27_2024-a9-1-aurora-topaz_ProRes-422_Rec.709F_720p_30_MQ.mov",
-            1080, 720, 900, 80,
+            1080,
+            720,
+            900,
+            80,
         );
         let w720 = mk(
             "07_27_2024-a9-1-aurora-topaz_ProRes-422_Rec.709F_720w_30_MQ.mov",
-            720, 480, 900, 50,
+            720,
+            480,
+            900,
+            50,
         );
         assert!(!proxy_pair_gates_pass(&p720, &w720));
     }
@@ -1441,11 +1537,17 @@ mod tests {
         // smaller in both axes, no shared dimension value.
         let master = mk(
             "foo_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
-            6000, 4000, 600, 4000,
+            6000,
+            4000,
+            600,
+            4000,
         );
         let proxy = mk(
             "foo_ProRes-422_Rec.709F_2160w_30_MQ.mov",
-            2160, 1440, 600, 600,
+            2160,
+            1440,
+            600,
+            600,
         );
         assert!(proxy_pair_gates_pass(&master, &proxy));
     }
@@ -1461,11 +1563,17 @@ mod tests {
     fn proxy_gate_allows_codec_proxy_same_dimensions() {
         let uhq = mk(
             "foo_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
-            3840, 2160, 900, 4000,
+            3840,
+            2160,
+            900,
+            4000,
         );
         let mq = mk(
             "foo_ProRes-422_Rec.709F_OriRes_30_MQ.mov",
-            3840, 2160, 900, 800,
+            3840,
+            2160,
+            900,
+            800,
         );
         assert!(proxy_pair_gates_pass(&uhq, &mq));
     }
@@ -1498,11 +1606,21 @@ mod tests {
     fn proxies_folder_gate_rejects_proxy_with_audio() {
         let original = mk_at(
             "/lib/v/clip_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
-            3840, 2160, 9000, 4000, 30.0, 0,
+            3840,
+            2160,
+            9000,
+            4000,
+            30.0,
+            0,
         );
         let proxy = mk_at(
             "/lib/v/Proxies/clip_ProRes-444_Rec.709F_OriRes_30_UHQ_Proxy.mov",
-            1280, 720, 9000, 120, 25.0, 2,
+            1280,
+            720,
+            9000,
+            120,
+            25.0,
+            2,
         );
         assert!(!proxies_folder_pair_gates_pass(&original, &proxy));
     }
@@ -1513,11 +1631,21 @@ mod tests {
     fn proxies_folder_gate_requires_proxy_in_filename() {
         let original = mk_at(
             "/lib/v/clip_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
-            3840, 2160, 9000, 4000, 30.0, 0,
+            3840,
+            2160,
+            9000,
+            4000,
+            30.0,
+            0,
         );
         let proxy = mk_at(
             "/lib/v/Proxies/clip_ProRes-422_Rec.709F_720p_25_MQ.mov",
-            1280, 720, 9000, 120, 25.0, 0,
+            1280,
+            720,
+            9000,
+            120,
+            25.0,
+            0,
         );
         assert!(!proxies_folder_pair_gates_pass(&original, &proxy));
     }
@@ -1529,11 +1657,21 @@ mod tests {
     fn proxies_folder_gate_requires_proxies_dir() {
         let original = mk_at(
             "/lib/v/clip_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
-            3840, 2160, 9000, 4000, 30.0, 0,
+            3840,
+            2160,
+            9000,
+            4000,
+            30.0,
+            0,
         );
         let proxy = mk_at(
             "/lib/v/clip_ProRes-444_Rec.709F_OriRes_30_UHQ_Proxy.mov",
-            1280, 720, 9000, 120, 25.0, 0,
+            1280,
+            720,
+            9000,
+            120,
+            25.0,
+            0,
         );
         assert!(!proxies_folder_pair_gates_pass(&original, &proxy));
     }
@@ -1545,11 +1683,21 @@ mod tests {
     fn proxies_folder_gate_requires_original_one_level_up() {
         let original = mk_at(
             "/lib/other/clip_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
-            3840, 2160, 9000, 4000, 30.0, 0,
+            3840,
+            2160,
+            9000,
+            4000,
+            30.0,
+            0,
         );
         let proxy = mk_at(
             "/lib/v/Proxies/clip_ProRes-444_Rec.709F_OriRes_30_UHQ_Proxy.mov",
-            1280, 720, 9000, 120, 25.0, 0,
+            1280,
+            720,
+            9000,
+            120,
+            25.0,
+            0,
         );
         assert!(!proxies_folder_pair_gates_pass(&original, &proxy));
     }
@@ -1561,11 +1709,21 @@ mod tests {
     fn proxies_folder_gate_requires_exact_frame_count() {
         let original = mk_at(
             "/lib/v/clip_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
-            3840, 2160, 9000, 4000, 30.0, 0,
+            3840,
+            2160,
+            9000,
+            4000,
+            30.0,
+            0,
         );
         let proxy = mk_at(
             "/lib/v/Proxies/clip_ProRes-444_Rec.709F_OriRes_30_UHQ_Proxy.mov",
-            1280, 720, 8999, 120, 25.0, 0,
+            1280,
+            720,
+            8999,
+            120,
+            25.0,
+            0,
         );
         assert!(!proxies_folder_pair_gates_pass(&original, &proxy));
     }
@@ -1577,11 +1735,21 @@ mod tests {
     fn proxies_folder_wrong_direction_is_not_master() {
         let smaller = mk_at(
             "/lib/v/clip_ProRes-444_Rec.709F_720p_30_MQ.mov",
-            1280, 720, 9000, 120, 30.0, 0,
+            1280,
+            720,
+            9000,
+            120,
+            30.0,
+            0,
         );
         let bigger = mk_at(
             "/lib/v/Proxies/clip_ProRes-444_Rec.709F_OriRes_30_UHQ_Proxy.mov",
-            3840, 2160, 9000, 4000, 25.0, 0,
+            3840,
+            2160,
+            9000,
+            4000,
+            25.0,
+            0,
         );
         assert!(!is_master_of(&smaller, &bigger));
     }

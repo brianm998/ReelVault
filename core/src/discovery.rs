@@ -83,7 +83,13 @@ impl Drop for Advertisement {
 fn sanitize_instance(name: &str) -> String {
     let cleaned: String = name
         .chars()
-        .map(|c| if c == '.' || c.is_whitespace() { '-' } else { c })
+        .map(|c| {
+            if c == '.' || c.is_whitespace() {
+                '-'
+            } else {
+                c
+            }
+        })
         .collect();
     let trimmed = cleaned.trim_matches('-');
     if trimmed.is_empty() {

@@ -29,9 +29,7 @@ pub enum SyncAction {
     Ambiguous { reason: String },
     /// The remote video was deleted (has a `deleted_at` tombstone). If we have
     /// a local copy (found via sync_links), the executor should soft-delete it.
-    SoftDelete {
-        local_video_id: Option<String>,
-    },
+    SoftDelete { local_video_id: Option<String> },
 }
 
 /// One resolved action for one remote video.
@@ -69,8 +67,10 @@ impl Planner {
         manifest_rows: &[SyncManifestRow],
         hash_hits: &[ContentHashHit],
     ) -> Vec<SyncPlanItem> {
-        let hash_hit_map: HashMap<&str, &ContentHashHit> =
-            hash_hits.iter().map(|h| (h.content_hash.as_str(), h)).collect();
+        let hash_hit_map: HashMap<&str, &ContentHashHit> = hash_hits
+            .iter()
+            .map(|h| (h.content_hash.as_str(), h))
+            .collect();
 
         manifest_rows
             .iter()
@@ -85,7 +85,9 @@ impl Planner {
                         .map(|link| link.local_video_id);
                     return SyncPlanItem {
                         source_video_id: row.video_id.clone(),
-                        action: SyncAction::SoftDelete { local_video_id: local_id },
+                        action: SyncAction::SoftDelete {
+                            local_video_id: local_id,
+                        },
                         content_hash: row.content_hash.clone(),
                         remote_marks_rev: row.marks_rev,
                     };
@@ -113,8 +115,9 @@ impl Planner {
 
                 // Step 1: direct link — we've previously synced this exact
                 // (peer, remote_video_id) pair.
-                if let Ok(Some(link)) =
-                    self.db.find_sync_link_by_remote(&self.peer_key, &row.video_id)
+                if let Ok(Some(link)) = self
+                    .db
+                    .find_sync_link_by_remote(&self.peer_key, &row.video_id)
                 {
                     let marks_changed = link.remote_rev_at_sync != row.marks_rev;
                     return SyncPlanItem {

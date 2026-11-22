@@ -41,8 +41,7 @@ use regex::Regex;
 /// The Adobe XMP UUID, used to mark `uuid` atoms in MP4 that carry an
 /// XMP packet. Documented in XMP Specification Part 3 §3.3.
 const ADOBE_XMP_UUID: [u8; 16] = [
-    0xBE, 0x7A, 0xCF, 0xCB, 0x97, 0xA9, 0x42, 0xE8,
-    0x9C, 0x71, 0x99, 0x94, 0x91, 0xE3, 0xAF, 0xAC,
+    0xBE, 0x7A, 0xCF, 0xCB, 0x97, 0xA9, 0x42, 0xE8, 0x9C, 0x71, 0x99, 0x94, 0x91, 0xE3, 0xAF, 0xAC,
 ];
 
 /// Atom-walk depth ceiling. Real MP4/MOV trees never go deeper than ~6
@@ -365,13 +364,15 @@ fn scrape_iso(xml: &str) -> Option<i64> {
     let pat = r"<(?:[A-Za-z_][\w.-]*:)?ISOSpeedRatings(?:\s[^>]*)?>(?s)(.*?)</(?:[A-Za-z_][\w.-]*:)?ISOSpeedRatings\s*>";
     let outer = Regex::new(pat).ok()?;
     let inner = outer.captures(xml)?.get(1)?.as_str();
-    let li = Regex::new(r"<(?:[A-Za-z_][\w.-]*:)?li(?:\s[^>]*)?>\s*([^<]*?)\s*</(?:[A-Za-z_][\w.-]*:)?li\s*>")
-        .ok()?
-        .captures(inner)?
-        .get(1)?
-        .as_str()
-        .trim()
-        .to_string();
+    let li = Regex::new(
+        r"<(?:[A-Za-z_][\w.-]*:)?li(?:\s[^>]*)?>\s*([^<]*?)\s*</(?:[A-Za-z_][\w.-]*:)?li\s*>",
+    )
+    .ok()?
+    .captures(inner)?
+    .get(1)?
+    .as_str()
+    .trim()
+    .to_string();
     li.parse::<i64>().ok()
 }
 
@@ -391,7 +392,8 @@ fn scrape_bag(xml: &str, local_name: &str) -> Vec<String> {
         None => return Vec::new(),
     };
 
-    let li_pat = r"<(?:[A-Za-z_][\w.-]*:)?li(?:\s[^>]*)?>\s*([^<]*?)\s*</(?:[A-Za-z_][\w.-]*:)?li\s*>";
+    let li_pat =
+        r"<(?:[A-Za-z_][\w.-]*:)?li(?:\s[^>]*)?>\s*([^<]*?)\s*</(?:[A-Za-z_][\w.-]*:)?li\s*>";
     let li_re = match Regex::new(li_pat) {
         Ok(re) => re,
         Err(_) => return Vec::new(),
@@ -509,11 +511,11 @@ fn decode_entities(s: &str) -> String {
                     "quot" => Some('"'),
                     "apos" => Some('\''),
                     e if e.starts_with("#x") || e.starts_with("#X") => {
-                        u32::from_str_radix(&e[2..], 16).ok().and_then(char::from_u32)
+                        u32::from_str_radix(&e[2..], 16)
+                            .ok()
+                            .and_then(char::from_u32)
                     }
-                    e if e.starts_with('#') => {
-                        e[1..].parse::<u32>().ok().and_then(char::from_u32)
-                    }
+                    e if e.starts_with('#') => e[1..].parse::<u32>().ok().and_then(char::from_u32),
                     _ => None,
                 };
                 if let Some(c) = replacement {
@@ -706,7 +708,10 @@ mod tests {
         use std::process::Command;
 
         let exiftool = Command::new("exiftool").arg("-ver").output().ok();
-        let ffmpeg = crate::ffmpeg::ffmpeg_command().arg("-version").output().ok();
+        let ffmpeg = crate::ffmpeg::ffmpeg_command()
+            .arg("-version")
+            .output()
+            .ok();
         let have_tools = exiftool.as_ref().is_some_and(|o| o.status.success())
             && ffmpeg.as_ref().is_some_and(|o| o.status.success());
         if !have_tools {

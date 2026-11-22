@@ -187,10 +187,18 @@ fn find_gpmd_stbl<R: Read + Seek>(
         if &ty != b"trak" {
             continue;
         }
-        let Some((mds, mde)) = find_child(reader, ts, te, b"mdia")? else { continue };
-        let Some((mis, mie)) = find_child(reader, mds, mde, b"minf")? else { continue };
-        let Some((sbs, sbe)) = find_child(reader, mis, mie, b"stbl")? else { continue };
-        let Some((sds, sde)) = find_child(reader, sbs, sbe, b"stsd")? else { continue };
+        let Some((mds, mde)) = find_child(reader, ts, te, b"mdia")? else {
+            continue;
+        };
+        let Some((mis, mie)) = find_child(reader, mds, mde, b"minf")? else {
+            continue;
+        };
+        let Some((sbs, sbe)) = find_child(reader, mis, mie, b"stbl")? else {
+            continue;
+        };
+        let Some((sds, sde)) = find_child(reader, sbs, sbe, b"stsd")? else {
+            continue;
+        };
         // stsd payload: version/flags(4) + entry_count(4) + [entry: size(4) + format(4) …]
         if sde >= sds + 16 {
             reader.seek(SeekFrom::Start(sds + 8))?;
@@ -204,7 +212,12 @@ fn find_gpmd_stbl<R: Read + Seek>(
 }
 
 /// Read a box's payload (capped) into memory.
-fn read_payload<R: Read + Seek>(reader: &mut R, start: u64, end: u64, cap: u64) -> std::io::Result<Vec<u8>> {
+fn read_payload<R: Read + Seek>(
+    reader: &mut R,
+    start: u64,
+    end: u64,
+    cap: u64,
+) -> std::io::Result<Vec<u8>> {
     let len = (end - start).min(cap);
     let mut buf = vec![0u8; len as usize];
     reader.seek(SeekFrom::Start(start))?;
@@ -213,7 +226,8 @@ fn read_payload<R: Read + Seek>(reader: &mut R, start: u64, end: u64, cap: u64) 
 }
 
 fn be_u32(b: &[u8], off: usize) -> Option<u32> {
-    b.get(off..off + 4).map(|s| u32::from_be_bytes([s[0], s[1], s[2], s[3]]))
+    b.get(off..off + 4)
+        .map(|s| u32::from_be_bytes([s[0], s[1], s[2], s[3]]))
 }
 fn be_u64(b: &[u8], off: usize) -> Option<u64> {
     b.get(off..off + 8)
@@ -224,14 +238,19 @@ fn be_u64(b: &[u8], off: usize) -> Option<u64> {
 /// using the `stbl` sub-tables: chunk offsets (`stco`/`co64`), the
 /// sample-to-chunk map (`stsc`), and sample sizes (`stsz`). Bounded by
 /// `MAX_GPMF_BYTES` — a long clip's telemetry is at most a few MB.
-fn read_all_chunks<R: Read + Seek>(reader: &mut R, stbl: (u64, u64)) -> std::io::Result<Option<Vec<u8>>> {
+fn read_all_chunks<R: Read + Seek>(
+    reader: &mut R,
+    stbl: (u64, u64),
+) -> std::io::Result<Option<Vec<u8>>> {
     let (sbs, sbe) = stbl;
 
     // Chunk offsets (stco = 32-bit, co64 = 64-bit).
     let offsets: Vec<u64> = if let Some((s, e)) = find_child(reader, sbs, sbe, b"stco")? {
         let p = read_payload(reader, s, e, MAX_TABLE_BYTES)?;
         let n = be_u32(&p, 4).unwrap_or(0) as usize;
-        (0..n).filter_map(|i| be_u32(&p, 8 + i * 4).map(|v| v as u64)).collect()
+        (0..n)
+            .filter_map(|i| be_u32(&p, 8 + i * 4).map(|v| v as u64))
+            .collect()
     } else if let Some((s, e)) = find_child(reader, sbs, sbe, b"co64")? {
         let p = read_payload(reader, s, e, MAX_TABLE_BYTES)?;
         let n = be_u32(&p, 4).unwrap_or(0) as usize;
@@ -279,7 +298,11 @@ fn read_all_chunks<R: Read + Seek>(reader: &mut R, stbl: (u64, u64)) -> std::io:
     // samples_per_chunk for 1-based chunk `c`: the last stsc entry whose
     // first_chunk <= c.
     let spc_for = |c: u32| -> u32 {
-        stsc.iter().rev().find(|(fc, _)| *fc <= c).map(|(_, spc)| *spc).unwrap_or(1)
+        stsc.iter()
+            .rev()
+            .find(|(fc, _)| *fc <= c)
+            .map(|(_, spc)| *spc)
+            .unwrap_or(1)
     };
 
     let mut out: Vec<u8> = Vec::new();
@@ -382,8 +405,7 @@ pub(crate) fn track_distance(pts: &[(f64, f64)]) -> f64 {
             let (la2, lo2) = (w[1].0.to_radians(), w[1].1.to_radians());
             let dlat = la2 - la1;
             let dlon = lo2 - lo1;
-            let a = (dlat / 2.0).sin().powi(2)
-                + la1.cos() * la2.cos() * (dlon / 2.0).sin().powi(2);
+            let a = (dlat / 2.0).sin().powi(2) + la1.cos() * la2.cos() * (dlon / 2.0).sin().powi(2);
             2.0 * R * a.sqrt().min(1.0).asin()
         })
         .sum()
@@ -469,13 +491,21 @@ fn handle_leaf(
                 } else {
                     acc.last_scal.get(i).copied().unwrap_or(1.0)
                 };
-                if s.abs() < f64::EPSILON { 1.0 } else { s }
+                if s.abs() < f64::EPSILON {
+                    1.0
+                } else {
+                    s
+                }
             };
             // Iterate every sample in the element to build the track.
             for s in 0..repeat {
                 let off = s * struct_size;
-                let Some(rlat) = read_be_int(b'l', &data[off..off + 4]) else { continue };
-                let Some(rlon) = read_be_int(b'l', &data[off + 4..off + 8]) else { continue };
+                let Some(rlat) = read_be_int(b'l', &data[off..off + 4]) else {
+                    continue;
+                };
+                let Some(rlon) = read_be_int(b'l', &data[off + 4..off + 8]) else {
+                    continue;
+                };
                 let lat = rlat as f64 / scal(0);
                 let lon = rlon as f64 / scal(1);
                 // Reject bogus / null-island coordinates.
@@ -483,7 +513,8 @@ fn handle_leaf(
                     continue;
                 }
                 if acc.gps.is_none() {
-                    let alt = read_be_int(b'l', &data[off + 8..off + 12]).map(|a| a as f64 / scal(2));
+                    let alt =
+                        read_be_int(b'l', &data[off + 8..off + 12]).map(|a| a as f64 / scal(2));
                     acc.gps = Some((lat, lon, alt));
                     acc.gps_device = acc.current_device.clone();
                 }
@@ -502,7 +533,11 @@ fn handle_leaf(
                 } else {
                     acc.last_scal.get(i).copied().unwrap_or(1.0)
                 };
-                if s.abs() < f64::EPSILON { 1.0 } else { s }
+                if s.abs() < f64::EPSILON {
+                    1.0
+                } else {
+                    s
+                }
             };
             for s in 0..repeat {
                 let off = s * struct_size;
@@ -525,7 +560,11 @@ fn handle_leaf(
                 } else {
                     acc.last_scal.get(i).copied().unwrap_or(1.0)
                 };
-                if s.abs() < f64::EPSILON { 1.0 } else { s }
+                if s.abs() < f64::EPSILON {
+                    1.0
+                } else {
+                    s
+                }
             };
             for s in 0..repeat {
                 let off = s * struct_size;
@@ -545,7 +584,11 @@ fn handle_leaf(
 fn read_be_int(type_: u8, b: &[u8]) -> Option<i64> {
     let signed = matches!(type_, b'b' | b's' | b'l' | b'j');
     match b.len() {
-        1 => Some(if signed { b[0] as i8 as i64 } else { b[0] as i64 }),
+        1 => Some(if signed {
+            b[0] as i8 as i64
+        } else {
+            b[0] as i64
+        }),
         2 => {
             let v = u16::from_be_bytes([b[0], b[1]]);
             Some(if signed { v as i16 as i64 } else { v as i64 })
@@ -668,7 +711,10 @@ mod tests {
             let m = read_gpmf(&p);
             eprintln!(
                 "GPMF {name}: device={:?} gps={:?} track_points={} distance={:.1}m",
-                m.device_name, m.gps, m.gps_track.len(), m.track_distance_m
+                m.device_name,
+                m.gps,
+                m.gps_track.len(),
+                m.track_distance_m
             );
             assert!(m.device_name.is_some(), "{name}: expected a device name");
             // hero6 is a moving clip — it must yield a multi-point track.

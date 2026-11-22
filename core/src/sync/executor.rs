@@ -29,7 +29,10 @@ impl SyncExecutor {
     /// Record that a local video corresponds to a remote peer video.
     /// Call this after a successful file transfer or hash-adoption reconcile
     /// so subsequent syncs skip the transfer step.
-    pub fn update_sync_link_after_reconcile(&self, params: &crate::db::SyncLinkParams) -> Result<()> {
+    pub fn update_sync_link_after_reconcile(
+        &self,
+        params: &crate::db::SyncLinkParams,
+    ) -> Result<()> {
         self.db.add_sync_link(params)
     }
 }

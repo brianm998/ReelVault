@@ -2,7 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 use crate::db::Database;
-use crate::error::{Result, ReelVaultError};
+use crate::error::{ReelVaultError, Result};
 
 #[derive(Debug, Clone)]
 pub struct SearchResult {
@@ -30,7 +30,7 @@ impl SearchEngine {
              LEFT JOIN video_tags vt ON v.id = vt.video_id
              LEFT JOIN video_notes vn ON v.id = vn.video_id
              WHERE v.deleted_at IS NULL AND (v.filename LIKE ? OR vn.notes LIKE ?)
-        "
+        ",
         );
 
         let like_query = format!("%{}%", query);
@@ -129,7 +129,7 @@ impl SearchEngine {
              FROM videos v
              LEFT JOIN metadata m ON v.id = m.video_id
              LEFT JOIN video_tags vt ON v.id = vt.video_id
-             WHERE v.deleted_at IS NULL"
+             WHERE v.deleted_at IS NULL",
         );
 
         let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
@@ -170,7 +170,11 @@ impl SearchEngine {
         // Filter by FPS
         if let Some(fps) = filters.fps {
             let tolerance = 0.5;
-            sql.push_str(&format!(" AND m.fps BETWEEN {} AND {}", fps - tolerance, fps + tolerance));
+            sql.push_str(&format!(
+                " AND m.fps BETWEEN {} AND {}",
+                fps - tolerance,
+                fps + tolerance
+            ));
         }
 
         // Filter by tags
@@ -211,7 +215,11 @@ impl SearchEngine {
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         // Get total count
-        let count_sql = sql.replace("SELECT DISTINCT v.id, v.filename, v.path", "SELECT COUNT(DISTINCT v.id)")
+        let count_sql = sql
+            .replace(
+                "SELECT DISTINCT v.id, v.filename, v.path",
+                "SELECT COUNT(DISTINCT v.id)",
+            )
             .split("LIMIT")
             .next()
             .unwrap_or("")

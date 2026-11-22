@@ -36,7 +36,10 @@ pub enum KeyKind {
     /// bucketed aspect ratio. `expr` yields the TEXT value (token == display);
     /// `guard` is the "inputs present" test for faceting. Filtered, faceted, and
     /// displayed like a TEXT value otherwise.
-    Expr { expr: &'static str, guard: &'static str },
+    Expr {
+        expr: &'static str,
+        guard: &'static str,
+    },
 }
 
 /// Display formatting for a REAL-valued key.
@@ -93,20 +96,93 @@ END";
 
 /// The registry. Order is the order the clients show keys in the picker.
 pub static KEYS: &[MetaKey] = &[
-    MetaKey { token: "camera", display_name: "Camera", is_numeric: false, kind: KeyKind::Text("camera_model") },
-    MetaKey { token: "lens", display_name: "Lens", is_numeric: false, kind: KeyKind::Text("lens_model") },
-    MetaKey { token: "codec", display_name: "Codec", is_numeric: false, kind: KeyKind::Text("codec_video") },
-    MetaKey { token: "dynamic_range", display_name: "Dynamic Range", is_numeric: false, kind: KeyKind::Text("dynamic_range") },
-    MetaKey { token: "resolution", display_name: "Resolution", is_numeric: false,
-        kind: KeyKind::Expr { expr: "m.width || 'x' || m.height", guard: DIM_GUARD } },
-    MetaKey { token: "aspect", display_name: "Aspect Ratio", is_numeric: false,
-        kind: KeyKind::Expr { expr: ASPECT_RATIO_EXPR, guard: DIM_GUARD } },
-    MetaKey { token: "year", display_name: "Year", is_numeric: true, kind: KeyKind::Year },
-    MetaKey { token: "keyword", display_name: "Keyword", is_numeric: false, kind: KeyKind::Keyword },
-    MetaKey { token: "iso", display_name: "ISO", is_numeric: true, kind: KeyKind::Int("iso") },
-    MetaKey { token: "aperture", display_name: "Aperture", is_numeric: true, kind: KeyKind::Real { col: "aperture", fmt: RealFmt::FStop } },
-    MetaKey { token: "exposure", display_name: "Exposure", is_numeric: true, kind: KeyKind::Real { col: "exposure_time_s", fmt: RealFmt::Shutter } },
-    MetaKey { token: "focal_length", display_name: "Focal Length", is_numeric: true, kind: KeyKind::Real { col: "focal_length_mm", fmt: RealFmt::Millimeters } },
+    MetaKey {
+        token: "camera",
+        display_name: "Camera",
+        is_numeric: false,
+        kind: KeyKind::Text("camera_model"),
+    },
+    MetaKey {
+        token: "lens",
+        display_name: "Lens",
+        is_numeric: false,
+        kind: KeyKind::Text("lens_model"),
+    },
+    MetaKey {
+        token: "codec",
+        display_name: "Codec",
+        is_numeric: false,
+        kind: KeyKind::Text("codec_video"),
+    },
+    MetaKey {
+        token: "dynamic_range",
+        display_name: "Dynamic Range",
+        is_numeric: false,
+        kind: KeyKind::Text("dynamic_range"),
+    },
+    MetaKey {
+        token: "resolution",
+        display_name: "Resolution",
+        is_numeric: false,
+        kind: KeyKind::Expr {
+            expr: "m.width || 'x' || m.height",
+            guard: DIM_GUARD,
+        },
+    },
+    MetaKey {
+        token: "aspect",
+        display_name: "Aspect Ratio",
+        is_numeric: false,
+        kind: KeyKind::Expr {
+            expr: ASPECT_RATIO_EXPR,
+            guard: DIM_GUARD,
+        },
+    },
+    MetaKey {
+        token: "year",
+        display_name: "Year",
+        is_numeric: true,
+        kind: KeyKind::Year,
+    },
+    MetaKey {
+        token: "keyword",
+        display_name: "Keyword",
+        is_numeric: false,
+        kind: KeyKind::Keyword,
+    },
+    MetaKey {
+        token: "iso",
+        display_name: "ISO",
+        is_numeric: true,
+        kind: KeyKind::Int("iso"),
+    },
+    MetaKey {
+        token: "aperture",
+        display_name: "Aperture",
+        is_numeric: true,
+        kind: KeyKind::Real {
+            col: "aperture",
+            fmt: RealFmt::FStop,
+        },
+    },
+    MetaKey {
+        token: "exposure",
+        display_name: "Exposure",
+        is_numeric: true,
+        kind: KeyKind::Real {
+            col: "exposure_time_s",
+            fmt: RealFmt::Shutter,
+        },
+    },
+    MetaKey {
+        token: "focal_length",
+        display_name: "Focal Length",
+        is_numeric: true,
+        kind: KeyKind::Real {
+            col: "focal_length_mm",
+            fmt: RealFmt::Millimeters,
+        },
+    },
 ];
 
 /// Look up a key by its canonical wire token.
@@ -122,9 +198,10 @@ impl MetaKey {
         match &self.kind {
             KeyKind::Text(col) | KeyKind::Int(col) => Some(format!("m.{col} = ?")),
             KeyKind::Real { col, .. } => Some(format!("m.{col} = ?")),
-            KeyKind::Year => {
-                Some("CAST(strftime('%Y', m.creation_date / 1000, 'unixepoch') AS INTEGER) = ?".to_string())
-            }
+            KeyKind::Year => Some(
+                "CAST(strftime('%Y', m.creation_date / 1000, 'unixepoch') AS INTEGER) = ?"
+                    .to_string(),
+            ),
             KeyKind::Expr { expr, .. } => Some(format!("({expr}) = ?")),
             KeyKind::Keyword => None,
         }
@@ -149,9 +226,9 @@ impl MetaKey {
         match &self.kind {
             KeyKind::Text(col) | KeyKind::Int(col) => Some(format!("m.{col}")),
             KeyKind::Real { col, .. } => Some(format!("m.{col}")),
-            KeyKind::Year => {
-                Some("CAST(strftime('%Y', m.creation_date / 1000, 'unixepoch') AS INTEGER)".to_string())
-            }
+            KeyKind::Year => Some(
+                "CAST(strftime('%Y', m.creation_date / 1000, 'unixepoch') AS INTEGER)".to_string(),
+            ),
             KeyKind::Expr { expr, .. } => Some((*expr).to_string()),
             KeyKind::Keyword => None,
         }
@@ -164,7 +241,9 @@ impl MetaKey {
             KeyKind::Text(col) => Some(format!("m.{col} IS NOT NULL AND m.{col} != ''")),
             KeyKind::Int(col) => Some(format!("m.{col} IS NOT NULL AND m.{col} > 0")),
             KeyKind::Real { col, .. } => Some(format!("m.{col} IS NOT NULL AND m.{col} > 0")),
-            KeyKind::Year => Some("m.creation_date IS NOT NULL AND m.creation_date > 0".to_string()),
+            KeyKind::Year => {
+                Some("m.creation_date IS NOT NULL AND m.creation_date > 0".to_string())
+            }
             KeyKind::Expr { guard, .. } => Some((*guard).to_string()),
             KeyKind::Keyword => None,
         }

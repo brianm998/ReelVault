@@ -262,7 +262,10 @@ where
                             dir.display()
                         ),
                         Err(e) => {
-                            tracing::warn!("Could not register import dir as a library location: {}", e)
+                            tracing::warn!(
+                                "Could not register import dir as a library location: {}",
+                                e
+                            )
                         }
                     }
                 }
@@ -272,7 +275,7 @@ where
     }
 
     reelvault_core::concurrency::set_ffmpeg_concurrency_limit(
-        config.max_concurrent_ffmpeg.max(0) as usize,
+        config.max_concurrent_ffmpeg.max(0) as usize
     );
     tracing::info!(
         "Max concurrent ffmpeg: {}",
@@ -449,7 +452,10 @@ where
         #[allow(clippy::result_large_err)]
         let interceptor =
             move |req: tonic::Request<()>| -> Result<tonic::Request<()>, tonic::Status> {
-                let authz = req.metadata().get("authorization").and_then(|v| v.to_str().ok());
+                let authz = req
+                    .metadata()
+                    .get("authorization")
+                    .and_then(|v| v.to_str().ok());
                 match auth::check(&auth_db, authz) {
                     auth::AuthResult::Authorized => Ok(req),
                     auth::AuthResult::Unauthorized => {

@@ -83,7 +83,9 @@ pub fn read_embedded_subtitle(video_path: &Path) -> DjiTelemetry {
 
     // Use ffmpeg to extract the first subtitle stream as SRT text
     let output = std::process::Command::new("ffmpeg")
-        .args(["-i", path_str, "-map", "0:s:0", "-c:s", "srt", "-f", "srt", "-"])
+        .args([
+            "-i", path_str, "-map", "0:s:0", "-c:s", "srt", "-f", "srt", "-",
+        ])
         .output();
 
     let Ok(output) = output else {
@@ -151,9 +153,9 @@ fn collect_gps_track(text: &str) -> Vec<(f64, f64)> {
 
     // Older format: GPS(lon, lat, alt) tuples (note lon-first ordering).
     if pts.is_empty() {
-        if let Ok(re) = Regex::new(
-            r"GPS\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\)",
-        ) {
+        if let Ok(re) =
+            Regex::new(r"GPS\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\)")
+        {
             for caps in re.captures_iter(text) {
                 let lo = caps.get(1).and_then(|m| m.as_str().parse::<f64>().ok());
                 let la = caps.get(2).and_then(|m| m.as_str().parse::<f64>().ok());
@@ -179,19 +181,26 @@ fn first_capture(text: &str, pat: &str) -> Option<String> {
 /// tuple (note the lon-first ordering). Returns the first non-(0,0) fix.
 fn parse_gps_first(text: &str) -> Option<(f64, f64, Option<f64>)> {
     // Modern: explicit latitude / longitude / altitude labels.
-    let lat = first_capture(text, r"(?i)\blatitude\s*[:=]\s*(-?\d+\.?\d*)").and_then(|s| s.parse::<f64>().ok());
-    let lon = first_capture(text, r"(?i)\blongitude\s*[:=]\s*(-?\d+\.?\d*)").and_then(|s| s.parse::<f64>().ok());
+    let lat = first_capture(text, r"(?i)\blatitude\s*[:=]\s*(-?\d+\.?\d*)")
+        .and_then(|s| s.parse::<f64>().ok());
+    let lon = first_capture(text, r"(?i)\blongitude\s*[:=]\s*(-?\d+\.?\d*)")
+        .and_then(|s| s.parse::<f64>().ok());
     if let (Some(la), Some(lo)) = (lat, lon) {
         if la != 0.0 || lo != 0.0 {
             // Altitude: `altitude`, `abs_alt`, or `rel_alt` (first present).
-            let alt = first_capture(text, r"(?i)\b(?:altitude|abs_alt|rel_alt)\s*[:=]\s*(-?\d+\.?\d*)")
-                .and_then(|s| s.parse::<f64>().ok());
+            let alt = first_capture(
+                text,
+                r"(?i)\b(?:altitude|abs_alt|rel_alt)\s*[:=]\s*(-?\d+\.?\d*)",
+            )
+            .and_then(|s| s.parse::<f64>().ok());
             return Some((la, lo, alt));
         }
     }
 
     // Older: GPS(longitude, latitude, altitude) — take the first non-zero tuple.
-    if let Ok(re) = Regex::new(r"GPS\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\)") {
+    if let Ok(re) =
+        Regex::new(r"GPS\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\)")
+    {
         for caps in re.captures_iter(text) {
             let lon = caps.get(1).and_then(|m| m.as_str().parse::<f64>().ok());
             let lat = caps.get(2).and_then(|m| m.as_str().parse::<f64>().ok());
@@ -270,7 +279,8 @@ mod tests {
     #[test]
     fn parses_modern_format() {
         // Air 2S / Mini-style record.
-        let srt = "1\n00:00:00,000 --> 00:00:00,033\n<font size=\"36\">SrtCnt : 1, DiffTime : 33ms\n\
+        let srt =
+            "1\n00:00:00,000 --> 00:00:00,033\n<font size=\"36\">SrtCnt : 1, DiffTime : 33ms\n\
                    2022-08-07 13:40:40,774,808\n\
                    [iso : 100] [shutter : 1/80.0] [fnum : 280] [ev : 0] [ct : 5744] \
                    [color_md : default] [focal_len : 240] [latitude: 41.424724] \
@@ -334,7 +344,12 @@ mod tests {
             eprintln!("skip: no DJI samples");
             return;
         }
-        for name in ["air2s.srt", "mavic_pro.SRT", "mavic_air2.srt", "old_format.SRT"] {
+        for name in [
+            "air2s.srt",
+            "mavic_pro.SRT",
+            "mavic_air2.srt",
+            "old_format.SRT",
+        ] {
             let p = dir.join(name);
             if !p.exists() {
                 continue;

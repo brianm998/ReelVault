@@ -59,24 +59,39 @@ type FailedFiles = Arc<Mutex<HashMap<PathBuf, u64>>>;
 /// client display "lost track of X.mov" without round-tripping the DB.
 #[derive(Debug, Clone)]
 pub enum CatalogChange {
-    VideoAdded { video_id: String, path: PathBuf },
-    VideoModified { video_id: String, path: PathBuf },
+    VideoAdded {
+        video_id: String,
+        path: PathBuf,
+    },
+    VideoModified {
+        video_id: String,
+        path: PathBuf,
+    },
     /// The file disappeared. `video_id` is None when the path wasn't in the
     /// catalog (we observed a delete for something we never indexed —
     /// nothing to do).
-    VideoRemoved { video_id: Option<String>, path: PathBuf },
+    VideoRemoved {
+        video_id: Option<String>,
+        path: PathBuf,
+    },
     /// A user-driven `ScanLibrary` RPC just started. Clients use this to
     /// show a "scanning…" banner that doesn't depend on the per-file
     /// progress stream (so it survives a reconnect mid-scan).
-    ScanStarted { path: String },
+    ScanStarted {
+        path: String,
+    },
     /// The matching companion to `ScanStarted` — emitted from the service
     /// after the scan's spawn_blocking task returns.
-    ScanCompleted { path: String },
+    ScanCompleted {
+        path: String,
+    },
     /// A non-trivial background post-index pass (proxy detection / auto-
     /// grouping / sensor lookups) just began. Emitted by the post-index
     /// pool's emitter thread once a pass has run long enough to be worth
     /// surfacing. `total` is the expected number of videos in the pass.
-    PostIndexStarted { total: u64 },
+    PostIndexStarted {
+        total: u64,
+    },
     /// Periodic progress for the in-flight post-index pass (~1/sec).
     PostIndexProgress {
         processed: u64,
@@ -89,12 +104,16 @@ pub enum CatalogChange {
         detail: String,
     },
     /// The post-index pass drained. Clients clear the activity panel.
-    PostIndexCompleted { processed: u64 },
+    PostIndexCompleted {
+        processed: u64,
+    },
     /// An unpaired LAN device asked to pair (hit `POST /pair/request` on the
     /// media server). Desktop/macOS clients subscribed to the event stream pop
     /// an "allow this device?" banner; `device_name` is what they show. Not a
     /// catalog change per se, but it rides the same client push channel.
-    PairingRequested { device_name: String },
+    PairingRequested {
+        device_name: String,
+    },
 }
 
 /// Per-path settle state. The watcher only triggers a scan once
@@ -147,7 +166,15 @@ impl LibraryWatcher {
         let thread = std::thread::Builder::new()
             .name("reelvault-watcher".to_string())
             .spawn(move || {
-                run_watcher(db, thumbnail_cache, events, settle_ms, poll_ms, initial_paths, cmd_rx);
+                run_watcher(
+                    db,
+                    thumbnail_cache,
+                    events,
+                    settle_ms,
+                    poll_ms,
+                    initial_paths,
+                    cmd_rx,
+                );
             })
             .map_err(crate::error::ReelVaultError::IoError)?;
 
@@ -166,7 +193,9 @@ impl LibraryWatcher {
     }
 
     pub fn update_settings(&self, settle_ms: u64, poll_ms: u64) {
-        let _ = self.cmd_tx.send(WatcherCmd::UpdateSettings { settle_ms, poll_ms });
+        let _ = self
+            .cmd_tx
+            .send(WatcherCmd::UpdateSettings { settle_ms, poll_ms });
     }
 }
 
@@ -204,19 +233,21 @@ fn run_watcher(
     // Channel between the notify callback thread and the main loop.
     let (notify_tx, notify_rx) = std_mpsc::channel::<notify::Result<notify::Event>>();
 
-    let mut watcher: RecommendedWatcher = match notify::recommended_watcher(
-        move |res: notify::Result<notify::Event>| {
+    let mut watcher: RecommendedWatcher =
+        match notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
             // The callback is invoked on notify's internal thread.
             // Forward to the main loop's channel; drop on error.
             let _ = notify_tx.send(res);
-        },
-    ) {
-        Ok(w) => w,
-        Err(e) => {
-            tracing::error!("Could not initialize notify watcher: {}. Live updates disabled.", e);
-            return;
-        }
-    };
+        }) {
+            Ok(w) => w,
+            Err(e) => {
+                tracing::error!(
+                    "Could not initialize notify watcher: {}. Live updates disabled.",
+                    e
+                );
+                return;
+            }
+        };
 
     // The set of paths we asked notify to watch. Used both to unwatch on
     // RemovePath and to drive the poll fallback.
@@ -284,7 +315,14 @@ fn run_watcher(
         }
 
         // 3) Sweep the pending map for settled files.
-        sweep_pending(&pending_clone, settle_ms, &db, &thumbnail_cache, &events, &failed_files);
+        sweep_pending(
+            &pending_clone,
+            settle_ms,
+            &db,
+            &thumbnail_cache,
+            &events,
+            &failed_files,
+        );
 
         // 4) Poll fallback (NFS / SMB / SAN that doesn't deliver events).
         if poll_ms > 0 && last_poll.elapsed().as_millis() as u64 >= poll_ms {
@@ -351,7 +389,10 @@ fn handle_notify_event(
                 // Pull from pending if it's there — no point scanning a
                 // file that just vanished.
                 pending.lock().ok().map(|mut p| p.remove(&path));
-                match IndexingEngine::mark_offline(db.as_ref(), &path).ok().flatten() {
+                match IndexingEngine::mark_offline(db.as_ref(), &path)
+                    .ok()
+                    .flatten()
+                {
                     Some((video_id, true)) => {
                         // No remaining online locations — video is gone.
                         let _ = events.send(CatalogChange::VideoRemoved {
@@ -493,9 +534,15 @@ fn sweep_pending(
         // Final stat check: if the file no longer exists (deleted between
         // settling and now), publish a removal instead of scanning.
         if !path.exists() {
-            match IndexingEngine::mark_offline(db.as_ref(), &path).ok().flatten() {
+            match IndexingEngine::mark_offline(db.as_ref(), &path)
+                .ok()
+                .flatten()
+            {
                 Some((video_id, true)) => {
-                    let _ = events.send(CatalogChange::VideoRemoved { video_id: Some(video_id), path });
+                    let _ = events.send(CatalogChange::VideoRemoved {
+                        video_id: Some(video_id),
+                        path,
+                    });
                 }
                 Some((video_id, false)) => {
                     let _ = events.send(CatalogChange::VideoModified { video_id, path });
@@ -612,9 +659,7 @@ fn poll_paths(
             // `is_online` to 1, so this can't re-trigger once it succeeds).
             let interesting = match known_sizes.get(p.to_str().unwrap_or("")) {
                 None => true, // new file
-                Some((stored, online)) => {
-                    !online || stored.unwrap_or(-1) as u64 != size_now
-                }
+                Some((stored, online)) => !online || stored.unwrap_or(-1) as u64 != size_now,
             };
             if !interesting {
                 continue;

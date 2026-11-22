@@ -186,7 +186,9 @@ pub extern "system" fn Java_com_reelvault_android_core_ReelVaultCore_nativeInges
             (Some(a), b, c) => (a, b.unwrap_or_default(), c.unwrap_or_default()),
             _ => return -2,
         };
-        if a.is_empty() { return -2; }
+        if a.is_empty() {
+            return -2;
+        }
         embed::ingest_synced(&a, &b, &c, derived_height)
     })
 }
@@ -220,9 +222,11 @@ pub extern "system" fn Java_com_reelvault_android_core_ReelVaultCore_nativePrune
     _class: JClass<'local>,
     present_ids_json: JString<'local>,
 ) -> jint {
-    embed::ffi_guard("nativePrunePhotos", -1, || match jstr(&mut env, &present_ids_json) {
-        Some(json) => embed::prune_photos(json),
-        None => -2,
+    embed::ffi_guard("nativePrunePhotos", -1, || {
+        match jstr(&mut env, &present_ids_json) {
+            Some(json) => embed::prune_photos(json),
+            None => -2,
+        }
     })
 }
 
@@ -432,8 +436,7 @@ impl MediaBackend for JniMediaBackend {
         let (kind, id) = embed::source_kind_and_id(src);
         let _permit = crate::concurrency::acquire_ffmpeg_permit();
         let json = self.call_probe(kind, &id)?;
-        serde_json::from_str(&json)
-            .map_err(|e| jni_err(&format!("probe JSON: {e}")))
+        serde_json::from_str(&json).map_err(|e| jni_err(&format!("probe JSON: {e}")))
     }
 
     fn probe_color(&self, _src: &MediaSource) -> ColorInfo {
