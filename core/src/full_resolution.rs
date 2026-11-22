@@ -85,24 +85,24 @@ pub enum Classification {
 pub const STANDARD_VIDEO_RESOLUTIONS: &[(u32, u32)] = &[
     // SD legacy
     (640, 480),
-    (720, 480), // NTSC DV
-    (720, 576), // PAL DV
+    (720, 480),    // NTSC DV
+    (720, 576),    // PAL DV
     (854, 480),
     // HD
-    (1280, 720),  // HD 720p
-    (1440, 1080), // HDV 1080i
-    (1920, 1080), // FHD 1080p
-    (2048, 1080), // DCI 2K
+    (1280, 720),   // HD 720p
+    (1440, 1080),  // HDV 1080i
+    (1920, 1080),  // FHD 1080p
+    (2048, 1080),  // DCI 2K
     // 4K
-    (3840, 2160), // UHD 4K
-    (4096, 2160), // DCI 4K
+    (3840, 2160),  // UHD 4K
+    (4096, 2160),  // DCI 4K
     // 5K / 6K / 8K
-    (5120, 2160), // 5K wide
-    (5120, 2700), // 5K2K
-    (5120, 2880), // 5K (iMac)
-    (6144, 3240), // 6K
-    (7680, 4320), // UHD 8K
-    (8192, 4320), // DCI 8K
+    (5120, 2160),  // 5K wide
+    (5120, 2700),  // 5K2K
+    (5120, 2880),  // 5K (iMac)
+    (6144, 3240),  // 6K
+    (7680, 4320),  // UHD 8K
+    (8192, 4320),  // DCI 8K
 ];
 
 /// Pure classifier given a list of native sensor resolutions and the
@@ -220,8 +220,9 @@ pub fn is_likely_timelapse(camera_model: &str, width: u32, height: u32) -> bool 
 }
 
 fn matches_orientation_agnostic(list: &[(u32, u32)], width: u32, height: u32) -> bool {
-    list.iter()
-        .any(|(w, h)| (*w == width && *h == height) || (*w == height && *h == width))
+    list.iter().any(|(w, h)| {
+        (*w == width && *h == height) || (*w == height && *h == width)
+    })
 }
 
 #[cfg(test)]
@@ -232,40 +233,19 @@ mod tests {
 
     #[test]
     fn empty_dimensions_are_unknown() {
-        assert_eq!(
-            classify_with_natives(&[(6000, 4000)], 0, 0),
-            Classification::Unknown
-        );
-        assert_eq!(
-            classify_with_natives(&[(6000, 4000)], 0, 4000),
-            Classification::Unknown
-        );
-        assert_eq!(
-            classify_with_natives(&[(6000, 4000)], 6000, 0),
-            Classification::Unknown
-        );
+        assert_eq!(classify_with_natives(&[(6000, 4000)], 0, 0), Classification::Unknown);
+        assert_eq!(classify_with_natives(&[(6000, 4000)], 0, 4000), Classification::Unknown);
+        assert_eq!(classify_with_natives(&[(6000, 4000)], 6000, 0), Classification::Unknown);
     }
 
     #[test]
     fn standard_video_resolutions_are_always_unknown() {
         // Even with a known camera native list, a UHD clip is Unknown.
         let natives = [(6000, 4000)];
-        assert_eq!(
-            classify_with_natives(&natives, 3840, 2160),
-            Classification::Unknown
-        );
-        assert_eq!(
-            classify_with_natives(&natives, 1920, 1080),
-            Classification::Unknown
-        );
-        assert_eq!(
-            classify_with_natives(&natives, 4096, 2160),
-            Classification::Unknown
-        );
-        assert_eq!(
-            classify_with_natives(&natives, 7680, 4320),
-            Classification::Unknown
-        );
+        assert_eq!(classify_with_natives(&natives, 3840, 2160), Classification::Unknown);
+        assert_eq!(classify_with_natives(&natives, 1920, 1080), Classification::Unknown);
+        assert_eq!(classify_with_natives(&natives, 4096, 2160), Classification::Unknown);
+        assert_eq!(classify_with_natives(&natives, 7680, 4320), Classification::Unknown);
     }
 
     #[test]
@@ -284,10 +264,7 @@ mod tests {
     #[test]
     fn empty_natives_with_non_standard_is_unknown() {
         // No camera known + non-standard resolution -> can't classify.
-        assert_eq!(
-            classify_with_natives(&[], 1500, 844),
-            Classification::Unknown
-        );
+        assert_eq!(classify_with_natives(&[], 1500, 844), Classification::Unknown);
     }
 
     #[test]
@@ -311,19 +288,10 @@ mod tests {
     fn multiple_natives_any_match_wins() {
         // S5II-style camera with photo and open-gate video modes.
         let natives = [(6000, 4000), (5952, 3968)];
-        assert_eq!(
-            classify_with_natives(&natives, 6000, 4000),
-            Classification::Full
-        );
-        assert_eq!(
-            classify_with_natives(&natives, 5952, 3968),
-            Classification::Full
-        );
+        assert_eq!(classify_with_natives(&natives, 6000, 4000), Classification::Full);
+        assert_eq!(classify_with_natives(&natives, 5952, 3968), Classification::Full);
         // A non-matching, non-standard size is NotFull.
-        assert_eq!(
-            classify_with_natives(&natives, 4800, 3200),
-            Classification::NotFull
-        );
+        assert_eq!(classify_with_natives(&natives, 4800, 3200), Classification::NotFull);
     }
 
     #[test]
@@ -341,18 +309,19 @@ mod tests {
     #[test]
     fn builtin_table_is_non_empty() {
         // If this fails, build.rs didn't read sensor_resolutions.json.
-        assert!(
-            builtin_camera_count() > 50,
+        assert!(builtin_camera_count() > 50,
             "expected at least 50 cameras in the built-in table; got {}",
-            builtin_camera_count()
-        );
+            builtin_camera_count());
     }
 
     #[test]
     fn sony_a7riii_timelapse_resolves_full() {
         // 7952×5304 = the a7R III's native sensor; this is what a
         // timelapse rendered at full sensor res would land at.
-        assert_eq!(classify("SONY ILCE-7RM3", 7952, 5304), Classification::Full);
+        assert_eq!(
+            classify("SONY ILCE-7RM3", 7952, 5304),
+            Classification::Full
+        );
     }
 
     #[test]
@@ -370,15 +339,27 @@ mod tests {
     #[test]
     fn sony_a7iii_timelapse_is_full() {
         // But a timelapse at the sensor's photo native is clearly Full.
-        assert_eq!(classify("SONY ILCE-7M3", 6000, 4000), Classification::Full);
+        assert_eq!(
+            classify("SONY ILCE-7M3", 6000, 4000),
+            Classification::Full
+        );
         // Portrait works too.
-        assert_eq!(classify("SONY ILCE-7M3", 4000, 6000), Classification::Full);
+        assert_eq!(
+            classify("SONY ILCE-7M3", 4000, 6000),
+            Classification::Full
+        );
     }
 
     #[test]
     fn camera_lookup_is_case_insensitive() {
-        assert_eq!(classify("sony ilce-7rm3", 7952, 5304), Classification::Full);
-        assert_eq!(classify("Sony Ilce-7Rm3", 7952, 5304), Classification::Full);
+        assert_eq!(
+            classify("sony ilce-7rm3", 7952, 5304),
+            Classification::Full
+        );
+        assert_eq!(
+            classify("Sony Ilce-7Rm3", 7952, 5304),
+            Classification::Full
+        );
     }
 
     #[test]
@@ -536,10 +517,7 @@ mod tests {
     fn video_max_lookup_round_trip() {
         assert_eq!(video_max_for("SONY ILCE-7M3"), Some((3840, 2160)));
         // Cinema body: video_max intentionally null.
-        assert_eq!(
-            video_max_for("BLACKMAGIC DESIGN BMPCC6K"),
-            Some((6144, 3456))
-        );
+        assert_eq!(video_max_for("BLACKMAGIC DESIGN BMPCC6K"), Some((6144, 3456)));
         // Unknown camera.
         assert_eq!(video_max_for("HASSELBLAD X2D 100C"), None);
         // Empty string.

@@ -152,7 +152,9 @@ pub(crate) fn should_group_together(
     // to group across distinct cameras. We don't *require* both to carry
     // it (some pipelines strip EXIF on transcode), but when present it's
     // an authoritative signal.
-    if !a.camera_model.is_empty() && !b.camera_model.is_empty() && a.camera_model != b.camera_model
+    if !a.camera_model.is_empty()
+        && !b.camera_model.is_empty()
+        && a.camera_model != b.camera_model
     {
         return false;
     }
@@ -170,10 +172,7 @@ pub(crate) fn should_group_together(
 ///
 /// Panics if `members` is empty (callers know the group is non-empty).
 pub(crate) fn preferred_index(members: &[AutoGroupCandidate]) -> usize {
-    assert!(
-        !members.is_empty(),
-        "preferred_index called with empty group"
-    );
+    assert!(!members.is_empty(), "preferred_index called with empty group");
     members
         .iter()
         .enumerate()
@@ -197,9 +196,7 @@ struct UnionFind {
 
 impl UnionFind {
     fn new(n: usize) -> Self {
-        UnionFind {
-            parent: (0..n).collect(),
-        }
+        UnionFind { parent: (0..n).collect() }
     }
     fn find(&mut self, x: usize) -> usize {
         if self.parent[x] != x {
@@ -232,10 +229,7 @@ pub fn auto_group(db: &Database, options: &AutoGroupOptions) -> Result<(i32, i32
     // Pre-compute canonical base + sort by (parent_dir, base) so videos
     // that would group together end up adjacent. Lets the O(n²) pairwise
     // loop short-circuit early when the bases diverge.
-    let bases: Vec<String> = candidates
-        .iter()
-        .map(|c| canonical_base(&c.filename))
-        .collect();
+    let bases: Vec<String> = candidates.iter().map(|c| canonical_base(&c.filename)).collect();
     let mut idxs: Vec<usize> = (0..candidates.len()).collect();
     idxs.sort_by(|&i, &j| {
         candidates[i]
@@ -317,11 +311,7 @@ pub fn auto_group(db: &Database, options: &AutoGroupOptions) -> Result<(i32, i32
         let base_trimmed = bases[members[0]]
             .trim_end_matches(|c: char| !c.is_alphanumeric())
             .to_string();
-        let group_name = if base_trimmed.is_empty() {
-            None
-        } else {
-            Some(base_trimmed)
-        };
+        let group_name = if base_trimmed.is_empty() { None } else { Some(base_trimmed) };
 
         db.create_group(
             group_name.as_deref(),

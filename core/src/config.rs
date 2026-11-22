@@ -2,7 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 use crate::db::Database;
-use crate::error::{ReelVaultError, Result};
+use crate::error::{Result, ReelVaultError};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -117,16 +117,18 @@ impl Config {
         // Default to the number of CPU cores on this machine. Stored as a
         // string in the config table so we keep the existing get/set pattern.
         let cpu_default = crate::concurrency::default_max_concurrent_ffmpeg() as i32;
-        let max_ffmpeg =
-            Self::get_config_value(&conn, "max_concurrent_ffmpeg", &cpu_default.to_string())?
-                .parse::<i32>()
-                .unwrap_or(cpu_default);
+        let max_ffmpeg = Self::get_config_value(
+            &conn,
+            "max_concurrent_ffmpeg",
+            &cpu_default.to_string(),
+        )?
+            .parse::<i32>()
+            .unwrap_or(cpu_default);
 
-        let max_native_playback_height =
-            Self::get_config_value(&conn, "max_native_playback_height", "2160")?
-                .parse::<i32>()
-                .unwrap_or(2160)
-                .max(0);
+        let max_native_playback_height = Self::get_config_value(&conn, "max_native_playback_height", "2160")?
+            .parse::<i32>()
+            .unwrap_or(2160)
+            .max(0);
         let proxy_target_height = Self::get_config_value(&conn, "proxy_target_height", "720")?
             .parse::<i32>()
             .unwrap_or(720)
@@ -141,9 +143,8 @@ impl Config {
 
         let import_dir_str = Self::get_config_value(&conn, "import_dir", "")?;
 
-        std::fs::create_dir_all(&thumbnail_cache_path).map_err(|e| {
-            ReelVaultError::ConfigError(format!("Failed to create cache directory: {}", e))
-        })?;
+        std::fs::create_dir_all(&thumbnail_cache_path)
+            .map_err(|e| ReelVaultError::ConfigError(format!("Failed to create cache directory: {}", e)))?;
 
         Ok(Config {
             proxy_threshold_scale: proxy_threshold,
@@ -168,60 +169,20 @@ impl Config {
     pub fn save(&self, db: &Database) -> Result<()> {
         let conn = db.get_connection()?;
 
-        Self::set_config_value(
-            &conn,
-            "proxy_threshold_scale",
-            &self.proxy_threshold_scale.to_string(),
-        )?;
-        Self::set_config_value(
-            &conn,
-            "max_concurrent_jobs",
-            &self.max_concurrent_jobs.to_string(),
-        )?;
-        Self::set_config_value(
-            &conn,
-            "enable_auto_tagging",
-            &self.enable_auto_tagging.to_string(),
-        )?;
-        Self::set_config_value(
-            &conn,
-            "max_concurrent_ffmpeg",
-            &self.max_concurrent_ffmpeg.to_string(),
-        )?;
-        Self::set_config_value(
-            &conn,
-            "max_native_playback_height",
-            &self.max_native_playback_height.to_string(),
-        )?;
-        Self::set_config_value(
-            &conn,
-            "proxy_target_height",
-            &self.proxy_target_height.to_string(),
-        )?;
+        Self::set_config_value(&conn, "proxy_threshold_scale", &self.proxy_threshold_scale.to_string())?;
+        Self::set_config_value(&conn, "max_concurrent_jobs", &self.max_concurrent_jobs.to_string())?;
+        Self::set_config_value(&conn, "enable_auto_tagging", &self.enable_auto_tagging.to_string())?;
+        Self::set_config_value(&conn, "max_concurrent_ffmpeg", &self.max_concurrent_ffmpeg.to_string())?;
+        Self::set_config_value(&conn, "max_native_playback_height", &self.max_native_playback_height.to_string())?;
+        Self::set_config_value(&conn, "proxy_target_height", &self.proxy_target_height.to_string())?;
         Self::set_config_value(&conn, "watch_enabled", &self.watch_enabled.to_string())?;
-        Self::set_config_value(
-            &conn,
-            "watch_write_settle_ms",
-            &self.watch_write_settle_ms.to_string(),
-        )?;
-        Self::set_config_value(
-            &conn,
-            "watch_poll_interval_ms",
-            &self.watch_poll_interval_ms.to_string(),
-        )?;
-        Self::set_config_value(
-            &conn,
-            "auto_tag_timelapses",
-            &self.auto_tag_timelapses.to_string(),
-        )?;
+        Self::set_config_value(&conn, "watch_write_settle_ms", &self.watch_write_settle_ms.to_string())?;
+        Self::set_config_value(&conn, "watch_poll_interval_ms", &self.watch_poll_interval_ms.to_string())?;
+        Self::set_config_value(&conn, "auto_tag_timelapses", &self.auto_tag_timelapses.to_string())?;
         Self::set_config_value(
             &conn,
             "import_dir",
-            &self
-                .import_dir
-                .as_ref()
-                .map(|p| p.to_string_lossy().to_string())
-                .unwrap_or_default(),
+            &self.import_dir.as_ref().map(|p| p.to_string_lossy().to_string()).unwrap_or_default(),
         )?;
 
         Ok(())
@@ -258,9 +219,11 @@ impl Config {
     }
 
     fn get_config_value(conn: &rusqlite::Connection, key: &str, default: &str) -> Result<String> {
-        match conn.query_row("SELECT value FROM config WHERE key = ?", [key], |row| {
-            row.get::<_, String>(0)
-        }) {
+        match conn.query_row(
+            "SELECT value FROM config WHERE key = ?",
+            [key],
+            |row| row.get::<_, String>(0),
+        ) {
             Ok(value) => Ok(value),
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(default.to_string()),
             Err(e) => Err(ReelVaultError::DatabaseError(e.to_string())),
@@ -301,17 +264,13 @@ impl Config {
     fn default_cache_path() -> Result<PathBuf> {
         let cache_dir = if cfg!(target_os = "macos") {
             dirs::home_dir()
-                .ok_or_else(|| {
-                    ReelVaultError::ConfigError("Could not find home directory".to_string())
-                })?
+                .ok_or_else(|| ReelVaultError::ConfigError("Could not find home directory".to_string()))?
                 .join("Library")
                 .join("Caches")
                 .join("ReelVault")
         } else if cfg!(target_os = "windows") {
             dirs::cache_dir()
-                .ok_or_else(|| {
-                    ReelVaultError::ConfigError("Could not find cache directory".to_string())
-                })?
+                .ok_or_else(|| ReelVaultError::ConfigError("Could not find cache directory".to_string()))?
                 .join("ReelVault")
         } else if cfg!(target_os = "ios") {
             // App-container Caches (<container>/Library/Caches). In practice the
@@ -319,9 +278,7 @@ impl Config {
             // rather than relying on this (docs/IOS_CORE_PORT.md §6.10); this is
             // only the fallback when `default_cache_path` is consulted directly.
             dirs::cache_dir()
-                .ok_or_else(|| {
-                    ReelVaultError::ConfigError("Could not find cache directory".to_string())
-                })?
+                .ok_or_else(|| ReelVaultError::ConfigError("Could not find cache directory".to_string()))?
                 .join("ReelVault")
         } else if cfg!(target_os = "android") {
             // The Android app sandbox has no $HOME, so `dirs` can't resolve a
@@ -335,15 +292,12 @@ impl Config {
                 .join("ReelVault")
         } else {
             dirs::cache_dir()
-                .ok_or_else(|| {
-                    ReelVaultError::ConfigError("Could not find cache directory".to_string())
-                })?
+                .ok_or_else(|| ReelVaultError::ConfigError("Could not find cache directory".to_string()))?
                 .join("reelvault")
         };
 
-        std::fs::create_dir_all(&cache_dir).map_err(|e| {
-            ReelVaultError::ConfigError(format!("Failed to create cache directory: {}", e))
-        })?;
+        std::fs::create_dir_all(&cache_dir)
+            .map_err(|e| ReelVaultError::ConfigError(format!("Failed to create cache directory: {}", e)))?;
 
         Ok(cache_dir)
     }

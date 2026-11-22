@@ -455,15 +455,23 @@ mod tests {
 
     #[test]
     fn sony_a7riii_a_refresh_resolves() {
-        assert_eq!(marketing_name_for("SONY ILCE-7RM3A"), Some("Sony a7R IIIA"));
+        assert_eq!(
+            marketing_name_for("SONY ILCE-7RM3A"),
+            Some("Sony a7R IIIA")
+        );
         // The user's bug report came in lowercase — make sure the
         // case-insensitive lookup catches that too.
-        assert_eq!(marketing_name_for("sony ilce-7rm3a"), Some("Sony a7R IIIA"));
+        assert_eq!(
+            marketing_name_for("sony ilce-7rm3a"),
+            Some("Sony a7R IIIA")
+        );
     }
 
     #[test]
     fn custom_override_replaces_builtin() {
-        let custom = build_custom_overrides([("SONY ILCE-7RM3", "My a7riii")]);
+        let custom = build_custom_overrides([
+            ("SONY ILCE-7RM3", "My a7riii"),
+        ]);
         assert_eq!(
             marketing_name_for_with_custom("SONY ILCE-7RM3", &custom),
             Some("My a7riii".to_string()),
@@ -483,7 +491,9 @@ mod tests {
 
     #[test]
     fn custom_can_introduce_brand_new_camera() {
-        let custom = build_custom_overrides([("HASSELBLAD X2D 100C", "Hasselblad X2D")]);
+        let custom = build_custom_overrides([
+            ("HASSELBLAD X2D 100C", "Hasselblad X2D"),
+        ]);
         assert_eq!(
             marketing_name_for_with_custom("hasselblad  X2D 100c", &custom),
             Some("Hasselblad X2D".to_string()),
@@ -497,7 +507,9 @@ mod tests {
     fn empty_marketing_in_custom_drops_the_entry() {
         // A blank marketing value means "no override" — i.e. it
         // should not silently shadow the built-in.
-        let custom = build_custom_overrides([("SONY ILCE-7RM3", "   ")]);
+        let custom = build_custom_overrides([
+            ("SONY ILCE-7RM3", "   "),
+        ]);
         assert_eq!(
             marketing_name_for_with_custom("SONY ILCE-7RM3", &custom),
             Some("Sony a7R III".to_string())

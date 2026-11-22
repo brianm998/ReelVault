@@ -2,7 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 use crate::db::Database;
-use crate::error::{ReelVaultError, Result};
+use crate::error::{Result, ReelVaultError};
 use crate::media_backend::{backend, MediaSource};
 use crate::metadata::MetadataExtractor;
 use crate::post_index;
@@ -14,8 +14,8 @@ use std::sync::Arc;
 use walkdir::WalkDir;
 
 pub const SUPPORTED_EXTENSIONS: &[&str] = &[
-    "mp4", "mov", "mkv", "avi", "webm", "mxf", "mpeg", "ts", "m2ts", "mts", "flv", "wmv", "asf",
-    "rm", "rmvb", "3gp", "3g2",
+    "mp4", "mov", "mkv", "avi", "webm", "mxf", "mpeg", "ts",
+    "m2ts", "mts", "flv", "wmv", "asf", "rm", "rmvb", "3gp", "3g2",
 ];
 
 /// Whether a single-file scan resulted in a brand-new row or a refresh of
@@ -82,10 +82,7 @@ impl FilenameDateRule {
             "end" => FilenameDatePosition::End,
             _ => FilenameDatePosition::Anywhere,
         };
-        Some(Self {
-            format: fmt,
-            position: pos,
-        })
+        Some(Self { format: fmt, position: pos })
     }
 
     /// Attempt to extract a date from a filename (without extension) and
@@ -97,8 +94,7 @@ impl FilenameDateRule {
             FilenameDateFormat::DayMonthYear => (c, b, a),
             FilenameDateFormat::YearMonthDay => (a, b, c),
         };
-        if !(1..=12).contains(&month) || !(1..=31).contains(&day) || !(1900..=2999).contains(&year)
-        {
+        if !(1..=12).contains(&month) || !(1..=31).contains(&day) || !(1900..=2999).contains(&year) {
             return None;
         }
         let date = chrono::NaiveDate::from_ymd_opt(year, month as u32, day as u32)?;
@@ -309,9 +305,7 @@ impl IndexingEngine {
                 if fully_offline > 0 || location_only > 0 {
                     tracing::info!(
                         "Scan: {} video(s) offline, {} lost a location under {}",
-                        fully_offline,
-                        location_only,
-                        path.display()
+                        fully_offline, location_only, path.display()
                     );
                 }
             }
@@ -360,7 +354,9 @@ impl IndexingEngine {
             .ok_or_else(|| ReelVaultError::InvalidPath("Invalid filename".to_string()))?;
 
         // Get file size
-        let file_size = std::fs::metadata(video_path).map(|m| m.len() as i64).ok();
+        let file_size = std::fs::metadata(video_path)
+            .map(|m| m.len() as i64)
+            .ok();
 
         // Extract metadata (through the media backend: ffprobe on desktop,
         // AVFoundation on iOS).
@@ -369,9 +365,7 @@ impl IndexingEngine {
 
         // Check if already indexed — if so, reuse the existing location row and
         // just refresh metadata. We now key on video_locations, not videos.path.
-        let video_id = if let Some(loc) =
-            db.get_location_by_path(video_path.to_str().unwrap_or(""))?
-        {
+        let video_id = if let Some(loc) = db.get_location_by_path(video_path.to_str().unwrap_or(""))? {
             // Already a known location — sync file size on both the location and
             // the master videos row. A tombstoned video that is re-ingested
             // (e.g. restored from Recently Deleted) comes back to life.
@@ -402,12 +396,7 @@ impl IndexingEngine {
                     video_path.display(),
                     existing_id
                 );
-                db.add_video_location(
-                    &existing_id,
-                    video_path.to_str().unwrap_or(""),
-                    filename,
-                    file_size,
-                )?;
+                db.add_video_location(&existing_id, video_path.to_str().unwrap_or(""), filename, file_size)?;
                 // Ensure videos.is_online reflects the new active location.
                 db.update_video_file_size(&existing_id, file_size.unwrap_or(0))?;
                 existing_id
@@ -420,24 +409,13 @@ impl IndexingEngine {
                     None,
                     file_size,
                 )?;
-                db.add_video_location(
-                    &new_id,
-                    video_path.to_str().unwrap_or(""),
-                    filename,
-                    file_size,
-                )?;
+                db.add_video_location(&new_id, video_path.to_str().unwrap_or(""), filename, file_size)?;
                 new_id
             }
         };
 
         // (Re-)store metadata (UPSERT)
-        MetadataExtractor::store_metadata(
-            db,
-            &video_id,
-            video_path,
-            &probe_output,
-            file_size.unwrap_or(0),
-        )?;
+        MetadataExtractor::store_metadata(db, &video_id, video_path, &probe_output, file_size.unwrap_or(0))?;
 
         // If ffprobe didn't supply a creation_date but the caller asked us to
         // infer one from the filename, do that now. We only fill the date when
@@ -462,13 +440,7 @@ impl IndexingEngine {
         // Generate thumbnail (skip if already exists, ffmpeg overwrite would be redundant)
         let thumb_path = thumbnail_cache.join(format!("{}_medium.jpg", video_id));
         if !thumb_path.exists() {
-            match ThumbnailGenerator::generate(
-                db,
-                &source,
-                &video_id,
-                thumbnail_cache,
-                duration_secs,
-            ) {
+            match ThumbnailGenerator::generate(db, &source, &video_id, thumbnail_cache, duration_secs) {
                 Ok(_) => {
                     tracing::debug!("Generated thumbnail for {}", video_id);
                 }

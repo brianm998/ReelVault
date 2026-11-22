@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 ReelVault Contributors
 
-use crate::error::{ReelVaultError, Result};
+use crate::error::{Result, ReelVaultError};
 use crate::metadata_keys::{self, SqlVal};
 use chrono::Utc;
 use rusqlite::{params, Connection, OptionalExtension};
@@ -457,9 +457,8 @@ impl Database {
         let _ = conn.pragma_update(None, "foreign_keys", "ON");
 
         let schema = include_str!("../schema.sql");
-        conn.execute_batch(schema).map_err(|e| {
-            ReelVaultError::DatabaseError(format!("Failed to initialize schema: {}", e))
-        })?;
+        conn.execute_batch(schema)
+            .map_err(|e| ReelVaultError::DatabaseError(format!("Failed to initialize schema: {}", e)))?;
 
         // Migration: add columns to existing tables. SQLite has no
         // `ALTER TABLE ADD COLUMN IF NOT EXISTS`, so we try and ignore the
@@ -786,11 +785,7 @@ impl Database {
                 Err(e) => {
                     let msg = e.to_string();
                     if !msg.contains("duplicate column") {
-                        tracing::warn!(
-                            "Migration for {} failed (likely already applied): {}",
-                            label,
-                            msg
-                        );
+                        tracing::warn!("Migration for {} failed (likely already applied): {}", label, msg);
                     }
                 }
             }
@@ -1367,9 +1362,7 @@ impl Database {
                 Ok(MediaSource::Bookmark(bytes))
             }
             Some((path, _, _)) => Ok(MediaSource::Path(std::path::PathBuf::from(path))),
-            None => Err(ReelVaultError::InternalError(format!(
-                "video {video_id} not found"
-            ))),
+            None => Err(ReelVaultError::InternalError(format!("video {video_id} not found"))),
         }
     }
 
@@ -1510,11 +1503,7 @@ impl Database {
         let conn = self.get_connection()?;
 
         let total: i64 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM videos WHERE deleted_at IS NULL",
-                [],
-                |row| row.get(0),
-            )
+            .query_row("SELECT COUNT(*) FROM videos WHERE deleted_at IS NULL", [], |row| row.get(0))
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let direction = if ascending { "ASC" } else { "DESC" };
@@ -1523,15 +1512,10 @@ impl Database {
             "name" | "filename" => format!("v.filename {}", direction),
             "date_added" | "indexed_at" | "" => format!("v.indexed_at {}", direction),
             "duration" | "duration_ms" => format!("COALESCE(m.duration_ms, 0) {}", direction),
-            "size" | "size_bytes" | "file_size_bytes" => {
-                format!("COALESCE(v.file_size_bytes, 0) {}", direction)
-            }
+            "size" | "size_bytes" | "file_size_bytes" => format!("COALESCE(v.file_size_bytes, 0) {}", direction),
             "resolution" | "width" | "height" => {
                 // Sort by total pixels
-                format!(
-                    "(COALESCE(m.width, 0) * COALESCE(m.height, 0)) {}",
-                    direction
-                )
+                format!("(COALESCE(m.width, 0) * COALESCE(m.height, 0)) {}", direction)
             }
             "fps" => format!("COALESCE(m.fps, 0) {}", direction),
             "codec" | "codec_video" => format!("COALESCE(m.codec_video, '') {}", direction),
@@ -1624,11 +1608,8 @@ impl Database {
     /// offline but keeps the catalog row so history and sync_links remain intact.
     pub fn soft_delete_synced_video(&self, video_id: &str) -> Result<()> {
         let conn = self.get_connection()?;
-        conn.execute(
-            "UPDATE videos SET is_online = 0 WHERE id = ?1",
-            rusqlite::params![video_id],
-        )
-        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        conn.execute("UPDATE videos SET is_online = 0 WHERE id = ?1", rusqlite::params![video_id])
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(())
     }
 
@@ -1730,7 +1711,12 @@ impl Database {
     /// `source` is recorded on the history row so we can later filter
     /// or wipe auto-tags by feature (e.g. "if the timelapse heuristic
     /// improves and we want to retry, clear `source = 'timelapse_heuristic'`").
-    pub fn auto_tag_if_unseen(&self, video_id: &str, tag_name: &str, source: &str) -> Result<bool> {
+    pub fn auto_tag_if_unseen(
+        &self,
+        video_id: &str,
+        tag_name: &str,
+        source: &str,
+    ) -> Result<bool> {
         let conn = self.get_connection()?;
 
         // Check history first — cheap PK lookup.
@@ -1747,9 +1733,11 @@ impl Database {
 
         // Find-or-create the tag itself.
         let tag_id: String = match conn
-            .query_row("SELECT id FROM tags WHERE name = ?", [tag_name], |r| {
-                r.get::<_, String>(0)
-            })
+            .query_row(
+                "SELECT id FROM tags WHERE name = ?",
+                [tag_name],
+                |r| r.get::<_, String>(0),
+            )
             .ok()
         {
             Some(id) => id,
@@ -1761,9 +1749,11 @@ impl Database {
                 )
                 .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
                 // Re-query in case another worker raced and inserted first.
-                conn.query_row("SELECT id FROM tags WHERE name = ?", [tag_name], |r| {
-                    r.get::<_, String>(0)
-                })
+                conn.query_row(
+                    "SELECT id FROM tags WHERE name = ?",
+                    [tag_name],
+                    |r| r.get::<_, String>(0),
+                )
                 .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             }
         };
@@ -1855,12 +1845,7 @@ impl Database {
 
     // COLLECTION OPERATIONS
 
-    pub fn create_collection(
-        &self,
-        name: &str,
-        is_smart: bool,
-        filter_json: Option<&str>,
-    ) -> Result<String> {
+    pub fn create_collection(&self, name: &str, is_smart: bool, filter_json: Option<&str>) -> Result<String> {
         let conn = self.get_connection()?;
         let collection_id = Uuid::new_v4().to_string();
 
@@ -1963,13 +1948,7 @@ impl Database {
         conn.execute(
             "INSERT INTO video_notes (video_id, notes, updated_at) VALUES (?, ?, ?)
              ON CONFLICT(video_id) DO UPDATE SET notes = ?, updated_at = ?",
-            params![
-                video_id,
-                notes,
-                Utc::now().timestamp_millis(),
-                notes,
-                Utc::now().timestamp_millis()
-            ],
+            params![video_id, notes, Utc::now().timestamp_millis(), notes, Utc::now().timestamp_millis()],
         )
         .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
@@ -2000,9 +1979,7 @@ impl Database {
             .prepare("SELECT id, source_id FROM videos WHERE source_kind = ?1 AND source_id IS NOT NULL AND deleted_at IS NULL")
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let rows = stmt
-            .query_map([kind], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-            })
+            .query_map([kind], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .flatten()
             .collect();
@@ -2138,9 +2115,11 @@ impl Database {
     pub fn get_catalog_setting(&self, key: &str) -> Result<Option<String>> {
         let conn = self.get_connection()?;
         let row = conn
-            .query_row("SELECT value FROM config WHERE key = ?", [key], |row| {
-                row.get::<_, String>(0)
-            })
+            .query_row(
+                "SELECT value FROM config WHERE key = ?",
+                [key],
+                |row| row.get::<_, String>(0),
+            )
             .optional()
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(row)
@@ -2381,9 +2360,10 @@ impl Database {
         // Use a path prefix with a trailing slash so "/home/user/Videos"
         // doesn't accidentally match "/home/user/Videos2".
         let prefix = format!("{}/", path.trim_end_matches('/'));
-        let deleted = conn
-            .execute("DELETE FROM videos WHERE path LIKE ? || '%'", [&prefix])
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let deleted = conn.execute(
+            "DELETE FROM videos WHERE path LIKE ? || '%'",
+            [&prefix],
+        ).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         conn.execute("DELETE FROM library_locations WHERE path = ?", [path])
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
@@ -2418,9 +2398,7 @@ impl Database {
         preferred_video_id: Option<&str>,
     ) -> Result<String> {
         if video_ids.is_empty() {
-            return Err(ReelVaultError::InvalidRequest(
-                "Group must contain at least one video".to_string(),
-            ));
+            return Err(ReelVaultError::InvalidRequest("Group must contain at least one video".to_string()));
         }
         tracing::info!(
             count = video_ids.len(),
@@ -2655,11 +2633,8 @@ impl Database {
 
         // If only one or zero members remain, dissolve the group entirely
         if remaining <= 1 {
-            conn.execute(
-                "UPDATE videos SET group_id = NULL WHERE group_id = ?",
-                [&group_id],
-            )
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            conn.execute("UPDATE videos SET group_id = NULL WHERE group_id = ?", [&group_id])
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
             conn.execute("DELETE FROM video_groups WHERE id = ?", [&group_id])
                 .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         }
@@ -2748,23 +2723,16 @@ impl Database {
             "name" | "filename" => format!("v.filename {}", direction),
             "date_added" | "indexed_at" | "" => format!("v.indexed_at {}", direction),
             "duration" | "duration_ms" => format!("COALESCE(m.duration_ms, 0) {}", direction),
-            "size" | "size_bytes" | "file_size_bytes" => {
-                format!("COALESCE(v.file_size_bytes, 0) {}", direction)
-            }
+            "size" | "size_bytes" | "file_size_bytes" => format!("COALESCE(v.file_size_bytes, 0) {}", direction),
             "resolution" | "width" | "height" => {
-                format!(
-                    "(COALESCE(m.width, 0) * COALESCE(m.height, 0)) {}",
-                    direction
-                )
+                format!("(COALESCE(m.width, 0) * COALESCE(m.height, 0)) {}", direction)
             }
             "fps" => format!("COALESCE(m.fps, 0) {}", direction),
             "codec" | "codec_video" => format!("COALESCE(m.codec_video, '') {}", direction),
             "bitrate" => format!("COALESCE(m.bitrate, 0) {}", direction),
             "camera" | "camera_model" => format!("COALESCE(m.camera_model, '') {}", direction),
             "lens" | "lens_model" => format!("COALESCE(m.lens_model, '') {}", direction),
-            "creation_date" | "shot_date" | "capture_date" => {
-                format!("COALESCE(m.creation_date, 0) {}", direction)
-            }
+            "creation_date" | "shot_date" | "capture_date" => format!("COALESCE(m.creation_date, 0) {}", direction),
             // Sort by alphabetically-first keyword attached to the video.
             "keyword" | "tag" => format!(
                 "COALESCE((SELECT MIN(t.name) FROM video_tags vt \
@@ -2775,9 +2743,7 @@ impl Database {
             // Lightroom-style user-mark sorts. Unrated / unlabelled rows
             // sort as 0 / '' respectively.
             "rating" | "stars" => format!("COALESCE(um.rating, 0) {}", direction),
-            "color" | "color_label" | "label" => {
-                format!("COALESCE(um.color_label, '') {}", direction)
-            }
+            "color" | "color_label" | "label" => format!("COALESCE(um.color_label, '') {}", direction),
             // Photo-EXIF sorts. Sourced from the XMP packet embedded in
             // the video (parsed by xmp.rs at index time). Videos without
             // XMP sort as 0 — i.e. they cluster at the ascending end of
@@ -2805,10 +2771,8 @@ impl Database {
              LEFT JOIN video_user_marks um ON v.id = um.video_id
              WHERE ({rep}){filter_sql} AND v.deleted_at IS NULL"
         );
-        let count_params: Vec<&dyn rusqlite::ToSql> = bind
-            .iter()
-            .map(|b| b.as_ref() as &dyn rusqlite::ToSql)
-            .collect();
+        let count_params: Vec<&dyn rusqlite::ToSql> =
+            bind.iter().map(|b| b.as_ref() as &dyn rusqlite::ToSql).collect();
         let total: i64 = conn
             .query_row(&count_sql, count_params.as_slice(), |row| row.get(0))
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
@@ -2826,10 +2790,8 @@ impl Database {
         let mut bind_with_limit: Vec<Box<dyn rusqlite::ToSql>> = bind;
         bind_with_limit.push(Box::new(limit));
         bind_with_limit.push(Box::new(offset));
-        let query_params: Vec<&dyn rusqlite::ToSql> = bind_with_limit
-            .iter()
-            .map(|b| b.as_ref() as &dyn rusqlite::ToSql)
-            .collect();
+        let query_params: Vec<&dyn rusqlite::ToSql> =
+            bind_with_limit.iter().map(|b| b.as_ref() as &dyn rusqlite::ToSql).collect();
 
         let mut stmt = conn
             .prepare(&sql)
@@ -2931,19 +2893,14 @@ impl Database {
                 Some(stripped) => (true, stripped),
                 None => (false, raw_value.as_str()),
             };
-            let values: Vec<&str> = value
-                .split(METADATA_VALUE_SEPARATOR)
-                .filter(|s| !s.is_empty())
-                .collect();
+            let values: Vec<&str> = value.split(METADATA_VALUE_SEPARATOR).filter(|s| !s.is_empty()).collect();
             if values.is_empty() {
                 continue;
             }
             if key == "keyword" {
                 // Match (or, when negated, exclude) videos carrying ANY of the
                 // selected keyword tags. NOT IN naturally keeps untagged videos.
-                let placeholders = std::iter::repeat_n("?", values.len())
-                    .collect::<Vec<_>>()
-                    .join(", ");
+                let placeholders = std::iter::repeat_n("?", values.len()).collect::<Vec<_>>().join(", ");
                 let op = if negate { "NOT IN" } else { "IN" };
                 sql.push_str(&format!(
                     " AND v.id {op} (SELECT video_id FROM video_tags WHERE tag_id IN ({placeholders}))"
@@ -3105,9 +3062,7 @@ impl Database {
 
         // Manual collection membership.
         if let Some(cid) = spec.collection_id.as_deref().filter(|c| !c.is_empty()) {
-            sql.push_str(
-                " AND v.id IN (SELECT video_id FROM collection_members WHERE collection_id = ?)",
-            );
+            sql.push_str(" AND v.id IN (SELECT video_id FROM collection_members WHERE collection_id = ?)");
             bind.push(Box::new(cid.to_string()));
         }
 
@@ -3135,10 +3090,8 @@ impl Database {
         let conn = self.get_connection()?;
         let rep = REPRESENTATIVE_FILTER;
         let (filter_sql, bind) = self.build_filter_clauses(spec);
-        let params: Vec<&dyn rusqlite::ToSql> = bind
-            .iter()
-            .map(|b| b.as_ref() as &dyn rusqlite::ToSql)
-            .collect();
+        let params: Vec<&dyn rusqlite::ToSql> =
+            bind.iter().map(|b| b.as_ref() as &dyn rusqlite::ToSql).collect();
 
         // Keyword is tag-backed: token = tag id, display = tag name.
         if key == "keyword" {
@@ -3200,11 +3153,7 @@ impl Database {
                     rusqlite::types::Value::Text(s) => s,
                     _ => String::new(),
                 };
-                Ok(FacetCount {
-                    token,
-                    display: None,
-                    count: row.get::<_, i64>(1)?,
-                })
+                Ok(FacetCount { token, display: None, count: row.get::<_, i64>(1)? })
             })
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
@@ -3241,10 +3190,8 @@ impl Database {
                        WHERE ({rep}) AND {guard}{filter_sql})"
                 )
             };
-            let params: Vec<&dyn rusqlite::ToSql> = bind
-                .iter()
-                .map(|b| b.as_ref() as &dyn rusqlite::ToSql)
-                .collect();
+            let params: Vec<&dyn rusqlite::ToSql> =
+                bind.iter().map(|b| b.as_ref() as &dyn rusqlite::ToSql).collect();
             let exists: i64 = conn
                 .query_row(&sql, params.as_slice(), |row| row.get(0))
                 .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
@@ -3483,8 +3430,11 @@ impl Database {
             .flatten();
 
         if let Some(gid) = group_id {
-            conn.execute("UPDATE videos SET group_id = NULL WHERE id = ?", [proxy_id])
-                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            conn.execute(
+                "UPDATE videos SET group_id = NULL WHERE id = ?",
+                [proxy_id],
+            )
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
             let remaining: i64 = conn
                 .query_row(
@@ -3804,8 +3754,11 @@ impl Database {
     /// [`Self::remove_proxy_link`].
     pub fn clear_proxy_of(&self, video_id: &str) -> Result<()> {
         let conn = self.get_connection()?;
-        conn.execute("DELETE FROM proxy_links WHERE proxy_id = ?", [video_id])
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        conn.execute(
+            "DELETE FROM proxy_links WHERE proxy_id = ?",
+            [video_id],
+        )
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         conn.execute(
             "UPDATE videos
              SET proxy_of = NULL, proxy_confidence = NULL, proxy_auto_detected = 0
@@ -3885,8 +3838,7 @@ impl Database {
         base_path: &str,
     ) -> Result<Vec<ProxyDetectCandidate>> {
         let conn = self.get_connection()?;
-        let (lower, upper) =
-            path_prefix_range(&(base_path.trim_end_matches('/').to_string() + "/"));
+        let (lower, upper) = path_prefix_range(&(base_path.trim_end_matches('/').to_string() + "/"));
         let mut stmt = conn
             .prepare(
                 "SELECT v.id, v.filename, v.path, v.group_id,
@@ -4256,10 +4208,10 @@ impl Database {
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         conn.execute(
-            "UPDATE videos SET proxy_of = ? WHERE proxy_of = ?",
-            params![new_anchor_id, old_anchor_id],
-        )
-        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                "UPDATE videos SET proxy_of = ? WHERE proxy_of = ?",
+                params![new_anchor_id, old_anchor_id],
+            )
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(n)
     }
 
@@ -4343,11 +4295,7 @@ impl Database {
         Ok(())
     }
 
-    pub fn find_sync_link_by_remote(
-        &self,
-        peer_key: &str,
-        remote_video_id: &str,
-    ) -> Result<Option<SyncLink>> {
+    pub fn find_sync_link_by_remote(&self, peer_key: &str, remote_video_id: &str) -> Result<Option<SyncLink>> {
         let conn = self.get_connection()?;
         let mut stmt = conn.prepare(
             "SELECT id, local_video_id, peer_key, remote_video_id, origin_hash, is_derived, derived_height, last_synced_ms, local_rev_at_sync, remote_rev_at_sync
@@ -4366,16 +4314,10 @@ impl Database {
                 local_rev_at_sync: row.get(8)?,
                 remote_rev_at_sync: row.get(9)?,
             })
-        })
-        .optional()
-        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))
+        }).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))
     }
 
-    pub fn find_sync_link_by_local(
-        &self,
-        local_video_id: &str,
-        peer_key: &str,
-    ) -> Result<Option<SyncLink>> {
+    pub fn find_sync_link_by_local(&self, local_video_id: &str, peer_key: &str) -> Result<Option<SyncLink>> {
         let conn = self.get_connection()?;
         let mut stmt = conn.prepare(
             "SELECT id, local_video_id, peer_key, remote_video_id, origin_hash, is_derived, derived_height, last_synced_ms, local_rev_at_sync, remote_rev_at_sync
@@ -4394,15 +4336,11 @@ impl Database {
                 local_rev_at_sync: row.get(8)?,
                 remote_rev_at_sync: row.get(9)?,
             })
-        })
-        .optional()
-        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))
+        }).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))
     }
 
     pub fn lookup_by_content_hash(&self, hashes: &[String]) -> Result<Vec<ContentHashHit>> {
-        if hashes.is_empty() {
-            return Ok(vec![]);
-        }
+        if hashes.is_empty() { return Ok(vec![]); }
         let conn = self.get_connection()?;
         let placeholders: Vec<_> = (1..=hashes.len()).map(|i| format!("?{i}")).collect();
         let sql = format!(
@@ -4412,38 +4350,26 @@ impl Database {
              WHERE v.content_hash IN ({}) AND v.is_derived = 0 AND v.proxy_of IS NULL AND v.deleted_at IS NULL",
             placeholders.join(",")
         );
-        let mut stmt = conn
-            .prepare(&sql)
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
-        let params: Vec<&dyn rusqlite::types::ToSql> = hashes
-            .iter()
-            .map(|h| h as &dyn rusqlite::types::ToSql)
-            .collect();
-        let rows = stmt
-            .query_map(params.as_slice(), |row| {
-                Ok(ContentHashHit {
-                    content_hash: row.get::<_, Option<String>>(0)?.unwrap_or_default(),
-                    video_id: row.get(1)?,
-                    marks_rev: row.get(2)?,
-                    duration_ms: row.get::<_, Option<i64>>(3)?.unwrap_or(0),
-                    creation_date_ms: 0, // parse from TEXT later if needed
-                })
+        let mut stmt = conn.prepare(&sql).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let params: Vec<&dyn rusqlite::types::ToSql> = hashes.iter().map(|h| h as &dyn rusqlite::types::ToSql).collect();
+        let rows = stmt.query_map(params.as_slice(), |row| {
+            Ok(ContentHashHit {
+                content_hash: row.get::<_, Option<String>>(0)?.unwrap_or_default(),
+                video_id: row.get(1)?,
+                marks_rev: row.get(2)?,
+                duration_ms: row.get::<_, Option<i64>>(3)?.unwrap_or(0),
+                creation_date_ms: 0, // parse from TEXT later if needed
             })
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        }).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let mut results = Vec::new();
-        for row in rows {
-            results.push(row.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?);
-        }
+        for row in rows { results.push(row.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?); }
         Ok(results)
     }
 
     pub fn set_content_hash(&self, video_id: &str, hash: &str) -> Result<()> {
         let conn = self.get_connection()?;
-        conn.execute(
-            "UPDATE videos SET content_hash = ?1 WHERE id = ?2",
-            rusqlite::params![hash, video_id],
-        )
-        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        conn.execute("UPDATE videos SET content_hash = ?1 WHERE id = ?2", rusqlite::params![hash, video_id])
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(())
     }
 
@@ -4452,104 +4378,65 @@ impl Database {
         let mut stmt = conn.prepare(
             "SELECT id, path FROM videos WHERE content_hash IS NULL AND is_derived = 0 AND proxy_of IS NULL LIMIT ?1"
         ).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
-        let rows = stmt
-            .query_map(rusqlite::params![limit as i64], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-            })
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let rows = stmt.query_map(rusqlite::params![limit as i64], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        }).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let mut out = Vec::new();
-        for row in rows {
-            out.push(row.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?);
-        }
+        for row in rows { out.push(row.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?); }
         Ok(out)
     }
 
     pub fn get_video_catalog_data(&self, video_id: &str) -> Result<Option<VideoCatalogData>> {
         let conn = self.get_connection()?;
-        let marks_rev: Option<i64> = conn
-            .query_row(
-                "SELECT marks_rev FROM videos WHERE id = ?1",
-                rusqlite::params![video_id],
-                |r| r.get(0),
-            )
-            .optional()
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
-        let Some(marks_rev) = marks_rev else {
-            return Ok(None);
-        };
+        let marks_rev: Option<i64> = conn.query_row(
+            "SELECT marks_rev FROM videos WHERE id = ?1", rusqlite::params![video_id],
+            |r| r.get(0)
+        ).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let Some(marks_rev) = marks_rev else { return Ok(None); };
 
         // Tags
         let mut stmt = conn.prepare(
             "SELECT t.name, t.color FROM tags t JOIN video_tags vt ON vt.tag_id = t.id WHERE vt.video_id = ?1"
         ).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
-        let tag_rows: Vec<(String, Option<String>)> = stmt
-            .query_map(rusqlite::params![video_id], |r| Ok((r.get(0)?, r.get(1)?)))
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
-            .filter_map(|r| r.ok())
-            .collect();
+        let tag_rows: Vec<(String, Option<String>)> = stmt.query_map(rusqlite::params![video_id], |r| {
+            Ok((r.get(0)?, r.get(1)?))
+        }).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?.filter_map(|r| r.ok()).collect();
 
         // Manual collections
         let mut stmt2 = conn.prepare(
             "SELECT c.name FROM collections c JOIN collection_members cm ON cm.collection_id = c.id WHERE cm.video_id = ?1 AND c.is_smart = 0"
         ).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
-        let collections: Vec<String> = stmt2
-            .query_map(rusqlite::params![video_id], |r| r.get(0))
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
-            .filter_map(|r| r.ok())
-            .collect();
+        let collections: Vec<String> = stmt2.query_map(rusqlite::params![video_id], |r| r.get(0))
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?.filter_map(|r| r.ok()).collect();
 
         // Smart collections containing this video
         let mut stmt3 = conn.prepare(
             "SELECT c.name, c.filter_json FROM collections c JOIN collection_members cm ON cm.collection_id = c.id WHERE cm.video_id = ?1 AND c.is_smart = 1"
         ).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
-        let smart: Vec<(String, String)> = stmt3
-            .query_map(rusqlite::params![video_id], |r| {
-                Ok((
-                    r.get::<_, String>(0)?,
-                    r.get::<_, Option<String>>(1)?.unwrap_or_default(),
-                ))
-            })
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
-            .filter_map(|r| r.ok())
-            .collect();
+        let smart: Vec<(String, String)> = stmt3.query_map(rusqlite::params![video_id], |r| {
+            Ok((r.get::<_, String>(0)?, r.get::<_, Option<String>>(1)?.unwrap_or_default()))
+        }).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?.filter_map(|r| r.ok()).collect();
 
         // User marks
-        let marks = conn
-            .query_row(
-                "SELECT rating, color_label FROM video_user_marks WHERE video_id = ?1",
-                rusqlite::params![video_id],
-                |r| Ok((r.get::<_, i32>(0)?, r.get::<_, String>(1)?)),
-            )
-            .optional()
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let marks = conn.query_row(
+            "SELECT rating, color_label FROM video_user_marks WHERE video_id = ?1",
+            rusqlite::params![video_id],
+            |r| Ok((r.get::<_, i32>(0)?, r.get::<_, String>(1)?))
+        ).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let (rating, color_label) = marks.unwrap_or((0, String::new()));
 
         // Notes
-        let notes: Option<String> = conn
-            .query_row(
-                "SELECT notes FROM video_notes WHERE video_id = ?1",
-                rusqlite::params![video_id],
-                |r| r.get(0),
-            )
-            .optional()
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
-            .flatten();
+        let notes: Option<String> = conn.query_row(
+            "SELECT notes FROM video_notes WHERE video_id = ?1", rusqlite::params![video_id],
+            |r| r.get(0)
+        ).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?.flatten();
 
         // GPS + creation_date from metadata
-        let meta_row = conn
-            .query_row(
-                "SELECT gps_lat, gps_lon, creation_date FROM metadata WHERE video_id = ?1",
-                rusqlite::params![video_id],
-                |r| {
-                    Ok((
-                        r.get::<_, Option<f64>>(0)?,
-                        r.get::<_, Option<f64>>(1)?,
-                        r.get::<_, Option<String>>(2)?,
-                    ))
-                },
-            )
-            .optional()
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let meta_row = conn.query_row(
+            "SELECT gps_lat, gps_lon, creation_date FROM metadata WHERE video_id = ?1",
+            rusqlite::params![video_id],
+            |r| Ok((r.get::<_, Option<f64>>(0)?, r.get::<_, Option<f64>>(1)?, r.get::<_, Option<String>>(2)?))
+        ).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let (gps_lat, gps_lon, creation_date) = meta_row.unwrap_or((None, None, None));
         let has_gps = gps_lat.is_some() && gps_lon.is_some();
 
@@ -4559,31 +4446,18 @@ impl Database {
             rusqlite::params![video_id],
             |r| r.get(0)
         ).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?.flatten();
-        let proxy_of_id: Option<String> = conn
-            .query_row(
-                "SELECT proxy_of FROM videos WHERE id = ?1",
-                rusqlite::params![video_id],
-                |r| r.get(0),
-            )
-            .optional()
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
-            .flatten();
+        let proxy_of_id: Option<String> = conn.query_row(
+            "SELECT proxy_of FROM videos WHERE id = ?1",
+            rusqlite::params![video_id],
+            |r| r.get(0)
+        ).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?.flatten();
 
         Ok(Some(VideoCatalogData {
             marks_rev,
             tags: tag_rows.iter().map(|(n, _)| n.clone()).collect(),
-            tag_colors: tag_rows
-                .iter()
-                .map(|(_, c)| c.clone().unwrap_or_default())
-                .collect(),
+            tag_colors: tag_rows.iter().map(|(_, c)| c.clone().unwrap_or_default()).collect(),
             collections,
-            smart_collections: smart
-                .into_iter()
-                .map(|(n, f)| SmartCollectionEntry {
-                    name: n,
-                    filter_json: f,
-                })
-                .collect(),
+            smart_collections: smart.into_iter().map(|(n, f)| SmartCollectionEntry { name: n, filter_json: f }).collect(),
             rating,
             color_label,
             notes: notes.unwrap_or_default(),
@@ -4601,60 +4475,38 @@ impl Database {
 
         // Tags — match by name, create if missing
         for (i, tag_name) in data.tags.iter().enumerate() {
-            let color =
-                data.tag_colors
-                    .get(i)
-                    .and_then(|c| if c.is_empty() { None } else { Some(c.as_str()) });
-            let tag_id: Option<String> = conn
-                .query_row(
-                    "SELECT id FROM tags WHERE name = ?1",
-                    rusqlite::params![tag_name],
-                    |r| r.get(0),
-                )
-                .optional()
-                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            let color = data.tag_colors.get(i).and_then(|c| if c.is_empty() { None } else { Some(c.as_str()) });
+            let tag_id: Option<String> = conn.query_row(
+                "SELECT id FROM tags WHERE name = ?1", rusqlite::params![tag_name], |r| r.get(0)
+            ).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
             let tag_id = if let Some(id) = tag_id {
                 id
             } else {
                 let new_id = uuid::Uuid::new_v4().to_string();
-                conn.execute(
-                    "INSERT OR IGNORE INTO tags (id, name, color) VALUES (?1, ?2, ?3)",
-                    rusqlite::params![new_id, tag_name, color],
-                )
-                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
-                conn.query_row(
-                    "SELECT id FROM tags WHERE name = ?1",
-                    rusqlite::params![tag_name],
-                    |r| r.get(0),
-                )
-                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
+                conn.execute("INSERT OR IGNORE INTO tags (id, name, color) VALUES (?1, ?2, ?3)",
+                    rusqlite::params![new_id, tag_name, color])
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                conn.query_row("SELECT id FROM tags WHERE name = ?1", rusqlite::params![tag_name], |r| r.get(0))
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             };
-            conn.execute(
-                "INSERT OR IGNORE INTO video_tags (video_id, tag_id) VALUES (?1, ?2)",
-                rusqlite::params![video_id, tag_id],
-            )
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            conn.execute("INSERT OR IGNORE INTO video_tags (video_id, tag_id) VALUES (?1, ?2)",
+                rusqlite::params![video_id, tag_id])
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         }
 
         // Manual collection membership
         for coll_name in &data.collections {
-            let coll_id: Option<String> = conn
-                .query_row(
-                    "SELECT id FROM collections WHERE name = ?1 AND is_smart = 0 LIMIT 1",
-                    rusqlite::params![coll_name],
-                    |r| r.get(0),
-                )
-                .optional()
-                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            let coll_id: Option<String> = conn.query_row(
+                "SELECT id FROM collections WHERE name = ?1 AND is_smart = 0 LIMIT 1",
+                rusqlite::params![coll_name], |r| r.get(0)
+            ).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
             let coll_id = if let Some(id) = coll_id {
                 id
             } else {
                 let new_id = uuid::Uuid::new_v4().to_string();
-                conn.execute(
-                    "INSERT INTO collections (id, name, is_smart) VALUES (?1, ?2, 0)",
-                    rusqlite::params![new_id, coll_name],
-                )
-                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                conn.execute("INSERT INTO collections (id, name, is_smart) VALUES (?1, ?2, 0)",
+                    rusqlite::params![new_id, coll_name])
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
                 new_id
             };
             conn.execute("INSERT OR IGNORE INTO collection_members (collection_id, video_id) VALUES (?1, ?2)",
@@ -4676,46 +4528,37 @@ impl Database {
             conn.execute(
                 "INSERT INTO video_notes (video_id, notes) VALUES (?1, ?2)
                  ON CONFLICT(video_id) DO UPDATE SET notes = excluded.notes",
-                rusqlite::params![video_id, data.notes],
-            )
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                rusqlite::params![video_id, data.notes])
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         }
 
         // Group membership
         if !data.group_name.is_empty() {
-            let group_id: Option<String> = conn
-                .query_row(
-                    "SELECT id FROM video_groups WHERE name = ?1 LIMIT 1",
-                    rusqlite::params![data.group_name],
-                    |r| r.get(0),
-                )
-                .optional()
-                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            let group_id: Option<String> = conn.query_row(
+                "SELECT id FROM video_groups WHERE name = ?1 LIMIT 1",
+                rusqlite::params![data.group_name], |r| r.get(0)
+            ).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
             let group_id = if let Some(id) = group_id {
                 id
             } else {
                 let new_id = uuid::Uuid::new_v4().to_string();
-                conn.execute(
-                    "INSERT INTO video_groups (id, name) VALUES (?1, ?2)",
-                    rusqlite::params![new_id, data.group_name],
-                )
-                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                conn.execute("INSERT INTO video_groups (id, name) VALUES (?1, ?2)",
+                    rusqlite::params![new_id, data.group_name])
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
                 new_id
             };
             conn.execute(
                 "UPDATE videos SET group_id = ?1 WHERE id = ?2 AND group_id IS NULL",
-                rusqlite::params![group_id, video_id],
-            )
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                rusqlite::params![group_id, video_id])
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         }
 
         // Proxy link
         if !data.proxy_of_id.is_empty() {
             conn.execute(
                 "UPDATE videos SET proxy_of = ?1 WHERE id = ?2",
-                rusqlite::params![data.proxy_of_id, video_id],
-            )
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                rusqlite::params![data.proxy_of_id, video_id])
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         }
 
         Ok(())
@@ -4749,32 +4592,26 @@ impl Database {
                  ORDER BY v.id ASC LIMIT {limit}"
             )
         };
-        let mut stmt = conn
-            .prepare(&sql)
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
-        let rows = stmt
-            .query_map([], |row| {
-                Ok(SyncManifestRow {
-                    video_id: row.get(0)?,
-                    content_hash: row.get::<_, Option<String>>(1)?,
-                    marks_rev: row.get(2)?,
-                    size_bytes: row.get::<_, Option<i64>>(3)?.unwrap_or(0),
-                    duration_ms: row.get::<_, Option<i64>>(4)?.unwrap_or(0),
-                    filename: row.get(5)?,
-                    width: row.get::<_, Option<i32>>(6)?.unwrap_or(0),
-                    height: row.get::<_, Option<i32>>(7)?.unwrap_or(0),
-                    codec_video: row.get::<_, String>(8)?,
-                    is_derived: row.get::<_, i32>(9)? != 0,
-                    proxy_of: row.get::<_, Option<String>>(10)?,
-                    has_streamable_proxy: row.get::<_, i32>(11)? != 0,
-                    deleted_at: row.get::<_, Option<i64>>(12)?,
-                })
+        let mut stmt = conn.prepare(&sql).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let rows = stmt.query_map([], |row| {
+            Ok(SyncManifestRow {
+                video_id: row.get(0)?,
+                content_hash: row.get::<_, Option<String>>(1)?,
+                marks_rev: row.get(2)?,
+                size_bytes: row.get::<_, Option<i64>>(3)?.unwrap_or(0),
+                duration_ms: row.get::<_, Option<i64>>(4)?.unwrap_or(0),
+                filename: row.get(5)?,
+                width: row.get::<_, Option<i32>>(6)?.unwrap_or(0),
+                height: row.get::<_, Option<i32>>(7)?.unwrap_or(0),
+                codec_video: row.get::<_, String>(8)?,
+                is_derived: row.get::<_, i32>(9)? != 0,
+                proxy_of: row.get::<_, Option<String>>(10)?,
+                has_streamable_proxy: row.get::<_, i32>(11)? != 0,
+                deleted_at: row.get::<_, Option<i64>>(12)?,
             })
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        }).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let mut out = Vec::new();
-        for row in rows {
-            out.push(row.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?);
-        }
+        for row in rows { out.push(row.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?); }
         Ok(out)
     }
 
@@ -4784,27 +4621,21 @@ impl Database {
         let conn = self.get_connection()?;
         let mut stmt = conn.prepare("SELECT id, name, peer_key, direction, filter_json, target_height, collection_resolutions, device_label, last_run_ms, created_ms, updated_ms FROM sync_profiles ORDER BY updated_ms DESC")
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
-        let rows = stmt
-            .query_map([], |r| {
-                Ok(SyncProfile {
-                    id: r.get(0)?,
-                    name: r.get::<_, Option<String>>(1)?.unwrap_or_default(),
-                    peer_key: r.get::<_, Option<String>>(2)?.unwrap_or_default(),
-                    direction: r.get::<_, Option<String>>(3)?.unwrap_or_default(),
-                    filter_json: r.get::<_, Option<String>>(4)?.unwrap_or_default(),
-                    target_height: r.get::<_, Option<i32>>(5)?.unwrap_or(1080),
-                    collection_resolutions: r.get::<_, Option<String>>(6)?.unwrap_or_default(),
-                    device_label: r.get::<_, Option<String>>(7)?.unwrap_or_default(),
-                    last_run_ms: r.get::<_, Option<i64>>(8)?,
-                    created_ms: r.get::<_, Option<i64>>(9)?,
-                    updated_ms: r.get::<_, Option<i64>>(10)?,
-                })
-            })
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let rows = stmt.query_map([], |r| Ok(SyncProfile {
+            id: r.get(0)?,
+            name: r.get::<_, Option<String>>(1)?.unwrap_or_default(),
+            peer_key: r.get::<_, Option<String>>(2)?.unwrap_or_default(),
+            direction: r.get::<_, Option<String>>(3)?.unwrap_or_default(),
+            filter_json: r.get::<_, Option<String>>(4)?.unwrap_or_default(),
+            target_height: r.get::<_, Option<i32>>(5)?.unwrap_or(1080),
+            collection_resolutions: r.get::<_, Option<String>>(6)?.unwrap_or_default(),
+            device_label: r.get::<_, Option<String>>(7)?.unwrap_or_default(),
+            last_run_ms: r.get::<_, Option<i64>>(8)?,
+            created_ms: r.get::<_, Option<i64>>(9)?,
+            updated_ms: r.get::<_, Option<i64>>(10)?,
+        })).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let mut out = Vec::new();
-        for row in rows {
-            out.push(row.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?);
-        }
+        for row in rows { out.push(row.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?); }
         Ok(out)
     }
 
@@ -4822,11 +4653,8 @@ impl Database {
 
     pub fn delete_sync_profile(&self, id: &str) -> Result<()> {
         let conn = self.get_connection()?;
-        conn.execute(
-            "DELETE FROM sync_profiles WHERE id = ?1",
-            rusqlite::params![id],
-        )
-        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        conn.execute("DELETE FROM sync_profiles WHERE id = ?1", rusqlite::params![id])
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(())
     }
 
@@ -4856,23 +4684,17 @@ impl Database {
         let conn = self.get_connection()?;
         let mut stmt = conn.prepare("SELECT run_id, source_video_id, action, status, content_hash, bytes_done, last_error FROM sync_run_items WHERE run_id = ?1")
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
-        let rows = stmt
-            .query_map(rusqlite::params![run_id], |r| {
-                Ok(SyncRunItem {
-                    run_id: r.get(0)?,
-                    source_video_id: r.get(1)?,
-                    action: r.get::<_, Option<String>>(2)?.unwrap_or_default(),
-                    status: r.get::<_, Option<String>>(3)?.unwrap_or_default(),
-                    content_hash: r.get(4)?,
-                    bytes_done: r.get::<_, Option<i64>>(5)?.unwrap_or(0),
-                    last_error: r.get(6)?,
-                })
-            })
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let rows = stmt.query_map(rusqlite::params![run_id], |r| Ok(SyncRunItem {
+            run_id: r.get(0)?,
+            source_video_id: r.get(1)?,
+            action: r.get::<_, Option<String>>(2)?.unwrap_or_default(),
+            status: r.get::<_, Option<String>>(3)?.unwrap_or_default(),
+            content_hash: r.get(4)?,
+            bytes_done: r.get::<_, Option<i64>>(5)?.unwrap_or(0),
+            last_error: r.get(6)?,
+        })).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let mut out = Vec::new();
-        for row in rows {
-            out.push(row.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?);
-        }
+        for row in rows { out.push(row.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?); }
         Ok(out)
     }
 }
@@ -5146,10 +4968,7 @@ mod tests {
         db.mark_location_offline("/scratch/clip.mov")
             .expect("mark offline");
         let snapshot = db.list_location_path_sizes().expect("snapshot");
-        assert_eq!(
-            snapshot.get("/scratch/clip.mov"),
-            Some(&(Some(1000), false))
-        );
+        assert_eq!(snapshot.get("/scratch/clip.mov"), Some(&(Some(1000), false)));
         assert_eq!(
             snapshot.get("/lib/clip.mov"),
             Some(&(Some(1000), true)),
@@ -5236,8 +5055,7 @@ mod tests {
 
     fn open_db(tmp: &tempfile::TempDir) -> Database {
         let db = Database::new_empty();
-        db.set_path(&tmp.path().join("catalog.db"))
-            .expect("init schema");
+        db.set_path(&tmp.path().join("catalog.db")).expect("init schema");
         db
     }
 
@@ -5245,35 +5063,12 @@ mod tests {
     fn facet_cascade_constrains_columns_to_the_right() {
         let tmp = tempfile::tempdir().unwrap();
         let db = open_db(&tmp);
-        seed_meta(
-            &db,
-            "/l/a.mov",
-            "a.mov",
-            Some("Sony A7"),
-            Some("FE 24"),
-            Some(100),
-        );
-        seed_meta(
-            &db,
-            "/l/b.mov",
-            "b.mov",
-            Some("Sony A7"),
-            Some("FE 50"),
-            Some(200),
-        );
-        seed_meta(
-            &db,
-            "/l/c.mov",
-            "c.mov",
-            Some("Canon R5"),
-            Some("RF 50"),
-            Some(400),
-        );
+        seed_meta(&db, "/l/a.mov", "a.mov", Some("Sony A7"), Some("FE 24"), Some(100));
+        seed_meta(&db, "/l/b.mov", "b.mov", Some("Sony A7"), Some("FE 50"), Some(200));
+        seed_meta(&db, "/l/c.mov", "c.mov", Some("Canon R5"), Some("RF 50"), Some(400));
 
         // Unconstrained camera facet: both cameras present.
-        let cams = db
-            .distinct_facet_values("camera", &FilterSpec::default())
-            .unwrap();
+        let cams = db.distinct_facet_values("camera", &FilterSpec::default()).unwrap();
         let cam_tokens: Vec<_> = cams.iter().map(|c| c.token.as_str()).collect();
         assert!(cam_tokens.contains(&"Sony A7") && cam_tokens.contains(&"Canon R5"));
 
@@ -5301,10 +5096,7 @@ mod tests {
         let keys = db.metadata_keys_with_data(&FilterSpec::default()).unwrap();
         assert!(keys.contains(&"camera".to_string()));
         assert!(keys.contains(&"iso".to_string()));
-        assert!(
-            !keys.contains(&"lens".to_string()),
-            "lens has no values yet"
-        );
+        assert!(!keys.contains(&"lens".to_string()), "lens has no values yet");
         assert!(!keys.contains(&"keyword".to_string()), "no tags yet");
 
         // Tagging a video makes 'keyword' available, and its facet carries the
@@ -5313,9 +5105,7 @@ mod tests {
         db.tag_video(&id, &tag).unwrap();
         let keys = db.metadata_keys_with_data(&FilterSpec::default()).unwrap();
         assert!(keys.contains(&"keyword".to_string()));
-        let kw = db
-            .distinct_facet_values("keyword", &FilterSpec::default())
-            .unwrap();
+        let kw = db.distinct_facet_values("keyword", &FilterSpec::default()).unwrap();
         assert_eq!(kw.len(), 1);
         assert_eq!(kw[0].token, tag);
         assert_eq!(kw[0].display.as_deref(), Some("beach"));
@@ -5399,21 +5189,12 @@ mod tests {
         let (chosen, attached) = db
             .attach_proxies(&[p1.clone(), master.clone(), p2.clone()])
             .expect("attach");
-        assert_eq!(
-            chosen, master,
-            "highest-resolution video must be the master"
-        );
+        assert_eq!(chosen, master, "highest-resolution video must be the master");
         assert_eq!(attached, 2);
 
         // Both lower-res videos now read as proxies of the master.
-        assert_eq!(
-            db.get_proxy_target(&p1).unwrap().as_deref(),
-            Some(master.as_str())
-        );
-        assert_eq!(
-            db.get_proxy_target(&p2).unwrap().as_deref(),
-            Some(master.as_str())
-        );
+        assert_eq!(db.get_proxy_target(&p1).unwrap().as_deref(), Some(master.as_str()));
+        assert_eq!(db.get_proxy_target(&p2).unwrap().as_deref(), Some(master.as_str()));
         let proxies = db.list_proxies(&master).unwrap();
         assert_eq!(proxies.len(), 2);
         // Manual attach → confidence 1.0, not auto-detected.
@@ -5434,36 +5215,16 @@ mod tests {
         let unrelated = seed_res(&db, "/l/other.mov", "other.mov", 1920, 1080, 700);
 
         // Before linking, nothing is settled and no partners exist.
-        assert!(
-            !db.get_proxy_candidate(&proxy)
-                .unwrap()
-                .unwrap()
-                .already_proxy
-        );
+        assert!(!db.get_proxy_candidate(&proxy).unwrap().unwrap().already_proxy);
         assert!(db.proxy_link_partners(&proxy).unwrap().is_empty());
 
         db.set_proxy_of(&proxy, &master, 0.99, true).unwrap();
 
         // The proxy side reads as settled; the master side does not — a
         // re-scanned master still has to be testable against new arrivals.
-        assert!(
-            db.get_proxy_candidate(&proxy)
-                .unwrap()
-                .unwrap()
-                .already_proxy
-        );
-        assert!(
-            !db.get_proxy_candidate(&master)
-                .unwrap()
-                .unwrap()
-                .already_proxy
-        );
-        assert!(
-            !db.get_proxy_candidate(&unrelated)
-                .unwrap()
-                .unwrap()
-                .already_proxy
-        );
+        assert!(db.get_proxy_candidate(&proxy).unwrap().unwrap().already_proxy);
+        assert!(!db.get_proxy_candidate(&master).unwrap().unwrap().already_proxy);
+        assert!(!db.get_proxy_candidate(&unrelated).unwrap().unwrap().already_proxy);
 
         // Partners resolve from either end, and only for the linked pair.
         assert_eq!(
@@ -5503,18 +5264,10 @@ mod tests {
         // Same dimensions (codec-proxy shape): the larger file is the master.
         let mq = seed_res(&db, "/l/mq.mov", "mq.mov", 3840, 2160, 800);
         let uhq = seed_res(&db, "/l/uhq.mov", "uhq.mov", 3840, 2160, 4000);
-        let (chosen, attached) = db
-            .attach_proxies(&[mq.clone(), uhq.clone()])
-            .expect("attach");
-        assert_eq!(
-            chosen, uhq,
-            "on equal resolution the larger file is the master"
-        );
+        let (chosen, attached) = db.attach_proxies(&[mq.clone(), uhq.clone()]).expect("attach");
+        assert_eq!(chosen, uhq, "on equal resolution the larger file is the master");
         assert_eq!(attached, 1);
-        assert_eq!(
-            db.get_proxy_target(&mq).unwrap().as_deref(),
-            Some(uhq.as_str())
-        );
+        assert_eq!(db.get_proxy_target(&mq).unwrap().as_deref(), Some(uhq.as_str()));
     }
 
     #[test]
@@ -5527,9 +5280,7 @@ mod tests {
         // `mid` is already a proxy of the 8K original; among {mid, small} it's
         // the highest-res, so the attach would try to make it the master.
         db.set_proxy_of(&mid, &real_master, 1.0, false).unwrap();
-        let err = db
-            .attach_proxies(&[mid.clone(), small.clone()])
-            .unwrap_err();
+        let err = db.attach_proxies(&[mid.clone(), small.clone()]).unwrap_err();
         assert!(matches!(err, ReelVaultError::InvalidRequest(_)));
         // `small` must NOT have been linked behind the rejected master.
         assert!(db.get_proxy_target(&small).unwrap().is_none());
@@ -5549,30 +5300,9 @@ mod tests {
     fn list_composes_search_and_metadata_filters() {
         let tmp = tempfile::tempdir().unwrap();
         let db = open_db(&tmp);
-        seed_meta(
-            &db,
-            "/l/beach_sony.mov",
-            "beach_sony.mov",
-            Some("Sony A7"),
-            None,
-            None,
-        );
-        seed_meta(
-            &db,
-            "/l/beach_canon.mov",
-            "beach_canon.mov",
-            Some("Canon R5"),
-            None,
-            None,
-        );
-        seed_meta(
-            &db,
-            "/l/forest_sony.mov",
-            "forest_sony.mov",
-            Some("Sony A7"),
-            None,
-            None,
-        );
+        seed_meta(&db, "/l/beach_sony.mov", "beach_sony.mov", Some("Sony A7"), None, None);
+        seed_meta(&db, "/l/beach_canon.mov", "beach_canon.mov", Some("Canon R5"), None, None);
+        seed_meta(&db, "/l/forest_sony.mov", "forest_sony.mov", Some("Sony A7"), None, None);
 
         // search "beach" AND camera=Sony A7 → only beach_sony.mov.
         let spec = FilterSpec {
@@ -5591,14 +5321,7 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let db = open_db(&tmp);
         seed_meta(&db, "/l/sony.mov", "sony.mov", Some("Sony A7"), None, None);
-        seed_meta(
-            &db,
-            "/l/canon.mov",
-            "canon.mov",
-            Some("Canon R5"),
-            None,
-            None,
-        );
+        seed_meta(&db, "/l/canon.mov", "canon.mov", Some("Canon R5"), None, None);
         seed_meta(&db, "/l/nocam.mov", "nocam.mov", None, None, None); // NULL camera
 
         let names = |value: &str| -> Vec<String> {
@@ -5633,14 +5356,7 @@ mod tests {
         let a = seed_meta(&db, "/l/a.mov", "a.mov", Some("Cam"), None, None); // GPS
         let b = seed_meta(&db, "/l/b.mov", "b.mov", Some("Cam"), None, None); // tagged
         let c = seed_meta(&db, "/l/c.mov", "c.mov", Some("Cam"), None, None); // has proxy
-        let c_proxy = seed_meta(
-            &db,
-            "/l/c_proxy.mov",
-            "c_proxy.mov",
-            Some("Cam"),
-            None,
-            None,
-        );
+        let c_proxy = seed_meta(&db, "/l/c_proxy.mov", "c_proxy.mov", Some("Cam"), None, None);
 
         {
             let conn = db.get_connection().unwrap();
@@ -5664,46 +5380,19 @@ mod tests {
                 .collect()
         };
 
+        assert_eq!(names(&FilterSpec { has_location: Some(true), ..Default::default() }), vec!["a.mov"]);
         assert_eq!(
-            names(&FilterSpec {
-                has_location: Some(true),
-                ..Default::default()
-            }),
-            vec!["a.mov"]
-        );
-        assert_eq!(
-            names(&FilterSpec {
-                has_location: Some(false),
-                ..Default::default()
-            }),
+            names(&FilterSpec { has_location: Some(false), ..Default::default() }),
             vec!["b.mov", "c.mov"]
         );
+        assert_eq!(names(&FilterSpec { has_keywords: Some(true), ..Default::default() }), vec!["b.mov"]);
         assert_eq!(
-            names(&FilterSpec {
-                has_keywords: Some(true),
-                ..Default::default()
-            }),
-            vec!["b.mov"]
-        );
-        assert_eq!(
-            names(&FilterSpec {
-                has_keywords: Some(false),
-                ..Default::default()
-            }),
+            names(&FilterSpec { has_keywords: Some(false), ..Default::default() }),
             vec!["a.mov", "c.mov"]
         );
+        assert_eq!(names(&FilterSpec { has_proxies: Some(true), ..Default::default() }), vec!["c.mov"]);
         assert_eq!(
-            names(&FilterSpec {
-                has_proxies: Some(true),
-                ..Default::default()
-            }),
-            vec!["c.mov"]
-        );
-        assert_eq!(
-            names(&FilterSpec {
-                has_proxies: Some(false),
-                ..Default::default()
-            }),
+            names(&FilterSpec { has_proxies: Some(false), ..Default::default() }),
             vec!["a.mov", "b.mov"]
         );
     }
@@ -5712,15 +5401,9 @@ mod tests {
     fn full_resolution_filter_membership_is_null_safe() {
         let tmp = tempfile::tempdir().unwrap();
         let db = open_db(&tmp);
-        let full = db
-            .add_video("/l/full.mov", "full.mov", None, None, Some(1))
-            .unwrap();
-        let other = db
-            .add_video("/l/other.mov", "other.mov", None, None, Some(1))
-            .unwrap();
-        let nocam = db
-            .add_video("/l/nocam.mov", "nocam.mov", None, None, Some(1))
-            .unwrap();
+        let full = db.add_video("/l/full.mov", "full.mov", None, None, Some(1)).unwrap();
+        let other = db.add_video("/l/other.mov", "other.mov", None, None, Some(1)).unwrap();
+        let nocam = db.add_video("/l/nocam.mov", "nocam.mov", None, None, Some(1)).unwrap();
         {
             let conn = db.get_connection().unwrap();
             conn.execute(
@@ -5736,11 +5419,7 @@ mod tests {
             )
             .unwrap();
             // A row with NULL camera and NULL dimensions — must count as "not full".
-            conn.execute(
-                "INSERT OR REPLACE INTO metadata (video_id) VALUES (?)",
-                [&nocam],
-            )
-            .unwrap();
+            conn.execute("INSERT OR REPLACE INTO metadata (video_id) VALUES (?)", [&nocam]).unwrap();
         }
 
         let names = |spec: &FilterSpec| -> Vec<String> {
@@ -5755,10 +5434,7 @@ mod tests {
 
         assert_eq!(
             names(&FilterSpec {
-                full_resolution: Some(FullResolutionFilter {
-                    want_full: true,
-                    full_tuples: full_tuples.clone()
-                }),
+                full_resolution: Some(FullResolutionFilter { want_full: true, full_tuples: full_tuples.clone() }),
                 ..Default::default()
             }),
             vec!["full.mov"]
@@ -5767,29 +5443,20 @@ mod tests {
         // negated membership test from silently dropping NULL rows.
         assert_eq!(
             names(&FilterSpec {
-                full_resolution: Some(FullResolutionFilter {
-                    want_full: false,
-                    full_tuples
-                }),
+                full_resolution: Some(FullResolutionFilter { want_full: false, full_tuples }),
                 ..Default::default()
             }),
             vec!["nocam.mov", "other.mov"]
         );
         // Empty tuple set: "is full" matches nothing; "is not full" matches all.
         assert!(names(&FilterSpec {
-            full_resolution: Some(FullResolutionFilter {
-                want_full: true,
-                full_tuples: vec![]
-            }),
+            full_resolution: Some(FullResolutionFilter { want_full: true, full_tuples: vec![] }),
             ..Default::default()
         })
         .is_empty());
         assert_eq!(
             names(&FilterSpec {
-                full_resolution: Some(FullResolutionFilter {
-                    want_full: false,
-                    full_tuples: vec![]
-                }),
+                full_resolution: Some(FullResolutionFilter { want_full: false, full_tuples: vec![] }),
                 ..Default::default()
             })
             .len(),
@@ -5806,30 +5473,15 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let db = open_db(&tmp);
 
-        let a1 = db
-            .add_video("/l/a1.mov", "a1.mov", None, None, Some(1))
-            .unwrap();
-        let a2 = db
-            .add_video("/l/a2.mov", "a2.mov", None, None, Some(1))
-            .unwrap();
-        let a3 = db
-            .add_video("/l/a3.mov", "a3.mov", None, None, Some(1))
-            .unwrap();
-        let b1 = db
-            .add_video("/l/b1.mov", "b1.mov", None, None, Some(1))
-            .unwrap();
-        let b2 = db
-            .add_video("/l/b2.mov", "b2.mov", None, None, Some(1))
-            .unwrap();
+        let a1 = db.add_video("/l/a1.mov", "a1.mov", None, None, Some(1)).unwrap();
+        let a2 = db.add_video("/l/a2.mov", "a2.mov", None, None, Some(1)).unwrap();
+        let a3 = db.add_video("/l/a3.mov", "a3.mov", None, None, Some(1)).unwrap();
+        let b1 = db.add_video("/l/b1.mov", "b1.mov", None, None, Some(1)).unwrap();
+        let b2 = db.add_video("/l/b2.mov", "b2.mov", None, None, Some(1)).unwrap();
 
         // Stack A = {a1,a2,a3} (preferred a1); Stack B = {b1,b2} (preferred b1).
         let group_a = db
-            .create_group(
-                None,
-                None,
-                &[a1.clone(), a2.clone(), a3.clone()],
-                Some(a1.as_str()),
-            )
+            .create_group(None, None, &[a1.clone(), a2.clone(), a3.clone()], Some(a1.as_str()))
             .unwrap();
         let group_b = db
             .create_group(None, None, &[b1.clone(), b2.clone()], Some(b1.as_str()))
@@ -5858,14 +5510,8 @@ mod tests {
         assert_eq!(db.count_group_members(&merged).unwrap(), 5);
 
         // Source stacks are dissolved, not left orphaned.
-        assert!(
-            db.get_group(&group_a).unwrap().is_none(),
-            "source stack A must be dissolved"
-        );
-        assert!(
-            db.get_group(&group_b).unwrap().is_none(),
-            "source stack B must be dissolved"
-        );
+        assert!(db.get_group(&group_a).unwrap().is_none(), "source stack A must be dissolved");
+        assert!(db.get_group(&group_b).unwrap().is_none(), "source stack B must be dissolved");
 
         // Grid now shows exactly one representative — no members vanished.
         let (reps, total) = db
@@ -5873,10 +5519,7 @@ mod tests {
             .unwrap();
         assert_eq!(total, 1, "the two stacks collapsed into one");
         assert_eq!(reps.len(), 1);
-        assert_eq!(
-            reps[0].id, a1,
-            "the requested preferred leads the merged stack"
-        );
+        assert_eq!(reps[0].id, a1, "the requested preferred leads the merged stack");
     }
 
     /// Re-calling create_group with exactly one stack's current membership is a
@@ -5887,38 +5530,19 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let db = open_db(&tmp);
 
-        let v1 = db
-            .add_video("/l/v1.mov", "v1.mov", None, None, Some(1))
-            .unwrap();
-        let v2 = db
-            .add_video("/l/v2.mov", "v2.mov", None, None, Some(1))
-            .unwrap();
-        let v3 = db
-            .add_video("/l/v3.mov", "v3.mov", None, None, Some(1))
-            .unwrap();
+        let v1 = db.add_video("/l/v1.mov", "v1.mov", None, None, Some(1)).unwrap();
+        let v2 = db.add_video("/l/v2.mov", "v2.mov", None, None, Some(1)).unwrap();
+        let v3 = db.add_video("/l/v3.mov", "v3.mov", None, None, Some(1)).unwrap();
 
         let group = db
-            .create_group(
-                None,
-                None,
-                &[v1.clone(), v2.clone(), v3.clone()],
-                Some(v1.as_str()),
-            )
+            .create_group(None, None, &[v1.clone(), v2.clone(), v3.clone()], Some(v1.as_str()))
             .unwrap();
         // Fresh stack: order follows the request.
-        assert_eq!(
-            db.list_group_member_ids(&group).unwrap(),
-            vec![v1.clone(), v2.clone(), v3.clone()]
-        );
+        assert_eq!(db.list_group_member_ids(&group).unwrap(), vec![v1.clone(), v2.clone(), v3.clone()]);
 
         // Reorder to v3, v1, v2 by passing the full membership in the new order.
         let same = db
-            .create_group(
-                None,
-                None,
-                &[v3.clone(), v1.clone(), v2.clone()],
-                Some(v1.as_str()),
-            )
+            .create_group(None, None, &[v3.clone(), v1.clone(), v2.clone()], Some(v1.as_str()))
             .unwrap();
         assert_eq!(same, group, "a pure reorder keeps the same group id");
         assert_eq!(
@@ -5928,10 +5552,7 @@ mod tests {
         );
         // The leader is untouched by a reorder.
         assert_eq!(
-            db.get_group(&group)
-                .unwrap()
-                .and_then(|g| g.preferred_video_id)
-                .as_deref(),
+            db.get_group(&group).unwrap().and_then(|g| g.preferred_video_id).as_deref(),
             Some(v1.as_str()),
         );
     }
@@ -5944,29 +5565,17 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let db = open_db(&tmp);
 
-        let v1 = db
-            .add_video("/l/v1.mov", "v1.mov", None, None, Some(1))
+        let v1 = db.add_video("/l/v1.mov", "v1.mov", None, None, Some(1)).unwrap();
+        let v2 = db.add_video("/l/v2.mov", "v2.mov", None, None, Some(1)).unwrap();
+        let v3 = db.add_video("/l/v3.mov", "v3.mov", None, None, Some(1)).unwrap();
+        db.create_group(None, None, &[v1.clone(), v2.clone(), v3.clone()], Some(v1.as_str()))
             .unwrap();
-        let v2 = db
-            .add_video("/l/v2.mov", "v2.mov", None, None, Some(1))
-            .unwrap();
-        let v3 = db
-            .add_video("/l/v3.mov", "v3.mov", None, None, Some(1))
-            .unwrap();
-        db.create_group(
-            None,
-            None,
-            &[v1.clone(), v2.clone(), v3.clone()],
-            Some(v1.as_str()),
-        )
-        .unwrap();
 
         // Simulate the pre-fix corruption: the preferred member is pulled out
         // of the group, but the group row still dangles at it.
         {
             let conn = db.get_connection().unwrap();
-            conn.execute("UPDATE videos SET group_id = NULL WHERE id = ?", [&v1])
-                .unwrap();
+            conn.execute("UPDATE videos SET group_id = NULL WHERE id = ?", [&v1]).unwrap();
         }
 
         let (reps, total) = db
@@ -5977,18 +5586,12 @@ mod tests {
         // v1 is now ungrouped → listed on its own. The dangling group still
         // contributes exactly one representative (its min-id member), so v2/v3
         // are not stranded.
-        assert!(
-            ids.contains(&v1.as_str()),
-            "ungrouped v1 shows individually"
-        );
+        assert!(ids.contains(&v1.as_str()), "ungrouped v1 shows individually");
         let group_reps = ids
             .iter()
             .filter(|id| **id == v2.as_str() || **id == v3.as_str())
             .count();
-        assert_eq!(
-            group_reps, 1,
-            "dangling stack still shows one representative"
-        );
+        assert_eq!(group_reps, 1, "dangling stack still shows one representative");
         assert_eq!(total, 2, "v1 plus the stack's fallback representative");
     }
 
@@ -6164,28 +5767,21 @@ mod tests {
     fn marks_rev_incremented_by_tag_add() {
         let tmp = tempfile::tempdir().unwrap();
         let db = open_db(&tmp);
-        let vid = db
-            .add_video("/l/a.mov", "a.mov", None, None, Some(1))
-            .unwrap();
+        let vid = db.add_video("/l/a.mov", "a.mov", None, None, Some(1)).unwrap();
         let rev0 = get_marks_rev(&db, &vid);
 
         let tag_id = db.create_tag("test-tag", None).unwrap();
         db.tag_video(&vid, &tag_id).unwrap();
 
         let rev1 = get_marks_rev(&db, &vid);
-        assert!(
-            rev1 > rev0,
-            "marks_rev must increase after tag add (was {rev0}, now {rev1})"
-        );
+        assert!(rev1 > rev0, "marks_rev must increase after tag add (was {rev0}, now {rev1})");
     }
 
     #[test]
     fn marks_rev_incremented_by_tag_remove() {
         let tmp = tempfile::tempdir().unwrap();
         let db = open_db(&tmp);
-        let vid = db
-            .add_video("/l/b.mov", "b.mov", None, None, Some(1))
-            .unwrap();
+        let vid = db.add_video("/l/b.mov", "b.mov", None, None, Some(1)).unwrap();
         let tag_id = db.create_tag("remove-tag", None).unwrap();
         db.tag_video(&vid, &tag_id).unwrap();
 
@@ -6193,37 +5789,27 @@ mod tests {
         db.untag_video(&vid, &tag_id).unwrap();
         let rev1 = get_marks_rev(&db, &vid);
 
-        assert!(
-            rev1 > rev0,
-            "marks_rev must increase after tag remove (was {rev0}, now {rev1})"
-        );
+        assert!(rev1 > rev0, "marks_rev must increase after tag remove (was {rev0}, now {rev1})");
     }
 
     #[test]
     fn marks_rev_incremented_by_rating_set() {
         let tmp = tempfile::tempdir().unwrap();
         let db = open_db(&tmp);
-        let vid = db
-            .add_video("/l/c.mov", "c.mov", None, None, Some(1))
-            .unwrap();
+        let vid = db.add_video("/l/c.mov", "c.mov", None, None, Some(1)).unwrap();
         let rev0 = get_marks_rev(&db, &vid);
 
         db.update_video_rating(&vid, 4).unwrap();
         let rev1 = get_marks_rev(&db, &vid);
 
-        assert!(
-            rev1 > rev0,
-            "marks_rev must increase after rating set (was {rev0}, now {rev1})"
-        );
+        assert!(rev1 > rev0, "marks_rev must increase after rating set (was {rev0}, now {rev1})");
     }
 
     #[test]
     fn marks_rev_incremented_by_color_label_set() {
         let tmp = tempfile::tempdir().unwrap();
         let db = open_db(&tmp);
-        let vid = db
-            .add_video("/l/d.mov", "d.mov", None, None, Some(1))
-            .unwrap();
+        let vid = db.add_video("/l/d.mov", "d.mov", None, None, Some(1)).unwrap();
         let rev0 = get_marks_rev(&db, &vid);
 
         db.update_video_color_label(&vid, "red").unwrap();
@@ -6239,9 +5825,7 @@ mod tests {
     fn marks_rev_incremented_by_collection_add() {
         let tmp = tempfile::tempdir().unwrap();
         let db = open_db(&tmp);
-        let vid = db
-            .add_video("/l/e.mov", "e.mov", None, None, Some(1))
-            .unwrap();
+        let vid = db.add_video("/l/e.mov", "e.mov", None, None, Some(1)).unwrap();
         let rev0 = get_marks_rev(&db, &vid);
 
         let coll_id = db.create_collection("my-coll", false, None).unwrap();
@@ -6258,9 +5842,7 @@ mod tests {
     fn marks_rev_incremented_by_collection_remove() {
         let tmp = tempfile::tempdir().unwrap();
         let db = open_db(&tmp);
-        let vid = db
-            .add_video("/l/f.mov", "f.mov", None, None, Some(1))
-            .unwrap();
+        let vid = db.add_video("/l/f.mov", "f.mov", None, None, Some(1)).unwrap();
         let coll_id = db.create_collection("rm-coll", false, None).unwrap();
         db.add_to_collection(&coll_id, &vid).unwrap();
 

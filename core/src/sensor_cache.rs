@@ -23,7 +23,7 @@
 //! is bundled in Windows 10+. Pulling in `reqwest` for one endpoint
 //! would inflate the binary by ~2 MB.
 
-use crate::error::{ReelVaultError, Result};
+use crate::error::{Result, ReelVaultError};
 use crate::full_resolution::{builtin_natives, classify_with_natives, Classification};
 use rusqlite::{params, Connection};
 use std::time::{SystemTime, UNIX_EPOCH};

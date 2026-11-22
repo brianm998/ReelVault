@@ -67,9 +67,7 @@ pub fn ct_eq(a: &str, b: &str) -> bool {
 pub enum Redeem {
     Ok,
     /// Wrong PIN; the code stays pending (`remaining` attempts left).
-    Wrong {
-        remaining: u32,
-    },
+    Wrong { remaining: u32 },
     /// Too many wrong PINs: the code was just discarded.
     Invalidated,
     Expired,
@@ -154,9 +152,7 @@ pub fn gen_code() -> String {
 /// surface it for headless admins (daemon log + `<data_dir>/pairing.txt`), and
 /// return `(code, expires_at_unix_ms)` for display in a client.
 pub async fn issue_code(state: &PairingState, data_dir: &Path) -> (String, i64) {
-    issue_code_inner(state, data_dir, true)
-        .await
-        .expect("replace always issues")
+    issue_code_inner(state, data_dir, true).await.expect("replace always issues")
 }
 
 /// Like [`issue_code`] but leaves a still-valid pending code untouched
@@ -192,10 +188,7 @@ async fn issue_code_inner(
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0);
     tracing::info!("PAIRING CODE: {code} — enter on the device within 5 minutes");
-    if let Err(e) = write_private(
-        &data_dir.join("pairing.txt"),
-        format!("{code}\n").as_bytes(),
-    ) {
+    if let Err(e) = write_private(&data_dir.join("pairing.txt"), format!("{code}\n").as_bytes()) {
         tracing::warn!("could not write pairing.txt: {e}");
     }
     Some((code, expires_at_ms))

@@ -2,24 +2,21 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 use clap::{Parser, Subcommand};
-use humansize::{format_size, BINARY};
-use prettytable::{Cell, Row, Table};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
+use humansize::{format_size, BINARY};
+use prettytable::{Table, Row, Cell};
 
 use reelvault_core::db::Database;
-use reelvault_core::indexing::{IndexingEngine, ScanConfig};
 use reelvault_core::metadata::MetadataExtractor;
+use reelvault_core::indexing::{IndexingEngine, ScanConfig};
 use reelvault_core::post_index;
 use reelvault_core::search::SearchEngine;
 
 #[derive(Parser)]
 #[command(name = "reelvault-cli")]
-#[command(
-    about = "ReelVault CLI testing tool",
-    long_about = "Test and debug the ReelVault core"
-)]
+#[command(about = "ReelVault CLI testing tool", long_about = "Test and debug the ReelVault core")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -227,17 +224,17 @@ async fn cmd_scan(
             if !progress.current_file.is_empty() {
                 println!(
                     "  {} | Found: {} | Indexed: {} | Progress: {:.1}%",
-                    progress.status,
-                    progress.videos_found,
-                    progress.videos_indexed,
-                    progress.progress_percent
+                    progress.status, progress.videos_found, progress.videos_indexed, progress.progress_percent
                 );
             }
         },
     )?;
 
     let elapsed = start.elapsed();
-    println!("\n✅ Scan complete in {:.2}s", elapsed.as_secs_f64());
+    println!(
+        "\n✅ Scan complete in {:.2}s",
+        elapsed.as_secs_f64()
+    );
 
     Ok(())
 }
@@ -287,14 +284,8 @@ async fn cmd_meta(db: &Database, video_id: &str) -> anyhow::Result<()> {
             println!("📹 Video: {}\n", video.filename);
             println!("  ID:       {}", video.id);
             println!("  Path:     {}", video.path);
-            println!(
-                "  Size:     {}",
-                format_size(video.file_size_bytes.unwrap_or(0) as u64, BINARY)
-            );
-            println!(
-                "  Hash:     {}",
-                video.hash.unwrap_or_else(|| "None".to_string())
-            );
+            println!("  Size:     {}", format_size(video.file_size_bytes.unwrap_or(0) as u64, BINARY));
+            println!("  Hash:     {}", video.hash.unwrap_or_else(|| "None".to_string()));
             println!("  Online:   {}", video.is_online != 0);
             println!("  Added:    {}\n", format_date_ms(video.indexed_at));
 
@@ -384,11 +375,7 @@ fn cmd_extract(file: &std::path::Path) -> anyhow::Result<()> {
     let probe = MetadataExtractor::extract(file)?;
     let elapsed = start.elapsed();
 
-    if let Some(video_stream) = probe
-        .streams
-        .iter()
-        .find(|s| s.codec_type == Some("video".to_string()))
-    {
+    if let Some(video_stream) = probe.streams.iter().find(|s| s.codec_type == Some("video".to_string())) {
         println!("✅ Metadata extracted in {:.2}s\n", elapsed.as_secs_f64());
 
         if let Some(width) = video_stream.width {
@@ -451,16 +438,13 @@ fn cmd_refresh_metadata(db: Arc<Database>, under: &str) -> anyhow::Result<()> {
         let conn = db.get_connection()?;
         if under.is_empty() {
             let mut stmt = conn.prepare("SELECT id, path FROM videos ORDER BY path")?;
-            let it =
-                stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
+            let it = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
             it.collect::<std::result::Result<_, _>>()?
         } else {
             let mut stmt =
                 conn.prepare("SELECT id, path FROM videos WHERE path LIKE ?1 ORDER BY path")?;
             let pat = format!("{under}%");
-            let it = stmt.query_map([pat], |r| {
-                Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
-            })?;
+            let it = stmt.query_map([pat], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
             it.collect::<std::result::Result<_, _>>()?
         }
     };
@@ -553,11 +537,9 @@ async fn cmd_stats(db: &Database) -> anyhow::Result<()> {
         // Calculate total size
         let conn = db.get_connection()?;
         let total_size: i64 = conn
-            .query_row(
-                "SELECT COALESCE(SUM(file_size_bytes), 0) FROM videos",
-                [],
-                |row| row.get(0),
-            )
+            .query_row("SELECT COALESCE(SUM(file_size_bytes), 0) FROM videos", [], |row| {
+                row.get(0)
+            })
             .unwrap_or(0);
 
         println!("\nLibrary Size: {}", format_size(total_size as u64, BINARY));
@@ -598,7 +580,11 @@ async fn cmd_stats(db: &Database) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn cmd_add_lib(db: &Database, path: &std::path::Path, recursive: bool) -> anyhow::Result<()> {
+async fn cmd_add_lib(
+    db: &Database,
+    path: &std::path::Path,
+    recursive: bool,
+) -> anyhow::Result<()> {
     println!("➕ Adding library location: {}", path.display());
     println!("   Recursive: {}\n", recursive);
 
@@ -645,7 +631,11 @@ async fn cmd_list_lib(db: &Database) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn cmd_create_tag(db: &Database, name: &str, color: Option<&str>) -> anyhow::Result<()> {
+async fn cmd_create_tag(
+    db: &Database,
+    name: &str,
+    color: Option<&str>,
+) -> anyhow::Result<()> {
     let tag_id = db.create_tag(name, color)?;
     println!("✅ Tag created:");
     println!("  ID:    {}", tag_id);
@@ -666,11 +656,7 @@ async fn cmd_list_tags(db: &Database) -> anyhow::Result<()> {
     }
 
     let mut table = Table::new();
-    table.add_row(Row::new(vec![
-        Cell::new("ID"),
-        Cell::new("Name"),
-        Cell::new("Color"),
-    ]));
+    table.add_row(Row::new(vec![Cell::new("ID"), Cell::new("Name"), Cell::new("Color")]));
 
     for tag in &tags {
         table.add_row(Row::new(vec![
@@ -712,8 +698,7 @@ async fn cmd_bench(db: Arc<Database>, path: &std::path::Path) -> anyhow::Result<
         },
         |progress| {
             if progress.progress_percent > 0.0 && progress.progress_percent % 10.0 < 1.0 {
-                println!(
-                    "  {:.0}% - {} videos found, {} indexed",
+                println!("  {:.0}% - {} videos found, {} indexed",
                     progress.progress_percent, progress.videos_found, progress.videos_indexed
                 );
             }
@@ -726,14 +711,8 @@ async fn cmd_bench(db: Arc<Database>, path: &std::path::Path) -> anyhow::Result<
 
     println!("\n📈 Benchmark Results:");
     println!("  Total time: {:.2}s", elapsed.as_secs_f64());
-    println!(
-        "  Videos/sec: {:.2}",
-        total_videos as f64 / elapsed.as_secs_f64()
-    );
-    println!(
-        "  Avg per video: {:.2}ms",
-        elapsed.as_secs_f64() * 1000.0 / total_videos as f64
-    );
+    println!("  Videos/sec: {:.2}", total_videos as f64 / elapsed.as_secs_f64());
+    println!("  Avg per video: {:.2}ms", elapsed.as_secs_f64() * 1000.0 / total_videos as f64);
 
     Ok(())
 }
@@ -791,3 +770,4 @@ fn format_date_ms(timestamp_ms: i64) -> String {
         None => "Unknown".to_string(),
     }
 }
+

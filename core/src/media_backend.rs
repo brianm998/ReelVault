@@ -240,5 +240,7 @@ pub fn set_backend(b: Arc<dyn MediaBackend>) {
 
 /// The process media backend, defaulting to [`CliMediaBackend`] on first use.
 pub fn backend() -> Arc<dyn MediaBackend> {
-    BACKEND.get_or_init(|| Arc::new(CliMediaBackend)).clone()
+    BACKEND
+        .get_or_init(|| Arc::new(CliMediaBackend))
+        .clone()
 }

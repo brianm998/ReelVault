@@ -871,8 +871,10 @@ fn join_or_create_group(
     // any other matches to it as well — they should belong there
     // too). When matches span multiple groups (unusual but
     // possible), pick the largest by member count.
-    let existing_group_id: Option<String> =
-        matches.iter().filter_map(|m| m.group_id.clone()).next();
+    let existing_group_id: Option<String> = matches
+        .iter()
+        .filter_map(|m| m.group_id.clone())
+        .next();
 
     if let Some(group_id) = existing_group_id {
         db.add_video_to_group(&group_id, &cand.id)?;
@@ -918,11 +920,7 @@ fn join_or_create_group(
         let base_trimmed = grouping::canonical_base(&cand.filename)
             .trim_end_matches(|c: char| !c.is_alphanumeric())
             .to_string();
-        let group_name = if base_trimmed.is_empty() {
-            None
-        } else {
-            Some(base_trimmed)
-        };
+        let group_name = if base_trimmed.is_empty() { None } else { Some(base_trimmed) };
 
         let group_id = db.create_group(
             group_name.as_deref(),
@@ -936,11 +934,7 @@ fn join_or_create_group(
             members = members.len(),
             "post-index: created new group",
         );
-        token.record_detail(format!(
-            "grouped {} ({} clips)",
-            cand.filename,
-            members.len()
-        ));
+        token.record_detail(format!("grouped {} ({} clips)", cand.filename, members.len()));
     }
 
     Ok(())
@@ -1077,17 +1071,13 @@ fn detect_proxy_for(
         if let Err(e) = db.set_proxy_of(&proxy_cand.id, &master.id, confidence, true) {
             tracing::warn!(
                 "Failed to link {} as proxy of {}: {}",
-                proxy_cand.filename,
-                master.filename,
-                e,
+                proxy_cand.filename, master.filename, e,
             );
             continue;
         }
         tracing::info!(
             "post-index: linked {} → {} (confidence {:.3})",
-            proxy_cand.filename,
-            master.filename,
-            confidence,
+            proxy_cand.filename, master.filename, confidence,
         );
         token.record_detail(format!(
             "linked {} → {}",

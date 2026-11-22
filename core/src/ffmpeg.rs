@@ -253,10 +253,7 @@ mod tests {
         // file) and confirm it's chosen over the PATH fallback.
         let here = PathBuf::from(file!());
         if here.is_file() {
-            std::env::set_var(
-                "REELVAULT_FFPROBE_TEST_ONLY",
-                here.to_string_lossy().to_string(),
-            );
+            std::env::set_var("REELVAULT_FFPROBE_TEST_ONLY", here.to_string_lossy().to_string());
             let resolved = resolve("ffprobe", "REELVAULT_FFPROBE_TEST_ONLY");
             assert_eq!(resolved, here);
             std::env::remove_var("REELVAULT_FFPROBE_TEST_ONLY");

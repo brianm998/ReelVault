@@ -399,12 +399,7 @@ pub(crate) fn ingest_bookmark(bytes: Vec<u8>, filename: Option<String>) -> i32 {
 /// is the sparse blake3 hash of the peer's original; `derived_height` is the
 /// height of this downscaled copy (0 if it is the original).
 /// Returns 0 on success, negative on error (-1 not booted, -2 bad args, -3 failed).
-pub(crate) fn ingest_synced(
-    path: &str,
-    filename: &str,
-    origin_hash: &str,
-    derived_height: i32,
-) -> i32 {
+pub(crate) fn ingest_synced(path: &str, filename: &str, origin_hash: &str, derived_height: i32) -> i32 {
     let ctx = match INGEST.get() {
         Some(c) => c,
         None => return -1,
@@ -436,11 +431,7 @@ pub(crate) fn ingest_synced(
             // Stamp provenance: mark as derived and record the origin hash.
             let db = &ctx.db;
             let oh = origin_hash.to_string();
-            let dh: Option<i32> = if derived_height > 0 {
-                Some(derived_height)
-            } else {
-                None
-            };
+            let dh: Option<i32> = if derived_height > 0 { Some(derived_height) } else { None };
             if let Ok(conn) = db.get_connection() {
                 if let Err(e) = conn.execute(
                     "UPDATE videos SET is_derived = 1, origin_hash = ?1 WHERE id = ?2",

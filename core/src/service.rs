@@ -3,7 +3,7 @@
 
 use crate::config::Config;
 use crate::db::{Database, FilterSpec};
-use crate::error::{ReelVaultError, Result};
+use crate::error::{Result, ReelVaultError};
 use crate::indexing::IndexingEngine;
 use crate::metadata_keys;
 use crate::path_templates::expand_path_templates;
@@ -13,8 +13,8 @@ use crate::watcher::{CatalogChange, LibraryWatcher};
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::broadcast;
-use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::Stream;
+use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
 
 // Import generated protobuf code
@@ -43,8 +43,7 @@ pub struct ReelVaultService {
     /// from each kicking off a redundant scrub-frame generation pass for the
     /// same video. Map entries hold an Arc<Mutex<()>> per video_id; the locks
     /// live as long as there are interested tasks.
-    scrub_locks:
-        Arc<tokio::sync::Mutex<std::collections::HashMap<String, Arc<tokio::sync::Mutex<()>>>>>,
+    scrub_locks: Arc<tokio::sync::Mutex<std::collections::HashMap<String, Arc<tokio::sync::Mutex<()>>>>>,
     /// Broadcast bus for live `CatalogEvent`s. The watcher publishes
     /// `CatalogChange`s here as it observes disk activity; the
     /// `SubscribeCatalogEvents` RPC opens a `Receiver` per connected client.
@@ -226,9 +225,8 @@ impl ReelVaultService {
         let path = video.path.clone();
         let bytes = self
             .run_blocking(move |_svc| {
-                let samples = crate::media_backend::backend().extract_loudness(
-                    &crate::media_backend::MediaSource::Path(path.clone().into()),
-                );
+                let samples = crate::media_backend::backend()
+                    .extract_loudness(&crate::media_backend::MediaSource::Path(path.clone().into()));
                 let mut bytes = Vec::with_capacity(samples.len() * 4);
                 for s in samples {
                     bytes.extend_from_slice(&s.to_le_bytes());
@@ -258,14 +256,18 @@ impl ReelVaultService {
     /// a malformed user mapping to crash the metadata pipeline.
     fn load_custom_camera_names(&self) -> std::collections::HashMap<String, String> {
         use crate::config::CustomCameraName;
-        let raw: Option<String> = self.db.get_connection().ok().and_then(|c| {
-            c.query_row(
-                "SELECT value FROM config WHERE key = ?",
-                ["custom_camera_names"],
-                |row| row.get::<_, String>(0),
-            )
+        let raw: Option<String> = self
+            .db
+            .get_connection()
             .ok()
-        });
+            .and_then(|c| {
+                c.query_row(
+                    "SELECT value FROM config WHERE key = ?",
+                    ["custom_camera_names"],
+                    |row| row.get::<_, String>(0),
+                )
+                .ok()
+            });
         let raw = match raw {
             Some(s) if !s.trim().is_empty() => s,
             _ => return std::collections::HashMap::new(),
@@ -291,16 +293,22 @@ impl ReelVaultService {
     /// the list and write it back without losing the user's chosen
     /// `internal`-side casing.
     fn read_custom_camera_names(&self) -> Vec<crate::config::CustomCameraName> {
-        let raw: Option<String> = self.db.get_connection().ok().and_then(|c| {
-            c.query_row(
-                "SELECT value FROM config WHERE key = ?",
-                ["custom_camera_names"],
-                |row| row.get::<_, String>(0),
-            )
+        let raw: Option<String> = self
+            .db
+            .get_connection()
             .ok()
-        });
+            .and_then(|c| {
+                c.query_row(
+                    "SELECT value FROM config WHERE key = ?",
+                    ["custom_camera_names"],
+                    |row| row.get::<_, String>(0),
+                )
+                .ok()
+            });
         match raw {
-            Some(s) if !s.trim().is_empty() => serde_json::from_str(&s).unwrap_or_default(),
+            Some(s) if !s.trim().is_empty() => {
+                serde_json::from_str(&s).unwrap_or_default()
+            }
             _ => Vec::new(),
         }
     }
@@ -308,7 +316,10 @@ impl ReelVaultService {
     /// Serialise + persist a custom-camera-name list to the config
     /// table. Empty input is fine — it just stores `"[]"` which
     /// `load_custom_camera_names` treats as "no overrides".
-    fn write_custom_camera_names(&self, entries: &[crate::config::CustomCameraName]) -> Result<()> {
+    fn write_custom_camera_names(
+        &self,
+        entries: &[crate::config::CustomCameraName],
+    ) -> Result<()> {
         let json = serde_json::to_string(entries).map_err(|e| {
             ReelVaultError::DatabaseError(format!("custom_camera_names serialize failed: {e}"))
         })?;
@@ -334,21 +345,27 @@ impl ReelVaultService {
         if parsed.is_empty() {
             return std::collections::HashMap::new();
         }
-        crate::camera_names::build_custom_overrides(parsed.into_iter().map(|e| (e.raw, e.alias)))
+        crate::camera_names::build_custom_overrides(
+            parsed.into_iter().map(|e| (e.raw, e.alias)),
+        )
     }
 
     /// Raw `Vec<CustomLensName>` from the config table (unfiltered,
     /// unsorted) — used by the editor RPCs so we can mutate and write
     /// the list back while preserving the user's chosen `raw` casing.
     fn read_custom_lens_names(&self) -> Vec<crate::config::CustomLensName> {
-        let raw: Option<String> = self.db.get_connection().ok().and_then(|c| {
-            c.query_row(
-                "SELECT value FROM config WHERE key = ?",
-                ["custom_lens_names"],
-                |row| row.get::<_, String>(0),
-            )
+        let raw: Option<String> = self
+            .db
+            .get_connection()
             .ok()
-        });
+            .and_then(|c| {
+                c.query_row(
+                    "SELECT value FROM config WHERE key = ?",
+                    ["custom_lens_names"],
+                    |row| row.get::<_, String>(0),
+                )
+                .ok()
+            });
         match raw {
             Some(s) if !s.trim().is_empty() => serde_json::from_str(&s).unwrap_or_default(),
             _ => Vec::new(),
@@ -461,10 +478,7 @@ impl ReelVaultService {
             .ok();
 
         let tags = db.get_video_tags(video_id).unwrap_or_default();
-        let notes = db
-            .get_notes(video_id)
-            .unwrap_or_default()
-            .unwrap_or_default();
+        let notes = db.get_notes(video_id).unwrap_or_default().unwrap_or_default();
         let (rating, color_label) = db
             .get_video_user_marks(video_id)
             .unwrap_or((0, String::new()));
@@ -475,71 +489,26 @@ impl ReelVaultService {
             tracing::warn!("No metadata row found for video {}", video_id);
         }
 
-        let (
-            duration_ms,
-            codec_video,
-            codec_audio,
-            width,
-            height,
-            fps,
-            bitrate,
-            color_space,
-            hdr,
-            audio_channels,
-            audio_sample_rate,
-            creation_date,
-            camera_model,
-            lens_model,
-            gps_lat,
-            gps_lon,
-            gps_alt,
-            iso,
-            aperture,
-            exposure_time_s,
-            focal_length_mm,
-            exposure_mode,
-            exposure_program,
-            white_balance,
-            color_transfer,
-            color_primaries,
-            dynamic_range,
-            timecode_start,
-            capture_fps,
-            bit_depth,
-            audio_bit_depth,
-            audio_language,
-            audio_track_count,
-            spatial,
-            projection,
-            gps_track,
-            gps_track_distance_m,
-            accel_magnitude,
-            gyro_magnitude,
-            description,
-            creator,
-            rights,
-            keywords,
-            headline,
-            chapter_count,
-            chapters_json,
-            subtitle_tracks,
-            dolby_vision_profile,
-            production_scene,
-            production_take,
-            nd_filter,
-            iris_f_number,
-            lut_name,
-            spatial_initial_heading,
-            spatial_initial_pitch,
-            spatial_initial_roll,
-            stereo_mode,
-            ambisonics_channel_order,
-        ) = row.unwrap_or((
-            0, None, None, 0, 0, 0.0, 0, None, false, 0, 0, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-            None, None, false, None, None, None, None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None, None, None, None, None, None,
-        ));
+        let (duration_ms, codec_video, codec_audio, width, height, fps, bitrate,
+             color_space, hdr, audio_channels, audio_sample_rate, creation_date,
+             camera_model, lens_model, gps_lat, gps_lon, gps_alt,
+             iso, aperture, exposure_time_s, focal_length_mm,
+             exposure_mode, exposure_program, white_balance,
+             color_transfer, color_primaries, dynamic_range, timecode_start, capture_fps,
+             bit_depth, audio_bit_depth, audio_language, audio_track_count, spatial, projection,
+             gps_track, gps_track_distance_m, accel_magnitude, gyro_magnitude,
+             description, creator, rights, keywords, headline,
+             chapter_count, chapters_json, subtitle_tracks, dolby_vision_profile,
+             production_scene, production_take, nd_filter, iris_f_number, lut_name,
+             spatial_initial_heading, spatial_initial_pitch, spatial_initial_roll, stereo_mode, ambisonics_channel_order) =
+            row.unwrap_or((0, None, None, 0, 0, 0.0, 0, None, false, 0, 0, None, None, None, None, None, None,
+                           None, None, None, None, None, None, None,
+                           None, None, None, None, None,
+                           None, None, None, None, false, None,
+                           None, None, None, None, None, None, None, None, None,
+                           None, None, None, None,
+                           None, None, None, None, None,
+                           None, None, None, None, None));
 
         let camera_model_str = camera_model.unwrap_or_default();
         // Resolve marketing name with the user's custom overrides
@@ -549,13 +518,19 @@ impl ReelVaultService {
         // `camera_model` — equal means no mapping, so they hide the
         // info-icon affordance that flips between names.
         let custom_overrides = self.load_custom_camera_names();
-        let camera_display_name = crate::camera_names::marketing_name_for_with_custom(
-            &camera_model_str,
-            &custom_overrides,
-        )
-        .unwrap_or_else(|| camera_model_str.clone());
+        let camera_display_name =
+            crate::camera_names::marketing_name_for_with_custom(
+                &camera_model_str,
+                &custom_overrides,
+            )
+            .unwrap_or_else(|| camera_model_str.clone());
 
-        let full_resolution = classify_full_resolution(&self.db, &camera_model_str, width, height);
+        let full_resolution = classify_full_resolution(
+            &self.db,
+            &camera_model_str,
+            width,
+            height,
+        );
 
         // ffprobe's nb_frames, stored at index time (0 when the container
         // didn't report one; clients estimate from duration × fps in that case).
@@ -694,7 +669,12 @@ impl ReelVaultService {
                         Err(_) => return,
                     };
                     let _ = ThumbnailGenerator::generate_frame_at_width(
-                        &source, &vid, &cache2, duration, &size_s, max_width,
+                        &source,
+                        &vid,
+                        &cache2,
+                        duration,
+                        &size_s,
+                        max_width,
                     );
                 })
                 .await;
@@ -726,8 +706,7 @@ impl ReelVaultService {
         let ids: Vec<&str> = seeds.iter().map(|s| s.id.as_str()).collect();
 
         // (is_online, group_id, proxy_of, is_derived) straight off the videos row.
-        let mut flags: HashMap<String, (bool, Option<String>, Option<String>, bool)> =
-            HashMap::new();
+        let mut flags: HashMap<String, (bool, Option<String>, Option<String>, bool)> = HashMap::new();
         let mut meta: HashMap<String, MetaFields> = HashMap::new();
         let mut tags: HashMap<String, Vec<String>> = HashMap::new();
         let mut marks: HashMap<String, (i32, String)> = HashMap::new();
@@ -823,11 +802,10 @@ impl ReelVaultService {
                      WHERE vt.video_id IN ({ph})
                      ORDER BY t.name"
                 )) {
-                    if let Ok(rows) = stmt
-                        .query_map(rusqlite::params_from_iter(chunk.iter()), |row| {
-                            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-                        })
-                    {
+                    if let Ok(rows) = stmt.query_map(
+                        rusqlite::params_from_iter(chunk.iter()),
+                        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+                    ) {
                         for (id, name) in rows.flatten() {
                             tags.entry(id).or_default().push(name);
                         }
@@ -838,15 +816,16 @@ impl ReelVaultService {
                     "SELECT video_id, rating, color_label FROM video_user_marks
                      WHERE video_id IN ({ph})"
                 )) {
-                    if let Ok(rows) =
-                        stmt.query_map(rusqlite::params_from_iter(chunk.iter()), |row| {
+                    if let Ok(rows) = stmt.query_map(
+                        rusqlite::params_from_iter(chunk.iter()),
+                        |row| {
                             Ok((
                                 row.get::<_, String>(0)?,
                                 row.get::<_, i32>(1)?,
                                 row.get::<_, String>(2)?,
                             ))
-                        })
-                    {
+                        },
+                    ) {
                         for (id, rating, label) in rows.flatten() {
                             marks.insert(id, (rating, label));
                         }
@@ -859,14 +838,13 @@ impl ReelVaultService {
                 if let Ok(mut stmt) = conn.prepare(&format!(
                     "SELECT pl.master_id, COUNT(*) FROM proxy_links pl
                      JOIN videos v ON pl.proxy_id = v.id
-                     WHERE pl.master_id IN ({ph}) AND v.deleted_at IS NULL
+                     WHERE pl.master_id IN ({ph})
                      GROUP BY pl.master_id"
                 )) {
-                    if let Ok(rows) = stmt
-                        .query_map(rusqlite::params_from_iter(chunk.iter()), |row| {
-                            Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
-                        })
-                    {
+                    if let Ok(rows) = stmt.query_map(
+                        rusqlite::params_from_iter(chunk.iter()),
+                        |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+                    ) {
                         for (id, count) in rows.flatten() {
                             proxy_counts.insert(id, count as i32);
                         }
@@ -894,7 +872,7 @@ impl ReelVaultService {
                 let ph = sql_placeholders(chunk.len());
 
                 if let Ok(mut stmt) = conn.prepare(&format!(
-                    "SELECT group_id, COUNT(*) FROM videos WHERE group_id IN ({ph}) AND deleted_at IS NULL GROUP BY group_id"
+                    "SELECT group_id, COUNT(*) FROM videos WHERE group_id IN ({ph}) GROUP BY group_id"
                 )) {
                     if let Ok(rows) = stmt.query_map(
                         rusqlite::params_from_iter(chunk.iter()),
@@ -909,11 +887,10 @@ impl ReelVaultService {
                 if let Ok(mut stmt) = conn.prepare(&format!(
                     "SELECT id, preferred_video_id FROM video_groups WHERE id IN ({ph})"
                 )) {
-                    if let Ok(rows) = stmt
-                        .query_map(rusqlite::params_from_iter(chunk.iter()), |row| {
-                            Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?))
-                        })
-                    {
+                    if let Ok(rows) = stmt.query_map(
+                        rusqlite::params_from_iter(chunk.iter()),
+                        |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?)),
+                    ) {
                         for (gid, preferred) in rows.flatten() {
                             group_preferred.insert(gid, preferred);
                         }
@@ -927,14 +904,13 @@ impl ReelVaultService {
                 .collect();
             for chunk in preferred_ids.chunks(SQL_IN_CHUNK) {
                 let ph = sql_placeholders(chunk.len());
-                if let Ok(mut stmt) =
-                    conn.prepare(&format!("SELECT id, path FROM videos WHERE id IN ({ph})"))
-                {
-                    if let Ok(rows) = stmt
-                        .query_map(rusqlite::params_from_iter(chunk.iter()), |row| {
-                            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-                        })
-                    {
+                if let Ok(mut stmt) = conn.prepare(&format!(
+                    "SELECT id, path FROM videos WHERE id IN ({ph})"
+                )) {
+                    if let Ok(rows) = stmt.query_map(
+                        rusqlite::params_from_iter(chunk.iter()),
+                        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+                    ) {
                         for (id, path) in rows.flatten() {
                             preferred_paths.insert(id, path);
                         }
@@ -955,7 +931,8 @@ impl ReelVaultService {
                 let (is_online, group_id_opt, proxy_of_opt, is_derived) =
                     flags.remove(&seed.id).unwrap_or((true, None, None, false));
                 let video_tags = tags.remove(&seed.id).unwrap_or_default();
-                let (rating, color_label) = marks.remove(&seed.id).unwrap_or((0, String::new()));
+                let (rating, color_label) =
+                    marks.remove(&seed.id).unwrap_or((0, String::new()));
                 let proxy_count = proxy_counts.get(seed.id.as_str()).copied().unwrap_or(0);
 
                 // Resolve the marketing-friendly camera name the same way
@@ -1015,7 +992,12 @@ impl ReelVaultService {
                 let full_resolution = *fullres_memo
                     .entry((camera_model_str.clone(), m.width, m.height))
                     .or_insert_with(|| {
-                        classification_code(conn.as_deref(), &camera_model_str, m.width, m.height)
+                        classification_code(
+                            conn.as_deref(),
+                            &camera_model_str,
+                            m.width,
+                            m.height,
+                        )
                     });
 
                 VideoSummary {
@@ -1163,12 +1145,7 @@ fn classify_full_resolution(
     width: i32,
     height: i32,
 ) -> i32 {
-    classification_code(
-        db.get_connection().ok().as_deref(),
-        camera_model,
-        width,
-        height,
-    )
+    classification_code(db.get_connection().ok().as_deref(), camera_model, width, height)
 }
 
 /// Same classification on an already-open connection, so batch callers can
@@ -1270,16 +1247,11 @@ fn full_resolution_full_tuples(db: &crate::db::Database) -> Vec<(String, i64, i6
 #[allow(clippy::result_large_err)]
 #[tonic::async_trait]
 impl ReelVaultTrait for ReelVaultService {
-    type ScanLibraryStream =
-        Pin<Box<dyn Stream<Item = std::result::Result<ScanProgress, Status>> + Send>>;
-    type GenerateProxyStream =
-        Pin<Box<dyn Stream<Item = std::result::Result<ProxyGenerationProgress, Status>> + Send>>;
-    type GetThumbnailStream =
-        Pin<Box<dyn Stream<Item = std::result::Result<ThumbnailChunk, Status>> + Send>>;
-    type GetSyncManifestStream =
-        Pin<Box<dyn Stream<Item = std::result::Result<SyncManifestEntry, Status>> + Send>>;
-    type PrepareRenditionStream =
-        Pin<Box<dyn Stream<Item = std::result::Result<PrepareRenditionProgress, Status>> + Send>>;
+    type ScanLibraryStream = Pin<Box<dyn Stream<Item = std::result::Result<ScanProgress, Status>> + Send>>;
+    type GenerateProxyStream = Pin<Box<dyn Stream<Item = std::result::Result<ProxyGenerationProgress, Status>> + Send>>;
+    type GetThumbnailStream = Pin<Box<dyn Stream<Item = std::result::Result<ThumbnailChunk, Status>> + Send>>;
+    type GetSyncManifestStream = Pin<Box<dyn Stream<Item = std::result::Result<SyncManifestEntry, Status>> + Send>>;
+    type PrepareRenditionStream = Pin<Box<dyn Stream<Item = std::result::Result<PrepareRenditionProgress, Status>> + Send>>;
 
     async fn list_videos(
         &self,
@@ -1413,9 +1385,14 @@ impl ReelVaultTrait for ReelVaultService {
             let limit = if req.limit <= 0 { 50 } else { req.limit as i64 };
             let offset = req.offset.max(0) as i64;
 
-            let (results, total_count) =
-                SearchEngine::search(svc.db.as_ref(), &req.query, limit, offset, &req.filter_tags)
-                    .map_err(Status::from)?;
+            let (results, total_count) = SearchEngine::search(
+                svc.db.as_ref(),
+                &req.query,
+                limit,
+                offset,
+                &req.filter_tags,
+            )
+            .map_err(Status::from)?;
 
             let seeds: Vec<SummarySeed> = results
                 .iter()
@@ -1469,7 +1446,7 @@ impl ReelVaultTrait for ReelVaultService {
                 let _ = tx.send(Ok(ThumbnailChunk { data })).await;
             });
             return Ok(Response::new(
-                Box::pin(ReceiverStream::new(rx)) as Self::GetThumbnailStream
+                Box::pin(ReceiverStream::new(rx)) as Self::GetThumbnailStream,
             ));
         }
 
@@ -1477,8 +1454,7 @@ impl ReelVaultTrait for ReelVaultService {
         // variant, generating just that one frame on demand. Bypasses the
         // default-size path below entirely.
         let mut thumbnail_data = if req.max_width > 0 {
-            self.load_or_generate_hires(&req.video_id, &req.size, req.max_width)
-                .await?
+            self.load_or_generate_hires(&req.video_id, &req.size, req.max_width).await?
         } else {
             read_cached_thumbnail(
                 self.config.thumbnail_cache_path.clone(),
@@ -1732,34 +1708,21 @@ impl ReelVaultTrait for ReelVaultService {
             // Nothing was added — surface the first error.
             return Ok(Response::new(LocationResponse {
                 success: false,
-                message: errors
-                    .into_iter()
-                    .next()
-                    .unwrap_or_else(|| "No paths added".to_string()),
+                message: errors.into_iter().next().unwrap_or_else(|| "No paths added".to_string()),
             }));
         }
 
-        let recursive_label = if req.recursive {
-            "recursive"
-        } else {
-            "non-recursive"
-        };
+        let recursive_label = if req.recursive { "recursive" } else { "non-recursive" };
         let message = if added_paths.len() == 1 {
-            format!(
-                "Added library location: {} ({})",
-                added_paths[0], recursive_label
-            )
+            format!("Added library location: {} ({})", added_paths[0], recursive_label)
         } else {
             format!(
                 "Added {} library locations ({}) — e.g. {}{}",
                 added_paths.len(),
                 recursive_label,
                 added_paths[0],
-                if errors.is_empty() {
-                    String::new()
-                } else {
-                    format!("; {} path(s) skipped", errors.len())
-                }
+                if errors.is_empty() { String::new() }
+                else { format!("; {} path(s) skipped", errors.len()) }
             )
         };
 
@@ -1775,8 +1738,7 @@ impl ReelVaultTrait for ReelVaultService {
     ) -> std::result::Result<Response<LocationResponse>, Status> {
         let req = request.into_inner();
 
-        let deleted = self
-            .db
+        let deleted = self.db
             .remove_library_location(&req.path)
             .map_err(Status::from)?;
 
@@ -1797,7 +1759,10 @@ impl ReelVaultTrait for ReelVaultService {
         &self,
         _request: Request<ListLocationsRequest>,
     ) -> std::result::Result<Response<ListLocationsResponse>, Status> {
-        let locations = self.db.list_library_locations().map_err(Status::from)?;
+        let locations = self
+            .db
+            .list_library_locations()
+            .map_err(Status::from)?;
 
         let location_responses: Vec<LibraryLocation> = locations
             .iter()
@@ -1810,10 +1775,7 @@ impl ReelVaultTrait for ReelVaultService {
                 // Only recursive locations can show a disclosure chevron;
                 // gate here so non-recursive ones never advertise children.
                 has_subdirectories: l.recursive
-                    && self
-                        .db
-                        .location_has_subdirectories(&l.path)
-                        .unwrap_or(false),
+                    && self.db.location_has_subdirectories(&l.path).unwrap_or(false),
             })
             .collect();
 
@@ -1883,38 +1845,33 @@ impl ReelVaultTrait for ReelVaultService {
         let scan_events = self.catalog_events.clone();
 
         tokio::task::spawn_blocking(move || {
-            let send_progress =
-                |tx: &tokio::sync::mpsc::Sender<std::result::Result<ScanProgress, Status>>,
-                 p: &crate::indexing::ScanProgress| {
-                    let proto_progress = ScanProgress {
-                        status: p.status.clone(),
-                        videos_found: p.videos_found,
-                        videos_indexed: p.videos_indexed,
-                        current_file: p.current_file.clone(),
-                        progress_percent: p.progress_percent,
-                    };
-                    let _ = tx.blocking_send(Ok(proto_progress));
+            let send_progress = |tx: &tokio::sync::mpsc::Sender<std::result::Result<ScanProgress, Status>>,
+                                  p: &crate::indexing::ScanProgress| {
+                let proto_progress = ScanProgress {
+                    status: p.status.clone(),
+                    videos_found: p.videos_found,
+                    videos_indexed: p.videos_indexed,
+                    current_file: p.current_file.clone(),
+                    progress_percent: p.progress_percent,
                 };
+                let _ = tx.blocking_send(Ok(proto_progress));
+            };
 
             // Helper to send an error status to the stream
-            let send_error =
-                |tx: &tokio::sync::mpsc::Sender<std::result::Result<ScanProgress, Status>>,
-                 msg: String| {
-                    let _ = tx.blocking_send(Ok(ScanProgress {
-                        status: "error".to_string(),
-                        videos_found: 0,
-                        videos_indexed: 0,
-                        current_file: msg,
-                        progress_percent: 0.0,
-                    }));
-                };
+            let send_error = |tx: &tokio::sync::mpsc::Sender<std::result::Result<ScanProgress, Status>>,
+                              msg: String| {
+                let _ = tx.blocking_send(Ok(ScanProgress {
+                    status: "error".to_string(),
+                    videos_found: 0,
+                    videos_indexed: 0,
+                    current_file: msg,
+                    progress_percent: 0.0,
+                }));
+            };
 
             // Helper to scan a single path with validation
-            let scan_one = |scan_path: &std::path::Path,
-                            recursive: bool,
-                            tx: &tokio::sync::mpsc::Sender<
-                std::result::Result<ScanProgress, Status>,
-            >| {
+            let scan_one = |scan_path: &std::path::Path, recursive: bool,
+                            tx: &tokio::sync::mpsc::Sender<std::result::Result<ScanProgress, Status>>| {
                 // Validate path exists
                 if !scan_path.exists() {
                     let msg = format!("Path does not exist: {}", scan_path.display());
@@ -1963,10 +1920,7 @@ impl ReelVaultTrait for ReelVaultService {
                             let opts = crate::grouping::AutoGroupOptions::default();
                             match crate::grouping::auto_group(db.as_ref(), &opts) {
                                 Ok((groups, videos)) if groups > 0 => {
-                                    let msg = format!(
-                                        "Auto-grouped {} videos into {} groups",
-                                        videos, groups
-                                    );
+                                    let msg = format!("Auto-grouped {} videos into {} groups", videos, groups);
                                     tracing::info!("{}", msg);
                                     let _ = tx.blocking_send(Ok(ScanProgress {
                                         status: "grouping".to_string(),
@@ -2060,7 +2014,10 @@ impl ReelVaultTrait for ReelVaultService {
                             status: "proxies".to_string(),
                             videos_found: 0,
                             videos_indexed: s.proxies_marked as i64,
-                            current_file: format!("Detected {} proxy/proxies", s.proxies_marked,),
+                            current_file: format!(
+                                "Detected {} proxy/proxies",
+                                s.proxies_marked,
+                            ),
                             progress_percent: 100.0,
                         }));
                     }
@@ -2111,14 +2068,7 @@ impl ReelVaultTrait for ReelVaultService {
 
         let tag_id = self
             .db
-            .create_tag(
-                &req.name,
-                if req.color.is_empty() {
-                    None
-                } else {
-                    Some(&req.color)
-                },
-            )
+            .create_tag(&req.name, if req.color.is_empty() { None } else { Some(&req.color) })
             .map_err(Status::from)?;
 
         Ok(Response::new(TagResponse {
@@ -2161,9 +2111,7 @@ impl ReelVaultTrait for ReelVaultService {
             })
             .collect();
 
-        Ok(Response::new(ListTagsResponse {
-            tags: tag_responses,
-        }))
+        Ok(Response::new(ListTagsResponse { tags: tag_responses }))
     }
 
     async fn tag_videos(
@@ -2173,9 +2121,7 @@ impl ReelVaultTrait for ReelVaultService {
         let req = request.into_inner();
 
         for video_id in &req.video_ids {
-            self.db
-                .tag_video(video_id, &req.tag_id)
-                .map_err(Status::from)?;
+            self.db.tag_video(video_id, &req.tag_id).map_err(Status::from)?;
         }
 
         Ok(Response::new(reelvault::Response {
@@ -2193,9 +2139,7 @@ impl ReelVaultTrait for ReelVaultService {
         let req = request.into_inner();
 
         for video_id in &req.video_ids {
-            self.db
-                .untag_video(video_id, &req.tag_id)
-                .map_err(Status::from)?;
+            self.db.untag_video(video_id, &req.tag_id).map_err(Status::from)?;
         }
 
         Ok(Response::new(reelvault::Response {
@@ -2217,11 +2161,7 @@ impl ReelVaultTrait for ReelVaultService {
             .create_collection(
                 &req.name,
                 req.is_smart,
-                if req.filter_json.is_empty() {
-                    None
-                } else {
-                    Some(&req.filter_json)
-                },
+                if req.filter_json.is_empty() { None } else { Some(&req.filter_json) },
             )
             .map_err(Status::from)?;
 
@@ -2239,9 +2179,7 @@ impl ReelVaultTrait for ReelVaultService {
         request: Request<DeleteCollectionRequest>,
     ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
-        self.db
-            .delete_collection(&req.collection_id)
-            .map_err(Status::from)?;
+        self.db.delete_collection(&req.collection_id).map_err(Status::from)?;
 
         Ok(Response::new(reelvault::Response {
             success: true,
@@ -2283,9 +2221,7 @@ impl ReelVaultTrait for ReelVaultService {
         let req = request.into_inner();
 
         for video_id in &req.video_ids {
-            self.db
-                .add_to_collection(&req.collection_id, video_id)
-                .map_err(Status::from)?;
+            self.db.add_to_collection(&req.collection_id, video_id).map_err(Status::from)?;
         }
 
         Ok(Response::new(reelvault::Response {
@@ -2303,9 +2239,7 @@ impl ReelVaultTrait for ReelVaultService {
         let req = request.into_inner();
 
         for video_id in &req.video_ids {
-            self.db
-                .remove_from_collection(&req.collection_id, video_id)
-                .map_err(Status::from)?;
+            self.db.remove_from_collection(&req.collection_id, video_id).map_err(Status::from)?;
         }
 
         Ok(Response::new(reelvault::Response {
@@ -2322,9 +2256,7 @@ impl ReelVaultTrait for ReelVaultService {
     ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
 
-        self.db
-            .update_notes(&req.video_id, &req.notes)
-            .map_err(Status::from)?;
+        self.db.update_notes(&req.video_id, &req.notes).map_err(Status::from)?;
 
         Ok(Response::new(reelvault::Response {
             success: true,
@@ -2383,17 +2315,10 @@ impl ReelVaultTrait for ReelVaultService {
                 .update_video_color_label(id, &req.color_label)
                 .map_err(Status::from)?;
         }
-        let displayed_label = if req.color_label.is_empty() {
-            "(none)"
-        } else {
-            req.color_label.as_str()
-        };
+        let displayed_label = if req.color_label.is_empty() { "(none)" } else { req.color_label.as_str() };
         Ok(Response::new(reelvault::Response {
             success: true,
-            message: format!(
-                "Color label '{}' applied to {} video(s)",
-                displayed_label, count
-            ),
+            message: format!("Color label '{}' applied to {} video(s)", displayed_label, count),
             error: String::new(),
             error_code: 0,
         }))
@@ -2479,10 +2404,7 @@ impl ReelVaultTrait for ReelVaultService {
         request: Request<ListGroupMembersRequest>,
     ) -> std::result::Result<Response<ListGroupMembersResponse>, Status> {
         let req = request.into_inner();
-        let member_ids = self
-            .db
-            .list_group_member_ids(&req.group_id)
-            .map_err(Status::from)?;
+        let member_ids = self.db.list_group_member_ids(&req.group_id).map_err(Status::from)?;
 
         let mut seeds = Vec::with_capacity(member_ids.len());
         for vid in &member_ids {
@@ -2527,11 +2449,7 @@ impl ReelVaultTrait for ReelVaultService {
         } else {
             Some(req.preferred_video_id.as_str())
         };
-        let name = if req.name.is_empty() {
-            None
-        } else {
-            Some(req.name.as_str())
-        };
+        let name = if req.name.is_empty() { None } else { Some(req.name.as_str()) };
 
         let group_id = self
             .db
@@ -2596,16 +2514,13 @@ impl ReelVaultTrait for ReelVaultService {
             match_fps: req.match_fps,
         };
 
-        let (groups_created, videos_grouped) =
-            crate::grouping::auto_group(self.db.as_ref(), &options).map_err(Status::from)?;
+        let (groups_created, videos_grouped) = crate::grouping::auto_group(self.db.as_ref(), &options)
+            .map_err(Status::from)?;
 
         Ok(Response::new(AutoGroupResponse {
             groups_created,
             videos_grouped,
-            message: format!(
-                "Created {} groups containing {} videos",
-                groups_created, videos_grouped
-            ),
+            message: format!("Created {} groups containing {} videos", groups_created, videos_grouped),
         }))
     }
 
@@ -2614,8 +2529,7 @@ impl ReelVaultTrait for ReelVaultService {
         request: Request<GenerateProxyRequest>,
     ) -> std::result::Result<Response<Self::GenerateProxyStream>, Status> {
         let req = request.into_inner();
-        let (tx, rx) =
-            tokio::sync::mpsc::channel::<std::result::Result<ProxyGenerationProgress, Status>>(16);
+        let (tx, rx) = tokio::sync::mpsc::channel::<std::result::Result<ProxyGenerationProgress, Status>>(16);
 
         if req.video_id.is_empty() {
             return Err(Status::invalid_argument("video_id is required"));
@@ -2636,10 +2550,7 @@ impl ReelVaultTrait for ReelVaultService {
         // Resolve the backend source the same way the thumbnail paths do, so
         // proxy generation works for Photos-backed rows (whose `path` is a
         // synthetic `photos://…`, not a real file) — not just filesystem rows.
-        let source = self
-            .db
-            .media_source_for(&req.video_id)
-            .map_err(Status::from)?;
+        let source = self.db.media_source_for(&req.video_id).map_err(Status::from)?;
         let output_path = if !req.output_path.is_empty() {
             std::path::PathBuf::from(req.output_path)
         } else if let crate::media_backend::MediaSource::Path(p) = &source {
@@ -2700,12 +2611,7 @@ impl ReelVaultTrait for ReelVaultService {
                     send("complete", 100.0, "Proxy ready".into(), proxy_id);
                 }
                 Err(e) => {
-                    send(
-                        "error",
-                        0.0,
-                        format!("Proxy generation failed: {}", e),
-                        String::new(),
-                    );
+                    send("error", 0.0, format!("Proxy generation failed: {}", e), String::new());
                 }
             }
         });
@@ -2750,9 +2656,7 @@ impl ReelVaultTrait for ReelVaultService {
             return Err(Status::invalid_argument("proxy_id is required"));
         }
         if req.original_id.is_empty() {
-            self.db
-                .clear_proxy_of(&req.proxy_id)
-                .map_err(Status::from)?;
+            self.db.clear_proxy_of(&req.proxy_id).map_err(Status::from)?;
             return Ok(Response::new(reelvault::Response {
                 success: true,
                 message: "Proxy link cleared".into(),
@@ -2862,8 +2766,11 @@ impl ReelVaultTrait for ReelVaultService {
             let camera_display_names: Vec<String> = cameras
                 .iter()
                 .map(|internal| {
-                    crate::camera_names::marketing_name_for_with_custom(internal, &custom_overrides)
-                        .unwrap_or_else(|| internal.clone())
+                    crate::camera_names::marketing_name_for_with_custom(
+                        internal,
+                        &custom_overrides,
+                    )
+                    .unwrap_or_else(|| internal.clone())
                 })
                 .collect();
             Ok(Response::new(FilterOptions {
@@ -3073,7 +2980,8 @@ impl ReelVaultTrait for ReelVaultService {
         // pending cell backs the media server's POST /pair, so the new device
         // redeems this code there for a bearer token. Loopback callers only in
         // practice — the LAN gRPC bind requires a token a new device lacks.
-        let (code, expires_at_ms) = crate::pairing::issue_code(&self.pairing, &self.data_dir).await;
+        let (code, expires_at_ms) =
+            crate::pairing::issue_code(&self.pairing, &self.data_dir).await;
         Ok(Response::new(StartPairingResponse {
             code,
             expires_at_ms,
@@ -3086,11 +2994,7 @@ impl ReelVaultTrait for ReelVaultService {
     ) -> std::result::Result<Response<ConfigResponse>, Status> {
         Ok(Response::new(ConfigResponse {
             proxy_threshold_scale: self.config.proxy_threshold_scale,
-            thumbnail_cache_path: self
-                .config
-                .thumbnail_cache_path
-                .to_string_lossy()
-                .to_string(),
+            thumbnail_cache_path: self.config.thumbnail_cache_path.to_string_lossy().to_string(),
             max_concurrent_jobs: self.config.max_concurrent_jobs,
             enable_auto_tagging: self.config.enable_auto_tagging,
             max_native_playback_height: self.config.max_native_playback_height,
@@ -3111,18 +3015,9 @@ impl ReelVaultTrait for ReelVaultService {
         // GenerateProxy, so this UPSERT is enough for them.
         if let Ok(conn) = self.db.get_connection() {
             let pairs: &[(&str, String)] = &[
-                (
-                    "max_native_playback_height",
-                    req.max_native_playback_height.clamp(0, 7680).to_string(),
-                ),
-                (
-                    "proxy_target_height",
-                    req.proxy_target_height.clamp(144, 4320).to_string(),
-                ),
-                (
-                    "max_concurrent_jobs",
-                    req.max_concurrent_jobs.max(0).to_string(),
-                ),
+                ("max_native_playback_height", req.max_native_playback_height.clamp(0, 7680).to_string()),
+                ("proxy_target_height", req.proxy_target_height.clamp(144, 4320).to_string()),
+                ("max_concurrent_jobs", req.max_concurrent_jobs.max(0).to_string()),
                 ("enable_auto_tagging", req.enable_auto_tagging.to_string()),
                 ("auto_tag_timelapses", req.auto_tag_timelapses.to_string()),
             ];
@@ -3224,7 +3119,9 @@ impl ReelVaultTrait for ReelVaultService {
             return Err(Status::invalid_argument("video_id is required"));
         }
         // Sanity-check the coordinates so we don't accept "the moon".
-        if !(-90.0..=90.0).contains(&req.latitude) || !(-180.0..=180.0).contains(&req.longitude) {
+        if !(-90.0..=90.0).contains(&req.latitude)
+            || !(-180.0..=180.0).contains(&req.longitude)
+        {
             return Err(Status::invalid_argument(
                 "latitude must be -90..=90 and longitude must be -180..=180",
             ));
@@ -3251,7 +3148,9 @@ impl ReelVaultTrait for ReelVaultService {
                         file_write_message = format!(" (embedded in {})", v.filename);
                     }
                     Err(e) => {
-                        tracing::warn!("Failed to embed location into {}: {}", v.path, e);
+                        tracing::warn!(
+                            "Failed to embed location into {}: {}", v.path, e
+                        );
                         file_write_message =
                             format!(" (catalog updated, but file write failed: {})", e);
                     }
@@ -3326,7 +3225,9 @@ impl ReelVaultTrait for ReelVaultService {
                         file_write_message = format!(" (embedded in {})", v.filename);
                     }
                     Err(e) => {
-                        tracing::warn!("Failed to embed creation_time into {}: {}", v.path, e);
+                        tracing::warn!(
+                            "Failed to embed creation_time into {}: {}", v.path, e
+                        );
                         file_write_message =
                             format!(" (catalog updated, but file write failed: {})", e);
                     }
@@ -3371,14 +3272,22 @@ impl ReelVaultTrait for ReelVaultService {
         if trimmed.is_empty() {
             return Err(Status::invalid_argument("name must not be empty"));
         }
-        if !(-90.0..=90.0).contains(&req.latitude) || !(-180.0..=180.0).contains(&req.longitude) {
+        if !(-90.0..=90.0).contains(&req.latitude)
+            || !(-180.0..=180.0).contains(&req.longitude)
+        {
             return Err(Status::invalid_argument(
                 "latitude must be -90..=90 and longitude must be -180..=180",
             ));
         }
         let saved = self
             .db
-            .upsert_named_location(&req.id, trimmed, req.latitude, req.longitude, req.radius_m)
+            .upsert_named_location(
+                &req.id,
+                trimmed,
+                req.latitude,
+                req.longitude,
+                req.radius_m,
+            )
             .map_err(Status::from)?;
         let proto = NamedLocation {
             id: saved.id.clone(),
@@ -3404,9 +3313,7 @@ impl ReelVaultTrait for ReelVaultService {
         if req.id.is_empty() {
             return Err(Status::invalid_argument("id is required"));
         }
-        self.db
-            .delete_named_location(&req.id)
-            .map_err(Status::from)?;
+        self.db.delete_named_location(&req.id).map_err(Status::from)?;
         Ok(Response::new(reelvault::Response {
             success: true,
             message: "Named location deleted".into(),
@@ -3423,8 +3330,7 @@ impl ReelVaultTrait for ReelVaultService {
         _request: Request<SubscribeCatalogEventsRequest>,
     ) -> std::result::Result<Response<Self::SubscribeCatalogEventsStream>, Status> {
         let mut rx = self.catalog_events.subscribe();
-        let (tx, out_rx) =
-            tokio::sync::mpsc::channel::<std::result::Result<CatalogEvent, Status>>(64);
+        let (tx, out_rx) = tokio::sync::mpsc::channel::<std::result::Result<CatalogEvent, Status>>(64);
 
         // Greet new subscribers with the current watcher state so the
         // client can render its "live updates: on/off" indicator without
@@ -3523,20 +3429,12 @@ impl ReelVaultTrait for ReelVaultService {
             let _ = conn.execute(
                 "INSERT INTO config (key, value) VALUES (?, ?)
                  ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP",
-                rusqlite::params![
-                    "watch_enabled",
-                    req.enabled.to_string(),
-                    req.enabled.to_string()
-                ],
+                rusqlite::params!["watch_enabled", req.enabled.to_string(), req.enabled.to_string()],
             );
             let _ = conn.execute(
                 "INSERT INTO config (key, value) VALUES (?, ?)
                  ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP",
-                rusqlite::params![
-                    "watch_write_settle_ms",
-                    settle.to_string(),
-                    settle.to_string()
-                ],
+                rusqlite::params!["watch_write_settle_ms", settle.to_string(), settle.to_string()],
             );
             let _ = conn.execute(
                 "INSERT INTO config (key, value) VALUES (?, ?)
@@ -3594,7 +3492,9 @@ impl ReelVaultTrait for ReelVaultService {
             let key = crate::camera_names::normalise(internal);
             let overridden = custom_by_normalised.remove(&key);
             let (final_internal, final_marketing, is_custom) = match overridden {
-                Some((raw_internal, custom_marketing)) => (raw_internal, custom_marketing, true),
+                Some((raw_internal, custom_marketing)) => {
+                    (raw_internal, custom_marketing, true)
+                }
                 None => (internal.to_string(), marketing.to_string(), false),
             };
             mappings.push(CameraNameMapping {
@@ -3608,7 +3508,8 @@ impl ReelVaultTrait for ReelVaultService {
         // 3. Any custom-only entries (no matching built-in) come last,
         //    alphabetised by internal name so the editor's table is
         //    stable across calls.
-        let mut custom_only: Vec<(String, String)> = custom_by_normalised.into_values().collect();
+        let mut custom_only: Vec<(String, String)> =
+            custom_by_normalised.into_values().collect();
         custom_only.sort_by_key(|a| a.0.to_ascii_uppercase());
         for (raw_internal, marketing) in custom_only {
             mappings.push(CameraNameMapping {
@@ -3774,19 +3675,13 @@ impl ReelVaultTrait for ReelVaultService {
         request: Request<SyncManifestRequest>,
     ) -> std::result::Result<Response<Self::GetSyncManifestStream>, Status> {
         let req = request.into_inner();
-        let page_size = if req.page_size > 0 {
-            req.page_size as usize
-        } else {
-            200
-        };
+        let page_size = if req.page_size > 0 { req.page_size as usize } else { 200 };
         let cursor = req.cursor.clone();
         let db = Arc::clone(&self.db);
         let (tx, rx) = tokio::sync::mpsc::channel(32);
-        tokio::task::spawn_blocking(
-            move || match db.get_sync_manifest_page(page_size, &cursor) {
-                Err(e) => {
-                    let _ = tx.blocking_send(Err(Status::internal(e.to_string())));
-                }
+        tokio::task::spawn_blocking(move || {
+            match db.get_sync_manifest_page(page_size, &cursor) {
+                Err(e) => { let _ = tx.blocking_send(Err(Status::internal(e.to_string()))); }
                 Ok(rows) => {
                     let last_id = rows.last().map(|r| r.video_id.clone()).unwrap_or_default();
                     for (i, row) in rows.iter().enumerate() {
@@ -3805,23 +3700,15 @@ impl ReelVaultTrait for ReelVaultService {
                             codec_video: row.codec_video.clone(),
                             is_derived: row.is_derived,
                             has_streamable_proxy: row.has_streamable_proxy,
-                            next_cursor: if is_last {
-                                last_id.clone()
-                            } else {
-                                String::new()
-                            },
+                            next_cursor: if is_last { last_id.clone() } else { String::new() },
                             deleted_at_ms: row.deleted_at.unwrap_or(0),
                         };
-                        if tx.blocking_send(Ok(entry)).is_err() {
-                            break;
-                        }
+                        if tx.blocking_send(Ok(entry)).is_err() { break; }
                     }
                 }
-            },
-        );
-        Ok(Response::new(
-            Box::pin(ReceiverStream::new(rx)) as Self::GetSyncManifestStream
-        ))
+            }
+        });
+        Ok(Response::new(Box::pin(ReceiverStream::new(rx)) as Self::GetSyncManifestStream))
     }
 
     async fn lookup_by_content_hash(
@@ -3836,16 +3723,13 @@ impl ReelVaultTrait for ReelVaultService {
             .map_err(|e| Status::internal(format!("{e}")))?
             .map_err(|e| Status::internal(e.to_string()))?;
         Ok(Response::new(LookupByContentHashResponse {
-            hits: hits
-                .into_iter()
-                .map(|h| lookup_by_content_hash_response::Hit {
-                    content_hash: h.content_hash,
-                    video_id: h.video_id,
-                    marks_rev: h.marks_rev,
-                    duration_ms: h.duration_ms,
-                    creation_date_ms: h.creation_date_ms,
-                })
-                .collect(),
+            hits: hits.into_iter().map(|h| lookup_by_content_hash_response::Hit {
+                content_hash: h.content_hash,
+                video_id: h.video_id,
+                marks_rev: h.marks_rev,
+                duration_ms: h.duration_ms,
+                creation_date_ms: h.creation_date_ms,
+            }).collect(),
         }))
     }
 
@@ -3866,14 +3750,7 @@ impl ReelVaultTrait for ReelVaultService {
                 tags: d.tags,
                 tag_colors: d.tag_colors,
                 collections: d.collections,
-                smart: d
-                    .smart_collections
-                    .into_iter()
-                    .map(|s| SmartCollectionSpec {
-                        name: s.name,
-                        filter_json: s.filter_json,
-                    })
-                    .collect(),
+                smart: d.smart_collections.into_iter().map(|s| SmartCollectionSpec { name: s.name, filter_json: s.filter_json }).collect(),
                 rating: d.rating,
                 color_label: d.color_label,
                 notes: d.notes,
@@ -3882,14 +3759,8 @@ impl ReelVaultTrait for ReelVaultService {
                 gps_lon: d.gps_lon,
                 gps_valid: d.has_gps,
                 marks_rev: d.marks_rev,
-                group: if d.group_name.is_empty() {
-                    None
-                } else {
-                    Some(GroupSpec {
-                        name: d.group_name,
-                        base_name: String::new(),
-                        preferred_origin_hash: String::new(),
-                    })
+                group: if d.group_name.is_empty() { None } else {
+                    Some(GroupSpec { name: d.group_name, base_name: String::new(), preferred_origin_hash: String::new() })
                 },
                 proxy_of_id: d.proxy_of_id,
             })),
@@ -3903,22 +3774,13 @@ impl ReelVaultTrait for ReelVaultService {
         let req = request.into_inner();
         let db = Arc::clone(&self.db);
         let vid = req.video_id.clone();
-        let data = req
-            .data
-            .ok_or_else(|| Status::invalid_argument("data required"))?;
+        let data = req.data.ok_or_else(|| Status::invalid_argument("data required"))?;
         let catalog_data = crate::db::VideoCatalogData {
             marks_rev: data.marks_rev,
             tags: data.tags.clone(),
             tag_colors: data.tag_colors.clone(),
             collections: data.collections.clone(),
-            smart_collections: data
-                .smart
-                .iter()
-                .map(|s| crate::db::SmartCollectionEntry {
-                    name: s.name.clone(),
-                    filter_json: s.filter_json.clone(),
-                })
-                .collect(),
+            smart_collections: data.smart.iter().map(|s| crate::db::SmartCollectionEntry { name: s.name.clone(), filter_json: s.filter_json.clone() }).collect(),
             rating: data.rating,
             color_label: data.color_label.clone(),
             notes: data.notes.clone(),
@@ -3926,11 +3788,7 @@ impl ReelVaultTrait for ReelVaultService {
             gps_lat: data.gps_lat,
             gps_lon: data.gps_lon,
             has_gps: data.gps_valid,
-            group_name: data
-                .group
-                .as_ref()
-                .map(|g| g.name.clone())
-                .unwrap_or_default(),
+            group_name: data.group.as_ref().map(|g| g.name.clone()).unwrap_or_default(),
             proxy_of_id: data.proxy_of_id.clone(),
         };
         tokio::task::spawn_blocking(move || db.apply_video_catalog_data(&vid, &catalog_data))
@@ -3957,74 +3815,63 @@ impl ReelVaultTrait for ReelVaultService {
 
         tokio::spawn(async move {
             // Send QUEUED
-            let _ = tx
-                .send(Ok(PrepareRenditionProgress {
-                    phase: prepare_rendition_progress::Phase::Queued as i32,
-                    fraction: 0.0,
-                    detail: "queued".to_string(),
-                    ready_height: 0,
-                    rendition_bytes: 0,
-                    download_path: String::new(),
-                }))
-                .await;
+            let _ = tx.send(Ok(PrepareRenditionProgress {
+                phase: prepare_rendition_progress::Phase::Queued as i32,
+                fraction: 0.0,
+                detail: "queued".to_string(),
+                ready_height: 0,
+                rendition_bytes: 0,
+                download_path: String::new(),
+            })).await;
 
             // Check video exists
             let record = tokio::task::spawn_blocking({
                 let db = db.clone();
                 let vid = video_id.clone();
                 move || db.get_video(&vid)
-            })
-            .await;
+            }).await;
 
             match record {
                 Ok(Ok(Some(_r))) => {
                     let effective_height = target_height;
 
                     // Send TRANSCODING
-                    let _ = tx
-                        .send(Ok(PrepareRenditionProgress {
-                            phase: prepare_rendition_progress::Phase::Transcoding as i32,
-                            fraction: 0.1,
-                            detail: format!("preparing {}p rendition", effective_height),
-                            ready_height: 0,
-                            rendition_bytes: 0,
-                            download_path: String::new(),
-                        }))
-                        .await;
+                    let _ = tx.send(Ok(PrepareRenditionProgress {
+                        phase: prepare_rendition_progress::Phase::Transcoding as i32,
+                        fraction: 0.1,
+                        detail: format!("preparing {}p rendition", effective_height),
+                        ready_height: 0,
+                        rendition_bytes: 0,
+                        download_path: String::new(),
+                    })).await;
 
                     // For now, report READY pointing at the streaming endpoint.
                     // Full proxy warm-up is gated on the media server's
                     // ensure_downscaled which is invoked on the first GET /video.
                     let dl_path = format!("/video/{}?height={}", video_id, effective_height);
-                    let _ = tx
-                        .send(Ok(PrepareRenditionProgress {
-                            phase: prepare_rendition_progress::Phase::Ready as i32,
-                            fraction: 1.0,
-                            detail: "ready".to_string(),
-                            ready_height: effective_height,
-                            rendition_bytes: 0,
-                            download_path: dl_path,
-                        }))
-                        .await;
+                    let _ = tx.send(Ok(PrepareRenditionProgress {
+                        phase: prepare_rendition_progress::Phase::Ready as i32,
+                        fraction: 1.0,
+                        detail: "ready".to_string(),
+                        ready_height: effective_height,
+                        rendition_bytes: 0,
+                        download_path: dl_path,
+                    })).await;
                 }
                 _ => {
-                    let _ = tx
-                        .send(Ok(PrepareRenditionProgress {
-                            phase: prepare_rendition_progress::Phase::Failed as i32,
-                            fraction: 1.0,
-                            detail: "video not found".to_string(),
-                            ready_height: 0,
-                            rendition_bytes: 0,
-                            download_path: String::new(),
-                        }))
-                        .await;
+                    let _ = tx.send(Ok(PrepareRenditionProgress {
+                        phase: prepare_rendition_progress::Phase::Failed as i32,
+                        fraction: 1.0,
+                        detail: "video not found".to_string(),
+                        ready_height: 0,
+                        rendition_bytes: 0,
+                        download_path: String::new(),
+                    })).await;
                 }
             }
         });
 
-        Ok(Response::new(
-            Box::pin(ReceiverStream::new(rx)) as Self::PrepareRenditionStream
-        ))
+        Ok(Response::new(Box::pin(ReceiverStream::new(rx)) as Self::PrepareRenditionStream))
     }
 
     async fn list_sync_profiles(
@@ -4033,26 +3880,22 @@ impl ReelVaultTrait for ReelVaultService {
     ) -> std::result::Result<Response<ListSyncProfilesResponse>, Status> {
         let db = Arc::clone(&self.db);
         let profiles = tokio::task::spawn_blocking(move || db.list_sync_profiles())
-            .await
-            .map_err(|e| Status::internal(format!("{e}")))?
+            .await.map_err(|e| Status::internal(format!("{e}")))?
             .map_err(|e| Status::internal(e.to_string()))?;
         Ok(Response::new(ListSyncProfilesResponse {
-            profiles: profiles
-                .into_iter()
-                .map(|p| SyncProfileProto {
-                    id: p.id,
-                    name: p.name,
-                    peer_key: p.peer_key,
-                    direction: p.direction,
-                    filter_json: p.filter_json,
-                    target_height: p.target_height,
-                    collection_resolutions: p.collection_resolutions,
-                    device_label: p.device_label,
-                    last_run_ms: p.last_run_ms.unwrap_or(0),
-                    created_ms: p.created_ms.unwrap_or(0),
-                    updated_ms: p.updated_ms.unwrap_or(0),
-                })
-                .collect(),
+            profiles: profiles.into_iter().map(|p| SyncProfileProto {
+                id: p.id,
+                name: p.name,
+                peer_key: p.peer_key,
+                direction: p.direction,
+                filter_json: p.filter_json,
+                target_height: p.target_height,
+                collection_resolutions: p.collection_resolutions,
+                device_label: p.device_label,
+                last_run_ms: p.last_run_ms.unwrap_or(0),
+                created_ms: p.created_ms.unwrap_or(0),
+                updated_ms: p.updated_ms.unwrap_or(0),
+            }).collect(),
         }))
     }
 
@@ -4061,15 +3904,9 @@ impl ReelVaultTrait for ReelVaultService {
         request: Request<UpsertSyncProfileRequest>,
     ) -> std::result::Result<Response<SyncProfileResponse>, Status> {
         let req = request.into_inner();
-        let proto = req
-            .profile
-            .ok_or_else(|| Status::invalid_argument("profile required"))?;
+        let proto = req.profile.ok_or_else(|| Status::invalid_argument("profile required"))?;
         let db = Arc::clone(&self.db);
-        let id = if proto.id.is_empty() {
-            uuid::Uuid::new_v4().to_string()
-        } else {
-            proto.id.clone()
-        };
+        let id = if proto.id.is_empty() { uuid::Uuid::new_v4().to_string() } else { proto.id.clone() };
         let now = chrono::Utc::now().timestamp_millis();
         let profile = crate::db::SyncProfile {
             id: id.clone(),
@@ -4080,21 +3917,12 @@ impl ReelVaultTrait for ReelVaultService {
             target_height: proto.target_height,
             collection_resolutions: proto.collection_resolutions,
             device_label: proto.device_label,
-            last_run_ms: if proto.last_run_ms > 0 {
-                Some(proto.last_run_ms)
-            } else {
-                None
-            },
-            created_ms: if proto.created_ms > 0 {
-                Some(proto.created_ms)
-            } else {
-                Some(now)
-            },
+            last_run_ms: if proto.last_run_ms > 0 { Some(proto.last_run_ms) } else { None },
+            created_ms: if proto.created_ms > 0 { Some(proto.created_ms) } else { Some(now) },
             updated_ms: Some(now),
         };
         tokio::task::spawn_blocking(move || db.upsert_sync_profile(&profile))
-            .await
-            .map_err(|e| Status::internal(format!("{e}")))?
+            .await.map_err(|e| Status::internal(format!("{e}")))?
             .map_err(|e| Status::internal(e.to_string()))?;
         Ok(Response::new(SyncProfileResponse { id }))
     }
@@ -4107,8 +3935,7 @@ impl ReelVaultTrait for ReelVaultService {
         let db = Arc::clone(&self.db);
         let id = req.id;
         tokio::task::spawn_blocking(move || db.delete_sync_profile(&id))
-            .await
-            .map_err(|e| Status::internal(format!("{e}")))?
+            .await.map_err(|e| Status::internal(format!("{e}")))?
             .map_err(|e| Status::internal(e.to_string()))?;
         Ok(Response::new(reelvault::Response {
             success: true,
@@ -4148,7 +3975,7 @@ impl ReelVaultTrait for ReelVaultService {
           .map_err(|e| Status::internal(e.to_string()))?;
         match row {
             None => Err(Status::not_found("run not found")),
-            Some((id, state, total, completed, failed, conflicts, started_ms, finished_ms)) => {
+            Some((id, state, total, completed, failed, conflicts, started_ms, finished_ms)) =>
                 Ok(Response::new(SyncRunResponse {
                     id,
                     state,
@@ -4158,8 +3985,7 @@ impl ReelVaultTrait for ReelVaultService {
                     conflicts,
                     started_ms,
                     finished_ms: finished_ms.unwrap_or(0),
-                }))
-            }
+                })),
         }
     }
 }
@@ -4186,7 +4012,10 @@ fn catalog_info_from(db: &Database, opened_at_ms: i64) -> CatalogInfo {
                 .to_string();
             // best-effort video count; ignore errors so we never fail to
             // return info just because the count query hiccupped.
-            let video_count = db.list_videos(1, 0).map(|(_, total)| total).unwrap_or(0);
+            let video_count = db
+                .list_videos(1, 0)
+                .map(|(_, total)| total)
+                .unwrap_or(0);
             CatalogInfo {
                 path: p.to_string_lossy().into_owned(),
                 name,
