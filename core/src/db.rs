@@ -6032,7 +6032,9 @@ mod tests {
         let ids: Vec<&str> = reps.iter().map(|r| r.id.as_str()).collect();
         assert_eq!(total, 1);
         assert_eq!(ids.len(), 1, "stack stays visible");
-        assert_eq!(ids[0], v2.as_str(), "next member (v2) becomes the top card");
+        // Ids are random UUIDs: the fallback representative is the lowest live id.
+        let expected = std::cmp::min(v2.as_str(), v3.as_str());
+        assert_eq!(ids[0], expected, "next live member becomes the top card");
         assert_eq!(db.count_videos_in_path("/l").unwrap(), 1);
     }
 
