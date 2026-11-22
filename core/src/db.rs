@@ -453,25 +453,15 @@ impl Database {
         let _ = conn.pragma_update(None, "synchronous", "NORMAL");
         let _ = conn.pragma_update(None, "foreign_keys", "ON");
 
-        // Versioned migrations keyed on `PRAGMA user_version`. Version 0 is a
-        // fresh catalog or a pre-versioning one; both are brought up to
-        // the baseline by the idempotent statements below.
-        let current: i64 = conn
-            .query_row("PRAGMA user_version", [], |r| r.get(0))
-            .map_err(|e| ReelVaultError::DatabaseError(format!("Failed to read schema version: {}", e)))?;
-        if current > SCHEMA_VERSION {
-            return Err(ReelVaultError::DatabaseError(format!(
-                "Catalog schema version {} is newer than this build supports ({})",
-                current, SCHEMA_VERSION
-            )));
-        }
-        if current == SCHEMA_VERSION {
-            return Ok(());
-        }
-
         // Migration: add columns to existing tables. SQLite has no
         // `ALTER TABLE ADD COLUMN IF NOT EXISTS`, so we try and ignore the
         // "duplicate column" error.
+        //
+        // FROZEN BASELINE (schema v1): this list only runs when
+        // `user_version < 1`. Existing catalogs are already at v2+, so an entry
+        // added here would NEVER reach them. New schema work (columns, tables,
+        // indexes, triggers, backfills) must instead be a new
+        // `if current < N { ... }` step below, with `SCHEMA_VERSION` bumped to N.
         let migrations: &[(&str, &str)] = &[
             ("videos.group_id", "ALTER TABLE videos ADD COLUMN group_id TEXT"),
             // Per-member order within a stack (drag-to-reorder). 0 for every
@@ -796,7 +786,23 @@ impl Database {
         let fail = |what: &str, e: rusqlite::Error| {
             ReelVaultError::DatabaseError(format!("Migration failed ({}): {}", what, e))
         };
-        let tx = conn.unchecked_transaction().map_err(|e| fail("begin", e))?;
+        // IMMEDIATE takes the write lock up front, and the version is read
+        // inside it, so a concurrent opener can't also see an old version and
+        // re-run the backfills.
+        let tx = rusqlite::Transaction::new_unchecked(conn, rusqlite::TransactionBehavior::Immediate)
+            .map_err(|e| fail("begin", e))?;
+        let current: i64 = tx
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .map_err(|e| fail("read schema version", e))?;
+        if current > SCHEMA_VERSION {
+            return Err(ReelVaultError::DatabaseError(format!(
+                "Catalog schema version {} is newer than this build supports ({})",
+                current, SCHEMA_VERSION
+            )));
+        }
+        if current == SCHEMA_VERSION {
+            return Ok(());
+        }
         if current < 1 {
             tx.execute_batch(include_str!("../schema.sql"))
                 .map_err(|e| fail("schema.sql", e))?;
@@ -4929,6 +4935,59 @@ mod tests {
         Connection::open(&p).unwrap().execute("DELETE FROM video_locations", []).unwrap();
         db.set_path(&p).unwrap();
         assert_eq!(n(&p), 0);
+    }
+
+    #[test]
+    fn pre_versioning_catalog_at_v0_is_migrated_and_backfilled() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().join("c.db");
+        // A legacy catalog: old-shape tables missing most later columns.
+        let conn = Connection::open(&p).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE videos (id TEXT PRIMARY KEY, path TEXT UNIQUE NOT NULL,
+               filename TEXT NOT NULL, hash TEXT, indexed_at TIMESTAMP, group_id TEXT,
+               file_size_bytes INTEGER, is_online INTEGER DEFAULT 1);
+             CREATE TABLE metadata (video_id TEXT PRIMARY KEY, duration_ms INTEGER,
+               width INTEGER, height INTEGER, fps REAL, codec_video TEXT);
+             INSERT INTO videos (id, path, filename, indexed_at) VALUES ('v1', '/lib/a.mov', 'a.mov', 5);",
+        )
+        .unwrap();
+        drop(conn);
+        assert_eq!(user_version(&p), 0);
+        Database::new_empty().set_path(&p).unwrap();
+        assert_eq!(user_version(&p), SCHEMA_VERSION);
+        let conn = Connection::open(&p).unwrap();
+        // Columns added by migrations.
+        conn.prepare("SELECT group_position, proxy_of FROM videos").unwrap();
+        conn.prepare("SELECT frame_count FROM metadata").unwrap();
+        // Tables from schema.sql, and the backfilled row.
+        let loc: String = conn
+            .query_row("SELECT id FROM video_locations WHERE video_id = 'v1'", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(loc, "v1_p");
+    }
+
+    #[test]
+    fn failing_migration_list_statement_rolls_back_earlier_ddl() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().join("c.db");
+        // `metadata` is a view: schema.sql's CREATE TABLE IF NOT EXISTS skips
+        // it, then a migration-list `ALTER TABLE metadata` fails (not a
+        // duplicate column), after schema.sql has already created tables.
+        let conn = Connection::open(&p).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE metadata_real (video_id TEXT PRIMARY KEY, duration_ms INTEGER);
+             CREATE VIEW metadata AS SELECT * FROM metadata_real;",
+        )
+        .unwrap();
+        drop(conn);
+        assert!(Database::new_empty().set_path(&p).is_err());
+        assert_eq!(user_version(&p), 0);
+        let conn = Connection::open(&p).unwrap();
+        let n: i64 = conn
+            .query_row("SELECT COUNT(*) FROM sqlite_master WHERE name = 'library_locations'", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(n, 0, "schema.sql DDL must be rolled back");
     }
 
     #[test]

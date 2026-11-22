@@ -31,7 +31,7 @@ This handoff covers implementing the 13 unsupported metadata types listed in `do
 Every field follows the same 6-step path:
 
 1. **Rust extraction** — a new or modified module in `core/src/` reads the data from the file.
-2. **DB column** — `ALTER TABLE metadata ADD COLUMN …` is appended to the migration list in `core/src/db.rs` (around line 400). The guard key is `"metadata.<column_name>"`. Never change `schema.sql` — the live schema is built from the migration list.
+2. **DB column** — add the column to `schema.sql` for fresh catalogs, and add `ALTER TABLE metadata ADD COLUMN …` in a **new versioned step** in `initialize_conn` (`if current < N { … }`, bump `SCHEMA_VERSION`) in `core/src/db.rs`. Do not append to the old `migrations` list: it is the frozen v1 baseline and never runs on existing catalogs. 
 3. **Rust `store_metadata`** — `core/src/metadata.rs` `store_metadata()` populates the new column in the `INSERT … ON CONFLICT DO UPDATE` statement (around line 416–474).
 4. **Proto** — `core/proto/reelvault.proto` adds a field to `VideoSummary` (list-level, for filtering/sorting/grid slots) and/or `VideoMetadata` (detail-level, for the inspector). Use the next available field number (currently 55+ for VideoMetadata, 48+ for VideoSummary). **After editing the proto, run `kit/regen-proto.sh` then immediately `git checkout kit/Sources/ReelVaultKit/grpc/reelvault.grpc.swift` — only commit `reelvault.pb.swift`.**
 5. **Shared Kotlin model** — `shared/src/main/kotlin/com/reelvault/data/models/Video.kt` adds the field to `VideoSummary` and/or `VideoMetadata` data classes, plus any derived labels (like `slowMotionLabel`).
