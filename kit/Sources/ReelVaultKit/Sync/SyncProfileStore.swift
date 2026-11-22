@@ -61,6 +61,11 @@ public final class SyncProfileStore: ObservableObject {
 
     public func load() async {
         await migrateLegacyProfiles()
+        await refresh()
+    }
+
+    /// Re-list from the core without re-running the legacy migration.
+    private func refresh() async {
         do {
             let response = try await withLocalClient { try await $0.listSyncProfiles(Reelvault_ListSyncProfilesRequest()) }
             let auto = Self.autoSyncIds()
@@ -83,7 +88,7 @@ public final class SyncProfileStore: ObservableObject {
             lastError = error.localizedDescription
             return
         }
-        await load()
+        await refresh()
     }
 
     // MARK: - Delete
@@ -98,7 +103,7 @@ public final class SyncProfileStore: ObservableObject {
             lastError = error.localizedDescription
             return
         }
-        await load()
+        await refresh()
     }
 
     // MARK: - Mapping
@@ -159,15 +164,30 @@ public final class SyncProfileStore: ObservableObject {
 
     // MARK: - Transport
 
-    private func withLocalClient<R: Sendable>(
-        _ body: @escaping @Sendable (Reelvault_ReelVault.Client<HTTP2ClientTransport.Posix>) async throws -> R
-    ) async throws -> R {
+    /// One long-lived client per store, started lazily and reused for every RPC.
+    private var client: GRPCClient<HTTP2ClientTransport.Posix>?
+    private var runTask: Task<Void, Never>?
+
+    private func localClient() throws -> Reelvault_ReelVault.Client<HTTP2ClientTransport.Posix> {
+        if let client { return Reelvault_ReelVault.Client(wrapping: client) }
         let transport = try HTTP2ClientTransport.Posix(
             target: .ipv4(host: "127.0.0.1", port: localPort),
             transportSecurity: .plaintext
         )
-        return try await withGRPCClient(transport: transport) { raw in
-            try await body(Reelvault_ReelVault.Client(wrapping: raw))
-        }
+        let c = GRPCClient(transport: transport)
+        runTask = Task { try? await c.runConnections() }
+        client = c
+        return Reelvault_ReelVault.Client(wrapping: c)
+    }
+
+    private func withLocalClient<R: Sendable>(
+        _ body: @escaping @Sendable (Reelvault_ReelVault.Client<HTTP2ClientTransport.Posix>) async throws -> R
+    ) async throws -> R {
+        try await body(try localClient())
+    }
+
+    deinit {
+        client?.beginGracefulShutdown()
+        runTask?.cancel()
     }
 }

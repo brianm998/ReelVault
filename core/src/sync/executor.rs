@@ -58,6 +58,19 @@ impl SyncExecutor {
             local_rev: 0,
             remote_rev: item.remote_marks_rev,
         };
+        // Without the peer's data the marks cannot be merged, and advancing
+        // the link would mean they never retry (mirrors `reconcile_catalog`).
+        if remote_data.is_none()
+            && matches!(
+                item.action,
+                AdoptLocal { .. } | SkipFileReconcileData { marks_changed: true, .. }
+            )
+        {
+            return Err(crate::error::ReelVaultError::VideoNotFound(format!(
+                "no catalog data supplied for video {}; link left unchanged",
+                item.source_video_id
+            )));
+        }
         match &item.action {
             AdoptLocal { local_video_id } => {
                 // Record the link first at a stale revision (0), then reconcile
@@ -119,7 +132,12 @@ mod tests {
         let plan = planner.classify(&[row.clone()], &hits);
         assert_eq!(plan[0].action, SyncAction::AdoptLocal { local_video_id: id.clone() });
 
-        SyncExecutor::new(db.clone()).apply("peer", &plan[0], None).unwrap();
+        // Without remote data the link must not advance.
+        let exec = SyncExecutor::new(db.clone());
+        assert!(exec.apply("peer", &plan[0], None).is_err());
+        assert!(db.find_sync_link_by_remote("peer", "remote1").unwrap().is_none());
+
+        exec.apply("peer", &plan[0], Some(&data(3))).unwrap();
 
         let again = planner.classify(&[row], &hits);
         assert_eq!(
