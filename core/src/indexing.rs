@@ -365,9 +365,14 @@ impl IndexingEngine {
 
         // Check if already indexed — if so, reuse the existing location row and
         // just refresh metadata. We now key on video_locations, not videos.path.
+        let mut restore_after_ingest: Option<String> = None;
         let video_id = if let Some(loc) = db.get_location_by_path(video_path.to_str().unwrap_or(""))? {
             // Already a known location — sync file size on both the location and
-            // the master videos row.
+            // the master videos row. A tombstoned video that is re-ingested
+            // (e.g. restored from Recently Deleted) comes back to life.
+            // Only Photos assets are restored; a file-path video deleted from
+            // the catalog must stay deleted across rescans.
+            restore_after_ingest = Some(loc.video_id.clone());
             if let Some(sz) = file_size {
                 db.update_location_size(&loc.id, sz)?;
                 db.update_video_file_size(&loc.video_id, sz)?;
@@ -460,6 +465,11 @@ impl IndexingEngine {
             }
         }
 
+        // Ingest succeeded: only now bring a tombstoned Photos asset back.
+        if let Some(id) = restore_after_ingest {
+            restore_if_photos(db, &id, video_path.to_str().unwrap_or(""))?;
+        }
+
         Ok(video_id)
     }
 
@@ -482,7 +492,11 @@ impl IndexingEngine {
     ) -> Result<String> {
         let probe_output = backend().probe(source)?;
 
+        let mut restore_after_ingest: Option<String> = None;
         let video_id = if let Ok(Some(existing)) = db.get_video_by_path(display_path) {
+            // A Photos asset restored from Recently Deleted comes back to
+            // life, but only once the ingest below has succeeded.
+            restore_after_ingest = Some(existing.id.clone());
             existing.id
         } else {
             db.add_video(display_path, filename, None, None, None)?
@@ -516,6 +530,10 @@ impl IndexingEngine {
             ) {
                 tracing::warn!("index_media_source: scrub frames failed for {video_id}: {e}");
             }
+        }
+
+        if let Some(id) = restore_after_ingest {
+            restore_if_photos(db, &id, display_path)?;
         }
 
         Ok(video_id)
@@ -618,6 +636,16 @@ impl IndexingEngine {
     }
 }
 
+/// Re-ingesting a tombstoned row revives it only for `photos://` assets
+/// (restored from Recently Deleted). A file-path or bookmark video deleted
+/// from the catalog must stay deleted across rescans.
+fn restore_if_photos(db: &Database, video_id: &str, display_path: &str) -> Result<()> {
+    if display_path.starts_with("photos://") {
+        db.undelete_video(video_id)?;
+    }
+    Ok(())
+}
+
 #[derive(Debug, Clone)]
 pub struct ScanProgress {
     pub status: String,
@@ -625,4 +653,121 @@ pub struct ScanProgress {
     pub videos_indexed: i64,
     pub current_file: String,
     pub progress_percent: f64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::FilterSpec;
+
+    fn make_clip(dir: &Path) -> Option<std::path::PathBuf> {
+        let out = dir.join("clip.mp4");
+        let ok = std::process::Command::new("ffmpeg")
+            .args([
+                "-y",
+                "-loglevel",
+                "error",
+                "-f",
+                "lavfi",
+                "-i",
+                "color=c=red:s=64x64:d=1:r=10",
+            ])
+            .args(["-pix_fmt", "yuv420p"])
+            .arg(&out)
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        ok.then_some(out)
+    }
+
+    fn visible(db: &Database) -> usize {
+        db.list_videos_grouped(50, 0, "name", true, &FilterSpec::default())
+            .unwrap()
+            .0
+            .len()
+    }
+
+    #[test]
+    fn photos_reingest_clears_deleted_at() {
+        let tmp = tempfile::tempdir().unwrap();
+        let Some(clip) = make_clip(tmp.path()) else {
+            panic!("ffmpeg is required for this test but was not found");
+        };
+        let db = Database::new_empty();
+        db.set_path(&tmp.path().join("t.db")).unwrap();
+        let cache = tmp.path().join("cache");
+        std::fs::create_dir_all(&cache).unwrap();
+        let src = MediaSource::Path(clip);
+        let id = IndexingEngine::index_media_source(
+            &db,
+            &src,
+            "photos://abc",
+            "abc.mp4",
+            "photos",
+            "abc",
+            &cache,
+        )
+        .unwrap();
+        assert_eq!(visible(&db), 1);
+        db.delete_video(&id).unwrap();
+        assert_eq!(visible(&db), 0);
+        let id2 = IndexingEngine::index_media_source(
+            &db,
+            &src,
+            "photos://abc",
+            "abc.mp4",
+            "photos",
+            "abc",
+            &cache,
+        )
+        .unwrap();
+        assert_eq!(id, id2);
+        assert!(!db.is_video_deleted(&id));
+        assert_eq!(visible(&db), 1);
+    }
+
+    #[test]
+    fn file_path_video_stays_deleted_after_index_video() {
+        let tmp = tempfile::tempdir().unwrap();
+        let Some(clip) = make_clip(tmp.path()) else {
+            panic!("ffmpeg is required for this test but was not found");
+        };
+        let db = Database::new_empty();
+        db.set_path(&tmp.path().join("t.db")).unwrap();
+        let cache = tmp.path().join("cache");
+        std::fs::create_dir_all(&cache).unwrap();
+        let id = IndexingEngine::index_video(&db, &clip, &cache, None).unwrap();
+        db.delete_video(&id).unwrap();
+        let again = IndexingEngine::index_video(&db, &clip, &cache, None).unwrap();
+        assert_eq!(id, again);
+        assert!(db.is_video_deleted(&id), "rescan must not resurrect it");
+        assert_eq!(visible(&db), 0);
+    }
+
+    #[test]
+    fn non_photos_media_sources_stay_deleted_after_index_media_source() {
+        let tmp = tempfile::tempdir().unwrap();
+        let Some(clip) = make_clip(tmp.path()) else {
+            panic!("ffmpeg is required for this test but was not found");
+        };
+        let db = Database::new_empty();
+        db.set_path(&tmp.path().join("t.db")).unwrap();
+        let cache = tmp.path().join("cache");
+        std::fs::create_dir_all(&cache).unwrap();
+        let src = MediaSource::Path(clip);
+        for (path, kind) in [("/lib/a.mp4", "path"), ("bookmark://b", "bookmark")] {
+            let id = IndexingEngine::index_media_source(
+                &db, &src, path, "a.mp4", kind, "x", &cache,
+            )
+            .unwrap();
+            db.delete_video(&id).unwrap();
+            let again = IndexingEngine::index_media_source(
+                &db, &src, path, "a.mp4", kind, "x", &cache,
+            )
+            .unwrap();
+            assert_eq!(id, again);
+            assert!(db.is_video_deleted(&id), "{kind} must stay deleted");
+        }
+        assert_eq!(visible(&db), 0);
+    }
 }
