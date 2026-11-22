@@ -366,6 +366,10 @@ pub struct SyncRunItem {
     pub last_error: Option<String>,
 }
 
+/// Current schema version stored in `PRAGMA user_version`. 1 = baseline
+/// schema + column/index/trigger migrations; 2 = one-time backfills.
+const SCHEMA_VERSION: i64 = 2;
+
 impl Database {
     /// Build a `Database` that already points at `path`. Callers should still
     /// invoke [`Database::initialize`] before serving traffic so the schema
@@ -449,9 +453,21 @@ impl Database {
         let _ = conn.pragma_update(None, "synchronous", "NORMAL");
         let _ = conn.pragma_update(None, "foreign_keys", "ON");
 
-        let schema = include_str!("../schema.sql");
-        conn.execute_batch(schema)
-            .map_err(|e| ReelVaultError::DatabaseError(format!("Failed to initialize schema: {}", e)))?;
+        // Versioned migrations keyed on `PRAGMA user_version`. Version 0 is a
+        // fresh catalog or a pre-versioning one; both are brought up to
+        // the baseline by the idempotent statements below.
+        let current: i64 = conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .map_err(|e| ReelVaultError::DatabaseError(format!("Failed to read schema version: {}", e)))?;
+        if current > SCHEMA_VERSION {
+            return Err(ReelVaultError::DatabaseError(format!(
+                "Catalog schema version {} is newer than this build supports ({})",
+                current, SCHEMA_VERSION
+            )));
+        }
+        if current == SCHEMA_VERSION {
+            return Ok(());
+        }
 
         // Migration: add columns to existing tables. SQLite has no
         // `ALTER TABLE ADD COLUMN IF NOT EXISTS`, so we try and ignore the
@@ -497,14 +513,6 @@ impl Database {
             )"),
             ("idx_proxy_links_proxy", "CREATE INDEX IF NOT EXISTS idx_proxy_links_proxy ON proxy_links(proxy_id)"),
             ("idx_proxy_links_master", "CREATE INDEX IF NOT EXISTS idx_proxy_links_master ON proxy_links(master_id)"),
-            // Backfill: for catalogs whose single-column relation
-            // pre-dates the junction table, mirror every (proxy,
-            // master) pair into proxy_links. INSERT OR IGNORE keeps
-            // this idempotent across re-runs of `initialize`.
-            ("proxy_links backfill", "INSERT OR IGNORE INTO proxy_links (master_id, proxy_id, confidence, auto_detected)
-                SELECT proxy_of, id, proxy_confidence, COALESCE(proxy_auto_detected, 0)
-                FROM videos
-                WHERE proxy_of IS NOT NULL"),
             // Lightroom-style star rating + color label. Stored in a
             // separate table from `metadata` (machine-extracted) so user
             // marks remain visually and operationally distinct from
@@ -657,13 +665,6 @@ impl Database {
             )"),
             ("idx_video_locations_video_id", "CREATE INDEX IF NOT EXISTS idx_video_locations_video_id ON video_locations(video_id)"),
             ("idx_video_locations_filename_size", "CREATE INDEX IF NOT EXISTS idx_video_locations_filename_size ON video_locations(filename, file_size_bytes)"),
-            // Backfill: mirror every existing videos row into video_locations so
-            // the new lookup path works for pre-existing catalog entries. The
-            // synthetic id (`<video_id>_p`) is stable across re-runs thanks to
-            // INSERT OR IGNORE.
-            ("video_locations backfill", "INSERT OR IGNORE INTO video_locations (id, video_id, path, filename, file_size_bytes, is_online, indexed_at)
-                SELECT id || '_p', id, path, filename, COALESCE(file_size_bytes, 0), COALESCE(is_online, 1), COALESCE(indexed_at, 0)
-                FROM videos"),
             // ── Catalog Sync (Phase 0-5) ──────────────────────────────────────
             // Sparse blake3 hash for content-based identity across peers.
             ("videos.content_hash", "ALTER TABLE videos ADD COLUMN content_hash TEXT"),
@@ -772,17 +773,52 @@ impl Database {
     UPDATE videos SET marks_rev = marks_rev + 1 WHERE id = OLD.video_id;
   END"),
         ];
-        for (label, sql) in migrations {
-            match conn.execute(sql, []) {
-                Ok(_) => tracing::info!("Migration: added {}", label),
-                Err(e) => {
-                    let msg = e.to_string();
-                    if !msg.contains("duplicate column") {
-                        tracing::warn!("Migration for {} failed (likely already applied): {}", label, msg);
-                    }
+        let backfills: &[(&str, &str)] = &[
+            // Backfill: for catalogs whose single-column relation
+            // pre-dates the junction table, mirror every (proxy,
+            // master) pair into proxy_links. INSERT OR IGNORE keeps
+            // this idempotent across re-runs of `initialize`.
+            ("proxy_links backfill", "INSERT OR IGNORE INTO proxy_links (master_id, proxy_id, confidence, auto_detected)
+                SELECT proxy_of, id, proxy_confidence, COALESCE(proxy_auto_detected, 0)
+                FROM videos
+                WHERE proxy_of IS NOT NULL"),
+            // Backfill: mirror every existing videos row into video_locations so
+            // the new lookup path works for pre-existing catalog entries. The
+            // synthetic id (`<video_id>_p`) is stable across re-runs thanks to
+            // INSERT OR IGNORE.
+            ("video_locations backfill", "INSERT OR IGNORE INTO video_locations (id, video_id, path, filename, file_size_bytes, is_online, indexed_at)
+                SELECT id || '_p', id, path, filename, COALESCE(file_size_bytes, 0), COALESCE(is_online, 1), COALESCE(indexed_at, 0)
+                FROM videos"),
+        ];
+
+        // One transaction: any failure rolls everything back and fails the
+        // open, so a catalog is never left half-migrated.
+        let fail = |what: &str, e: rusqlite::Error| {
+            ReelVaultError::DatabaseError(format!("Migration failed ({}): {}", what, e))
+        };
+        let tx = conn.unchecked_transaction().map_err(|e| fail("begin", e))?;
+        if current < 1 {
+            tx.execute_batch(include_str!("../schema.sql"))
+                .map_err(|e| fail("schema.sql", e))?;
+            for (label, sql) in migrations {
+                match tx.execute(sql, []) {
+                    Ok(_) => {}
+                    // Legacy catalogs may already have some columns.
+                    Err(e) if e.to_string().contains("duplicate column") => {}
+                    Err(e) => return Err(fail(label, e)),
                 }
             }
         }
+        if current < 2 {
+            // Whole-table backfills: run once, not on every open.
+            for (label, sql) in backfills {
+                tx.execute(sql, []).map_err(|e| fail(label, e))?;
+            }
+        }
+        tx.pragma_update(None, "user_version", SCHEMA_VERSION)
+            .map_err(|e| fail("user_version", e))?;
+        tx.commit().map_err(|e| fail("commit", e))?;
+        tracing::info!("Catalog schema migrated from v{} to v{}", current, SCHEMA_VERSION);
         Ok(())
     }
 
@@ -4845,6 +4881,78 @@ pub struct AutoGroupCandidate {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn user_version(path: &Path) -> i64 {
+        Connection::open(path)
+            .unwrap()
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap()
+    }
+
+    #[test]
+    fn fresh_catalog_is_versioned_and_reopen_is_noop() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().join("c.db");
+        let db = Database::new_empty();
+        db.set_path(&p).unwrap();
+        assert_eq!(user_version(&p), SCHEMA_VERSION);
+        // Re-open: marker row survives and nothing is re-run.
+        let conn = Connection::open(&p).unwrap();
+        conn.execute("CREATE TABLE reopen_marker (x)", []).unwrap();
+        drop(conn);
+        db.set_path(&p).unwrap();
+        assert_eq!(user_version(&p), SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn legacy_catalog_migrates_and_backfills_once() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().join("c.db");
+        let db = Database::new_empty();
+        db.set_path(&p).unwrap();
+        db.add_video("/lib/a.mov", "a.mov", None, None, Some(1)).unwrap();
+        // Simulate a pre-backfill catalog at version 1.
+        let conn = Connection::open(&p).unwrap();
+        conn.execute("DELETE FROM video_locations", []).unwrap();
+        conn.pragma_update(None, "user_version", 1).unwrap();
+        drop(conn);
+        db.set_path(&p).unwrap();
+        let n = |p: &Path| -> i64 {
+            Connection::open(p)
+                .unwrap()
+                .query_row("SELECT COUNT(*) FROM video_locations", [], |r| r.get(0))
+                .unwrap()
+        };
+        assert_eq!(n(&p), 1);
+        assert_eq!(user_version(&p), SCHEMA_VERSION);
+        // At the current version the backfill does not run again.
+        Connection::open(&p).unwrap().execute("DELETE FROM video_locations", []).unwrap();
+        db.set_path(&p).unwrap();
+        assert_eq!(n(&p), 0);
+    }
+
+    #[test]
+    fn failing_migration_fails_open_and_rolls_back() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().join("c.db");
+        // A `videos` that is a view makes ALTER TABLE fail (not a duplicate).
+        let conn = Connection::open(&p).unwrap();
+        conn.execute_batch("CREATE TABLE videos_real (id TEXT); CREATE VIEW videos AS SELECT * FROM videos_real;").unwrap();
+        drop(conn);
+        let db = Database::new_empty();
+        assert!(db.set_path(&p).is_err());
+        assert_eq!(user_version(&p), 0);
+    }
+
+    #[test]
+    fn newer_schema_version_is_refused() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().join("c.db");
+        let conn = Connection::open(&p).unwrap();
+        conn.pragma_update(None, "user_version", SCHEMA_VERSION + 1).unwrap();
+        drop(conn);
+        assert!(Database::new_empty().set_path(&p).is_err());
+    }
 
     /// Regression guard for the watcher re-index loop: the poll-fallback
     /// re-queues any file whose stored `videos.file_size_bytes` differs from
