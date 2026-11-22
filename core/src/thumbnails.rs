@@ -575,7 +575,7 @@ fn ffmpeg_extract_frame_to(
 /// `(seek, output)` job as a separate fast-seeked input and each is mapped to its
 /// own output with one frame. Outputs are written to temp names and renamed into
 /// place only if ffmpeg succeeded. A frame that fails to decode fails the whole
-/// run; the backend then retries frame by frame.
+/// run; the backend does not retry (launch bound).
 pub(crate) fn ffmpeg_extract_frames(
     video_path: &Path,
     color: &ColorInfo,
@@ -612,7 +612,7 @@ pub(crate) fn ffmpeg_extract_frames(
         Err(e) => Err(e),
     };
     // All-or-nothing: a failed run may leave a truncated output, so publish
-    // only after success. The caller falls back to per-frame extraction.
+    // only after success. The caller does not retry.
     for (tmp, (_, out)) in tmps.iter().zip(jobs) {
         if result.is_ok() && std::fs::rename(tmp, out).is_ok() {
             continue;
@@ -967,6 +967,42 @@ mod color_tests {
 mod cache_tests {
     use super::*;
     use std::collections::HashSet;
+
+    #[test]
+    fn publish_via_tmp_never_exposes_a_partial_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("p_large.jpg");
+        let full_a = vec![b'a'; 256 * 1024];
+        let full_b = vec![b'b'; 512 * 1024];
+        publish_via_tmp(&out, |t| std::fs::write(t, &full_a).map_err(ReelVaultError::IoError)).unwrap();
+        let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let readers: Vec<_> = (0..4)
+            .map(|_| {
+                let (out, stop, a, b) = (out.clone(), stop.clone(), full_a.clone(), full_b.clone());
+                std::thread::spawn(move || {
+                    while !stop.load(std::sync::atomic::Ordering::Relaxed) {
+                        let got = std::fs::read(&out).unwrap();
+                        assert!(got == a || got == b, "observed a partial file ({} bytes)", got.len());
+                    }
+                })
+            })
+            .collect();
+        for i in 0..50 {
+            let data = if i % 2 == 0 { &full_b } else { &full_a };
+            publish_via_tmp(&out, |t| std::fs::write(t, data).map_err(ReelVaultError::IoError)).unwrap();
+        }
+        // A failed producer must leave the published file untouched.
+        let _ = publish_via_tmp(&out, |t| {
+            std::fs::write(t, b"partial").unwrap();
+            Err(ReelVaultError::ThumbnailGenerationFailed("x".into()))
+        });
+        stop.store(true, std::sync::atomic::Ordering::Relaxed);
+        for r in readers {
+            r.join().unwrap();
+        }
+        let got = std::fs::read(&out).unwrap();
+        assert!(got == full_a || got == full_b);
+    }
 
     #[test]
     fn concurrent_readers_never_see_a_partial_file() {

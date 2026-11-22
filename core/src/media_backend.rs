@@ -210,14 +210,11 @@ impl MediaBackend for CliMediaBackend {
         quality: u8,
     ) -> Result<()> {
         let path = src.require_path()?;
-        if crate::thumbnails::ffmpeg_extract_frames(path, color, jobs, max_px, quality).is_ok() {
-            return Ok(());
-        }
-        // One bad position shouldn't cost the rest: retry frame by frame.
-        for (t, out) in jobs {
-            if let Err(e) = ffmpeg_extract_frame(path, color, *t, max_px, quality, out) {
-                tracing::warn!("frame at t={:.3}s failed: {}", t, e);
-            }
+        // Exactly one launch, no per-frame retry: the "at most 2 ffmpeg launches per
+        // video" bound must hold on failure too. Frames missing after a failed run
+        // are simply absent (scrub is best-effort) and regenerate on demand.
+        if let Err(e) = crate::thumbnails::ffmpeg_extract_frames(path, color, jobs, max_px, quality) {
+            tracing::warn!("batched scrub extraction failed: {}", e);
         }
         Ok(())
     }
