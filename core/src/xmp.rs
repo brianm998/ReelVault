@@ -442,8 +442,8 @@ fn parse_exif_datetime(s: &str) -> Option<i64> {
     if let Ok(dt) = time::OffsetDateTime::parse(t, &time::format_description::well_known::Rfc3339) {
         return Some(crate::db::unix_ms(dt));
     }
-    crate::db::parse_naive_utc_ms(t, "[year]:[month]:[day] [hour]:[minute]:[second]")
-        .or_else(|| crate::db::parse_naive_utc_ms(t, "[year]-[month]-[day]T[hour]:[minute]:[second]"))
+    crate::db::parse_naive_utc_ms(t, "[year]:[month padding:none]:[day padding:none] [hour padding:none]:[minute padding:none]:[second padding:none]")
+        .or_else(|| crate::db::parse_naive_utc_ms(t, "[year]-[month padding:none]-[day padding:none]T[hour padding:none]:[minute padding:none]:[second padding:none]"))
 }
 
 /// EXIF `ExposureMode` integer code → human-readable label.
@@ -533,6 +533,8 @@ mod tests {
         assert_eq!(parse_exif_datetime("2026:01:18 16:22:02"), Some(1768753322000));
         assert_eq!(parse_exif_datetime("2026-01-18T16:22:02"), Some(1768753322000));
         assert_eq!(parse_exif_datetime("2026-01-18T18:22:02+02:00"), Some(1768753322000));
+        assert_eq!(parse_exif_datetime("2026:1:18 6:22:02"), Some(1768717322000));
+        assert_eq!(parse_exif_datetime("2026-1-8T16:2:2"), Some(1767888122000));
         assert_eq!(parse_exif_datetime("garbage"), None);
     }
 

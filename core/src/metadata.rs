@@ -1666,6 +1666,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn write_creation_time_tag_out_of_range_errors() {
+        let r = MetadataExtractor::write_creation_time_tag("/nonexistent.mp4", i64::MAX);
+        assert!(matches!(r, Err(ReelVaultError::MetadataExtractionFailed(_))));
+    }
+
+    #[test]
     fn creation_time_iso_format_and_parse() {
         assert_eq!(
             MetadataExtractor::format_creation_time_iso(1705314600123).as_deref(),

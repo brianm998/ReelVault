@@ -4,6 +4,14 @@
 use crate::error::{Result, ReelVaultError};
 use crate::metadata_keys::{self, SqlVal};
 
+use rusqlite::{params, Connection, OptionalExtension};
+use std::collections::{BTreeSet, HashSet};
+use std::ops::{Deref, DerefMut};
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, RwLock};
+use std::time::Duration;
+use uuid::Uuid;
+
 /// Current Unix time in whole seconds (UTC).
 pub(crate) fn now_secs() -> i64 {
     time::OffsetDateTime::now_utc().unix_timestamp()
@@ -26,13 +34,6 @@ pub(crate) fn parse_naive_utc_ms(s: &str, fmt: &str) -> Option<i64> {
     let p = time::PrimitiveDateTime::parse(s, &desc).ok()?;
     Some(unix_ms(p.assume_utc()))
 }
-use rusqlite::{params, Connection, OptionalExtension};
-use std::collections::{BTreeSet, HashSet};
-use std::ops::{Deref, DerefMut};
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex, RwLock};
-use std::time::Duration;
-use uuid::Uuid;
 
 /// SQLite catalog the daemon currently serves. The pool is interior-mutable
 /// so the gRPC `OpenCatalog` / `CloseCatalog` RPCs can swap which file backs
