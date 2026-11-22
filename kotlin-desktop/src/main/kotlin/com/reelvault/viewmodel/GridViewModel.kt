@@ -3034,7 +3034,7 @@ class GridViewModel(
     // upgraded static (non-hover) frame. Both fill incrementally so each scrub
     // location upgrades as soon as its frame arrives, and survive a cancel so
     // returning to the video resumes rather than refetches.
-    private val _hiResScrubFrames = MutableStateFlow<VersionedMap<List<ByteArray?>>>(VersionedMap.empty())
+    private val _hiResScrubFrames = MutableStateFlow<Map<String, List<ByteArray?>>>(emptyMap())
     val hiResScrubFrames: StateFlow<Map<String, List<ByteArray?>>> = _hiResScrubFrames.asStateFlow()
     private val _hiResPoster = MutableStateFlow<Map<String, ByteArray?>>(emptyMap())
     val hiResPoster: StateFlow<Map<String, ByteArray?>> = _hiResPoster.asStateFlow()
