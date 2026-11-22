@@ -112,6 +112,9 @@ public final class SyncProfileStore: ObservableObject {
         out.filterJson = p.filterJson
         out.targetHeight = p.targetHeight
         out.deviceLabel = p.deviceLabel
+        out.lastRunMs = p.lastRunMs ?? 0
+        out.createdMs = p.createdMs ?? 0
+        out.updatedMs = p.updatedMs ?? 0
         if !p.collectionResolutions.isEmpty,
            let data = try? JSONEncoder().encode(p.collectionResolutions),
            let s = String(data: data, encoding: .utf8) {

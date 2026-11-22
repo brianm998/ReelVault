@@ -26,7 +26,7 @@ Follow-up (review fixes): legacy `reelvault.syncProfiles` UserDefaults profiles 
 
 ## Round 3 (split decision)
 
-The owner split #918: this change lands the partial work below; the rest moved to follow-up tasks.
+This change lands only part of #918; no owner approval of narrowing is recorded, so the remaining work below keeps #918's acceptance criteria open.
 
 Landed in this round:
 - `sync_e2e.rs` pull leg now downloads a *distinct* rendition (different bytes and hash from the original) via `PrepareRendition` + `/video`, ingests it through `sync::ingest_synced_into` (the function behind `embed::ingest_synced`, now returning the new video id), records the link by id and applies catalog data; a re-run transfers nothing.
@@ -38,7 +38,7 @@ Moved to follow-up tasks (not done here; `CatalogSyncFeature` stays OFF in kit a
 1. Kit pull with `ingest_synced` and `ApplyVideoCatalogData` (needs ingest id exposure over FFI, which the core function now supports).
 2. Apple push/pull byte transfer (Swift `SyncManager` is still the `notAvailable` scaffold).
 3. A production caller for `reconcile_catalog`/planner (RPC) or their deletion.
-4. Real-device verification of push/pull on one Apple and one Kotlin client, and removal of the O1 flag (owner).
+4. Real-device verification of push/pull on one Apple and one Kotlin client, and removal of the O1 flag .
 Open acceptance criteria: push/pull verified on real clients; O1 flag removed. The end-to-end test criterion is met in-process.
 Platform deviation: Kotlin got push streaming and zero-byte checks; Swift transfer is deferred (scaffold behind the flag).
 

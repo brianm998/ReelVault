@@ -34,12 +34,22 @@ pub fn ingest_synced_into(
     let video_id = crate::indexing::IndexingEngine::index_media_source(
         db, &source, path, &filename_owned, "path", path, cache,
     )?;
-    let conn = db.get_connection()?;
-    conn.execute(
-        "UPDATE videos SET is_derived = ?3, origin_hash = ?1 WHERE id = ?2",
-        rusqlite::params![origin_hash, &video_id, (derived_height > 0) as i32],
-    )
-    .map_err(|e| crate::error::ReelVaultError::DatabaseError(e.to_string()))?;
+    // The file is already indexed; a stamping failure must not turn that into
+    // an error (a retry would hit the same path), so warn and continue.
+    // (The old `video_locations` size UPDATE referenced a nonexistent
+    // `length_via_stat` column, always failed with its error ignored, and is
+    // intentionally not carried over; indexing records the size itself.)
+    match db.get_connection() {
+        Ok(conn) => {
+            if let Err(e) = conn.execute(
+                "UPDATE videos SET is_derived = ?3, origin_hash = ?1 WHERE id = ?2",
+                rusqlite::params![origin_hash, &video_id, (derived_height > 0) as i32],
+            ) {
+                tracing::warn!("ingest_synced: could not stamp provenance for {video_id}: {e}");
+            }
+        }
+        Err(e) => tracing::warn!("ingest_synced: no connection to stamp {video_id}: {e}"),
+    }
     let _ = events.send(crate::watcher::CatalogChange::VideoAdded {
         video_id: video_id.clone(),
         path: PathBuf::from(path),
