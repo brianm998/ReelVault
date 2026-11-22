@@ -24,11 +24,11 @@ pub const CODE_TTL: Duration = Duration::from_secs(300);
 pub struct PendingPairing {
     pub code: String,
     pub expires: Instant,
-    /// Wrong PINs submitted against this code; it is invalidated at [`MAX_ATTEMPTS`].
+    /// Wrong PINs submitted against this code; it is invalidated by wrong PIN number `MAX_ATTEMPTS + 1` (the 6th).
     pub failed_attempts: u32,
 }
 
-/// Wrong guesses after which a pending code is discarded.
+/// Wrong guesses tolerated; the next (6th) wrong one discards the pending code.
 pub const MAX_ATTEMPTS: u32 = 5;
 
 /// Longest `device_name` we keep (characters).
@@ -86,7 +86,7 @@ pub async fn redeem(state: &PairingState, entered: &str) -> Redeem {
         return Redeem::Ok;
     }
     pp.failed_attempts += 1;
-    if pp.failed_attempts >= MAX_ATTEMPTS {
+    if pp.failed_attempts > MAX_ATTEMPTS {
         *p = None;
         return Redeem::Invalidated;
     }

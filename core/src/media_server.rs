@@ -1719,7 +1719,11 @@ mod tests {
         let app = router(st.clone());
         for _ in 0..5 {
             assert_eq!(post_pair(&app, wrong).await, StatusCode::UNAUTHORIZED);
+            assert!(st.pairing.lock().await.is_some());
         }
+        // The 6th wrong PIN invalidates the code.
+        assert_eq!(post_pair(&app, wrong).await, StatusCode::UNAUTHORIZED);
+        assert!(st.pairing.lock().await.is_none());
         // The code is gone: even the correct PIN is now refused.
         assert_eq!(post_pair(&app, &code).await, StatusCode::UNAUTHORIZED);
         assert!(st.pairing.lock().await.is_none());
