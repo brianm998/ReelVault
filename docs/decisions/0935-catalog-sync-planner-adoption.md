@@ -41,3 +41,8 @@ Moved to follow-up tasks (not done here; `CatalogSyncFeature` stays OFF in kit a
 4. Real-device verification of push/pull on one Apple and one Kotlin client, and removal of the O1 flag (owner).
 Open acceptance criteria: push/pull verified on real clients; O1 flag removed. The end-to-end test criterion is met in-process.
 Platform deviation: Kotlin got push streaming and zero-byte checks; Swift transfer is deferred (scaffold behind the flag).
+
+## Round 4 (review 5845 fixes)
+
+- Kotlin `pushFile` (extracted from `pushVideo`, tested by `PushFileTest` with a fake remote): the remote's content-hash index is the link. Before uploading it calls `LookupByContentHash`; a hit skips the upload and only applies catalog data. So a finished push is not re-sent on a later run, and a retry after a failed `ApplyVideoCatalogData` applies to the already-indexed video instead of restarting from offset 0 (which duplicated it). The "full stale .part, restart from 0" branch now runs only when the remote has no video for the hash. There is no client RPC to record a core `sync_links` row; that remains with the reconcile RPC in #979-#982.
+- `core/tests/sync_e2e.rs` pull leg now mirrors exactly what the Kotlin pull does: PrepareRendition, `/video` download, `ingest_synced_into`, and stops. The earlier hand-written link + apply calls and the post-pull convergence assertion are gone, since no client performs them. The test is renamed `push_then_pull_download_and_ingest_between_two_daemons`; its doc comment states what it proves and does not prove.

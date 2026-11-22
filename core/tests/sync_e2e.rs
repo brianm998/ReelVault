@@ -5,8 +5,14 @@
 //! (chunked, `total_size` + `content_hash`), B indexes it and receives A's
 //! catalog data. Pull: B asks A's `PrepareRendition` for a download path and
 //! fetches it from A's `/video/<id>?height=` route, ingests it through
-//! `ingest_synced` and links it by id. `reconcile_catalog` then
-//! adopts the transferred copies instead of re-transferring them.
+//! `ingest_synced` (the Kotlin pull sequence, which ends at ingest).
+//!
+//! What this proves: chunked hash-verified push, corrupt-push refusal, hash
+//! adoption + marks merge via `reconcile_catalog`, and the pull's
+//! PrepareRendition -> `/video` -> ingest chain. What it does NOT prove: that a
+//! pulled rendition gets a sync link or catalog data (no client does that yet;
+//! #979-#982), nor the Kotlin push's remote hash lookup (covered by the
+//! `PushFileTest` unit test with a fake remote).
 mod common;
 
 use std::sync::Arc;
@@ -20,8 +26,7 @@ use reelvault_core::media_server::{router, MEDIA_CACHE_VERSION};
 use reelvault_core::metadata::FFProbeOutput;
 use reelvault_core::service::reelvault::reel_vault_server::ReelVault;
 use reelvault_core::service::reelvault::*;
-use reelvault_core::db::SyncLinkParams;
-use reelvault_core::sync::{ingest_synced_into, reconcile_catalog, SyncExecutor};
+use reelvault_core::sync::{ingest_synced_into, reconcile_catalog};
 use reelvault_core::thumbnails::ColorInfo;
 use tonic::Request as GrpcRequest;
 use tower::ServiceExt;
@@ -109,7 +114,7 @@ async fn push(app: &axum::Router, hdr: &str, name: &str, bytes: &[u8], hash: &st
 }
 
 #[tokio::test]
-async fn push_and_pull_between_two_daemons() {
+async fn push_then_pull_download_and_ingest_between_two_daemons() {
     set_backend(Arc::new(ProbeOnly));
     let a = Harness::new().await;
     let b = Harness::new().await;
@@ -198,11 +203,12 @@ async fn push_and_pull_between_two_daemons() {
     assert_eq!(got, rendition);
     assert_ne!(got, pull_bytes);
 
-    // Client side of a pull: write the download to a local file on A, then
-    // ingest it through the real `ingest_synced` path (provenance stamped,
-    // new local id returned), record the sync link by id (the rendition's
-    // hash differs from the original's, so hash adoption cannot find it) and
-    // copy B's catalog data onto it.
+    // Client side of the Kotlin pull (`SyncManager.pullVideo`): write the
+    // download to a local file on A, then ingest it through the real
+    // `ingest_synced` path (provenance stamped, new local id returned). The
+    // Kotlin client stops here: it records no link and applies no catalog data
+    // after ingest (that needs the id over FFI, tracked in #979-#982), so this
+    // test does not either.
     let landed = a.dir.path().join("second_480.mp4");
     std::fs::write(&landed, &got).unwrap();
     let (tx, _rx) = tokio::sync::broadcast::channel(16);
@@ -225,24 +231,4 @@ async fn push_and_pull_between_two_daemons() {
         })
         .unwrap();
     assert_eq!(ingested, (true, Some(phash.clone())), "derived copy stamped with the origin hash");
-    let data = b.db.get_video_catalog_data(&b2).unwrap().unwrap();
-    SyncExecutor::new(a.db.clone())
-        .update_sync_link_after_reconcile(&SyncLinkParams {
-            local_video_id: a_new.clone(),
-            peer_key: "peer-b".into(),
-            remote_video_id: b2.clone(),
-            origin_hash: Some(phash.clone()),
-            is_derived: true,
-            derived_height: Some(480),
-            local_rev: 0,
-            remote_rev: data.marks_rev,
-        })
-        .unwrap();
-    a.db.apply_video_catalog_data(&a_new, &data).unwrap();
-    assert_eq!(a.db.get_video_catalog_data(&a_new).unwrap().unwrap().rating, 3);
-
-    // Both sides now converge: the link (not a hash hit) stops a re-copy.
-    let manifest = b.db.get_sync_manifest_page(100, "").unwrap();
-    let again = reconcile_catalog(&a.db, "peer-b", &manifest, |id| b.db.get_video_catalog_data(id)).unwrap();
-    assert!(again.to_copy.is_empty(), "nothing left to transfer: {again:?}");
 }

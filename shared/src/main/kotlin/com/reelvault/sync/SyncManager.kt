@@ -65,9 +65,6 @@ class SyncManager(
 
     private val concurrencyLimit = 2
 
-    private companion object {
-        const val UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024
-    }
 
     @Volatile
     private var cancelled = false
@@ -203,42 +200,38 @@ class SyncManager(
 
             val client = com.reelvault.data.remote.PinnedTls.pinnedHttpClient(fingerprint)
             val base = "https://$remoteHost:$remoteMediaPort"
-            // Deterministic id so an interrupted push resumes (hex hash is alphanumeric).
-            val uploadId = "sync-" + entry.contentHash.filter { it.isLetterOrDigit() }.take(40)
-
-            var offset = queryBytesReceived(client, base, uploadId).coerceAtMost(total)
-            if (offset == total) offset = 0 // a stale full .part: restart rather than resend nothing
-            var remoteVideoId: String? = null
-            java.io.RandomAccessFile(file, "r").use { raf ->
-                while (offset < total) {
-                    val len = minOf(UPLOAD_CHUNK_BYTES.toLong(), total - offset).toInt()
-                    val chunk = ByteArray(len).also { raf.seek(offset); raf.readFully(it) }
-                    val url = "$base/upload?filename=${java.net.URLEncoder.encode(entry.filename, "UTF-8")}" +
+            val transport = object : PushTransport {
+                override fun bytesReceived(uploadId: String) = queryBytesReceived(client, base, uploadId)
+                override fun uploadChunk(uploadId: String, filename: String, total: Long, offset: Long, contentHash: String, chunk: ByteArray): String? {
+                    val url = "$base/upload?filename=${java.net.URLEncoder.encode(filename, "UTF-8")}" +
                         "&upload_id=$uploadId&total_size=$total&offset=$offset" +
-                        "&content_hash=${java.net.URLEncoder.encode(entry.contentHash, "UTF-8")}"
+                        "&content_hash=${java.net.URLEncoder.encode(contentHash, "UTF-8")}"
                     val req = okhttp3.Request.Builder().url(url)
                         .header("Authorization", "Bearer $token")
                         .post(chunk.toRequestBody("application/octet-stream".toMediaTypeOrNull()))
                         .build()
-                    client.newCall(req).execute().use { resp ->
+                    return client.newCall(req).execute().use { resp ->
                         if (!resp.isSuccessful) throw Exception("Upload failed: HTTP ${resp.code}")
                         val json = org.json.JSONObject(resp.body?.string().orEmpty())
-                        offset += len
-                        if (offset >= total) {
-                            remoteVideoId = json.optString("video_id").takeIf { it.isNotEmpty() && it != "null" }
-                        }
+                        json.optString("video_id").takeIf { it.isNotEmpty() && it != "null" }
                     }
-                    finish(SyncJobStatus.IN_FLIGHT, offset.toFloat() / total * 0.95f)
+                }
+                override suspend fun remoteVideoForHash(contentHash: String): String? =
+                    remoteStub.lookupByContentHash(
+                        Reelvault.LookupByContentHashRequest.newBuilder().addContentHash(contentHash).build()
+                    ).hitsList.firstOrNull { it.contentHash == contentHash }?.videoId
+                override suspend fun localCatalogData(videoId: String) = localStub.getVideoCatalogData(
+                    Reelvault.VideoCatalogDataRequest.newBuilder().setVideoId(videoId).build()
+                )
+                override suspend fun applyRemoteCatalogData(remoteVideoId: String, data: Reelvault.VideoCatalogData) {
+                    remoteStub.applyVideoCatalogData(
+                        Reelvault.ApplyCatalogDataRequest.newBuilder().setVideoId(remoteVideoId).setData(data).build()
+                    )
                 }
             }
-            val newId = remoteVideoId ?: throw Exception("${entry.filename}: remote did not index the upload")
-
-            val data = localStub.getVideoCatalogData(
-                Reelvault.VideoCatalogDataRequest.newBuilder().setVideoId(entry.videoId).build()
-            )
-            remoteStub.applyVideoCatalogData(
-                Reelvault.ApplyCatalogDataRequest.newBuilder().setVideoId(newId).setData(data).build()
-            )
+            pushFile(entry, file, total, transport) { offset ->
+                finish(SyncJobStatus.IN_FLIGHT, offset.toFloat() / total * 0.95f)
+            }
             finish(SyncJobStatus.DONE, 1f)
         } catch (e: Exception) {
             finish(SyncJobStatus.FAILED)
@@ -525,3 +518,52 @@ internal fun checkPushable(filename: String, file: File, contentHash: String): L
     if (contentHash.isEmpty()) throw Exception("$filename: content hash not computed yet")
     return total
 }
+
+/** Remote operations a push needs; faked in tests. */
+internal interface PushTransport {
+    fun bytesReceived(uploadId: String): Long
+    /** Sends one chunk; returns the remote video id once the final chunk was indexed. */
+    fun uploadChunk(uploadId: String, filename: String, total: Long, offset: Long, contentHash: String, chunk: ByteArray): String?
+    suspend fun remoteVideoForHash(contentHash: String): String?
+    suspend fun localCatalogData(videoId: String): Reelvault.VideoCatalogData
+    suspend fun applyRemoteCatalogData(remoteVideoId: String, data: Reelvault.VideoCatalogData)
+}
+
+/**
+ * The push sequence. The remote's content-hash index is the sync link: a
+ * video the remote already holds for [entry]'s hash is never re-uploaded
+ * (a finished push is not re-sent on a later run, and a retry after a
+ * failed ApplyVideoCatalogData just applies the catalog data to the
+ * already-indexed video, so no duplicate is created).
+ */
+internal suspend fun pushFile(
+    entry: Reelvault.SyncManifestEntry,
+    file: File,
+    total: Long,
+    t: PushTransport,
+    onProgress: (Long) -> Unit = {},
+) {
+    var remoteVideoId = t.remoteVideoForHash(entry.contentHash)
+    if (remoteVideoId == null) {
+        // Deterministic id so an interrupted push resumes (hex hash is alphanumeric).
+        val uploadId = "sync-" + entry.contentHash.filter { it.isLetterOrDigit() }.take(40)
+        var offset = t.bytesReceived(uploadId).coerceAtMost(total)
+        // Full .part but nothing indexed for the hash (checked above): resend so the server finalizes it.
+        if (offset == total) offset = 0
+        java.io.RandomAccessFile(file, "r").use { raf ->
+            while (offset < total) {
+                val len = minOf(UPLOAD_CHUNK_BYTES.toLong(), total - offset).toInt()
+                val chunk = ByteArray(len).also { raf.seek(offset); raf.readFully(it) }
+                val id = t.uploadChunk(uploadId, entry.filename, total, offset, entry.contentHash, chunk)
+                offset += len
+                if (offset >= total) remoteVideoId = id
+                onProgress(offset)
+            }
+        }
+        if (remoteVideoId == null) remoteVideoId = t.remoteVideoForHash(entry.contentHash)
+    }
+    val newId = remoteVideoId ?: throw Exception("${entry.filename}: remote did not index the upload")
+    t.applyRemoteCatalogData(newId, t.localCatalogData(entry.videoId))
+}
+
+internal const val UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024
