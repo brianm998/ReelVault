@@ -68,6 +68,10 @@ class SyncManager(
      */
     suspend fun startSync(profile: SyncProfile) {
         if (_isRunning.value) return
+        if (!CatalogSyncFeature.ENABLED) {
+            _lastResult.value = SyncRunResult(errors = listOf("Catalog sync is not available yet"))
+            return
+        }
         _isRunning.value = true
         cancelled = false
         _jobs.value = emptyList()
@@ -636,10 +640,11 @@ internal suspend fun pushFile(
     t.applyRemoteCatalogData(newId, t.localCatalogData(entry.videoId))
 }
 
-/** A remote-supplied filename reduced to a bare name (no path traversal). */
+/** A remote-supplied filename reduced to a bare, non-hidden name (no path traversal; leading/trailing dots trimmed). */
 internal fun safeSyncFilename(name: String): String {
     val base = name.substringAfterLast('/').substringAfterLast('\\')
-    return if (base.isBlank() || base.all { it == '.' }) "video" else base
+    val trimmed = base.trim('.')
+    return if (trimmed.isEmpty()) "video" else trimmed
 }
 
 internal const val UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024

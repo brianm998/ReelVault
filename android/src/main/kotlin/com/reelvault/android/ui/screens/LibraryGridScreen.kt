@@ -160,7 +160,7 @@ fun LibraryGridScreen(
 
     // ── Catalog sync (Local mode + a server has been paired) ─────────────
     // canSync mirrors iOS's canSync: local core running AND a paired remote exists.
-    val canSync = isLocal && uploadEndpoint != null
+    val canSync = com.reelvault.sync.CatalogSyncFeature.ENABLED && isLocal && uploadEndpoint != null
     var showSyncToRemote by remember { mutableStateOf(false) }
     var showSyncFromRemote by remember { mutableStateOf(false) }
 

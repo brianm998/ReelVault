@@ -60,6 +60,10 @@ public final class SyncManager: ObservableObject {
 
     public func startSync(profile: SyncProfile) async {
         guard !isRunning else { return }
+        guard CatalogSyncFeature.isEnabled else {
+            lastResult = SyncRunResult(errors: [SyncError.notAvailable.localizedDescription])
+            return
+        }
         isRunning = true
         defer { isRunning = false }
         jobs = []
@@ -612,6 +616,7 @@ public enum SyncError: LocalizedError {
     case invalidURL(String)
     case insufficientStorage(needed: Int64)
     case prepareFailed(String)
+    case notAvailable
 
     public var errorDescription: String? {
         switch self {
@@ -621,6 +626,8 @@ public enum SyncError: LocalizedError {
             return "Insufficient storage: need \(needed / 1_000_000) MB"
         case .prepareFailed(let detail):
             return "PrepareRendition failed: \(detail)"
+        case .notAvailable:
+            return "Catalog sync is not available yet"
         }
     }
 }

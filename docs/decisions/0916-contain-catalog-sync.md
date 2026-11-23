@@ -4,4 +4,4 @@ Sync could not transfer anything yet showed "synced". Until O2 lands, one flag p
 
 Update (task 918, split): O2 only partly landed (core adoption/reconcile, Kotlin resumable push, core-backed Apple profiles; see 0935). The flags stay OFF. Remaining work moved to follow-up tasks: kit pull, Apple byte transfer, a production planner caller (or its deletion), and real-device verification, after which the owner removes the O1 flag.
 
-Update (task 918, s942): O2 shipped and both flags were removed; the entry points and auto-sync are live.
+Update (task 918, s942): the transfer code is complete but both flags stay OFF (gates restored) until real-device push/pull verification in task #982, which also removes the flags. Nothing claims sync works end to end before then.

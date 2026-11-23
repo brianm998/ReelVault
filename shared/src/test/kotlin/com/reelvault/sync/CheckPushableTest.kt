@@ -44,5 +44,6 @@ class SafeSyncFilenameTest {
         org.junit.Assert.assertEquals("passwd", safeSyncFilename("../../etc/passwd"))
         org.junit.Assert.assertEquals("clip.mov", safeSyncFilename("clip.mov"))
         org.junit.Assert.assertEquals("video", safeSyncFilename(".."))
+        org.junit.Assert.assertEquals("hidden.mov", safeSyncFilename(".hidden.mov."))
     }
 }

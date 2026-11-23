@@ -40,7 +40,7 @@ enum SyncPush {
     static func safeFilename(_ name: String) -> String {
         let base = (name as NSString).lastPathComponent
         let trimmed = base.trimmingCharacters(in: CharacterSet(charactersIn: "."))
-        return trimmed.isEmpty ? "video" : base
+        return trimmed.isEmpty ? "video" : trimmed
     }
 
     /// Push one file: skip the upload when the remote already indexed the hash,

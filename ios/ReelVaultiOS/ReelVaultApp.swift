@@ -64,6 +64,7 @@ struct ReelVaultApp: App {
 /// flagged auto-sync on this device, and drives a one-shot SyncManager.
 @MainActor
 private func triggerAutoSync(router: AppRouter) async {
+    guard CatalogSyncFeature.isEnabled else { return }
     guard let localPort = LocalCore.port else { return }
     let store = SyncProfileStore(localPort: localPort)
     await store.load()

@@ -48,15 +48,15 @@ pub fn reconcile_catalog(
             SyncAction::AdoptLocal { .. } | SyncAction::SkipFileReconcileData { marks_changed: true, .. }
         );
         let data = if needs_data {
-            // A missing result must not look like success: apply() would
-            // advance the link's remote_rev and the marks would never retry.
+            // A missing result must not look like success (apply() would
+            // advance the link's remote_rev and the marks would never retry),
+            // and must not abort the pass either: defer this one entry (its
+            // link stays as it was, so the next pass retries) and carry on.
             match fetch_remote_data(&item.source_video_id)? {
                 Some(d) => Some(d),
                 None => {
-                    return Err(crate::error::ReelVaultError::VideoNotFound(format!(
-                        "peer returned no catalog data for video {}; link left stale",
-                        item.source_video_id
-                    )))
+                    out.deferred += 1;
+                    continue;
                 }
             }
         } else {
@@ -122,8 +122,9 @@ mod two_catalog_tests {
         assert_eq!(b.get_video_catalog_data(&b1).unwrap().unwrap().rating, 2);
     }
 
-    /// A peer that cannot supply catalog data must leave the link stale (an
-    /// error), not advance remote_rev and drop the marks for good.
+    /// A peer that cannot supply catalog data for one entry (its original was
+    /// deleted or re-hashed) must leave that link stale and be deferred, not
+    /// advance remote_rev and not abort the rest of the pass.
     #[test]
     fn missing_remote_data_leaves_link_stale() {
         let tmp = tempfile::tempdir().unwrap();
@@ -136,10 +137,44 @@ mod two_catalog_tests {
         b.set_content_hash(&b1, "h1").unwrap();
 
         let manifest = a.get_sync_manifest_page(100, "").unwrap();
-        assert!(reconcile_catalog(&b, "peerA", &manifest, |_| Ok(None)).is_err());
+        let skipped = reconcile_catalog(&b, "peerA", &manifest, |_| Ok(None)).unwrap();
+        assert_eq!((skipped.adopted, skipped.deferred), (0, 1));
+        assert_eq!(b.get_video_catalog_data(&b1).unwrap().unwrap().rating, 0);
         // Retry with data available still adopts and merges.
         let r = reconcile_catalog(&b, "peerA", &manifest, |id| a.get_video_catalog_data(id)).unwrap();
         assert_eq!(r.adopted, 1);
         assert_eq!(b.get_video_catalog_data(&b1).unwrap().unwrap().rating, 4);
+    }
+
+    /// One entry's missing peer data must not stop the other entries.
+    #[test]
+    fn missing_data_for_one_entry_does_not_abort_the_pass() {
+        let tmp = tempfile::tempdir().unwrap();
+        let a = open(tmp.path(), "a.db");
+        let b = open(tmp.path(), "b.db");
+        let mut ids = Vec::new();
+        for (i, h) in ["h1", "h2"].iter().enumerate() {
+            let p = format!("/a/{i}.mov");
+            let f = format!("{i}.mov");
+            let id = a.add_video(&p, &f, None, None, Some(10)).unwrap();
+            a.set_content_hash(&id, h).unwrap();
+            a.update_video_rating(&id, 4).unwrap();
+            let bid = b.add_video(&format!("/b/{i}.mov"), &f, None, None, Some(10)).unwrap();
+            b.set_content_hash(&bid, h).unwrap();
+            ids.push((id, bid));
+        }
+        let manifest = a.get_sync_manifest_page(100, "").unwrap();
+        let missing = ids[0].0.clone();
+        let r = reconcile_catalog(&b, "peerA", &manifest, |id| {
+            if id == missing { Ok(None) } else { a.get_video_catalog_data(id) }
+        })
+        .unwrap();
+        assert_eq!((r.adopted, r.deferred), (1, 1));
+        assert_eq!(b.get_video_catalog_data(&ids[0].1).unwrap().unwrap().rating, 0);
+        assert_eq!(b.get_video_catalog_data(&ids[1].1).unwrap().unwrap().rating, 4);
+        // Next pass with data available picks the deferred one up.
+        let r = reconcile_catalog(&b, "peerA", &manifest, |id| a.get_video_catalog_data(id)).unwrap();
+        assert_eq!(r.adopted + r.marks_reconciled, 1);
+        assert_eq!(b.get_video_catalog_data(&ids[0].1).unwrap().unwrap().rating, 4);
     }
 }

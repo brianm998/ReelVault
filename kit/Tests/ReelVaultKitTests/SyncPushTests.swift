@@ -72,5 +72,6 @@ final class SyncPushTests: XCTestCase {
         XCTAssertEqual(SyncPush.safeFilename("../../etc/passwd"), "passwd")
         XCTAssertEqual(SyncPush.safeFilename("clip.mov"), "clip.mov")
         XCTAssertEqual(SyncPush.safeFilename(".."), "video")
+        XCTAssertEqual(SyncPush.safeFilename(".hidden.mov."), "hidden.mov")
     }
 }
