@@ -13,7 +13,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.PinDrop
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -122,7 +122,7 @@ fun MapVideoListPanel(
             com.reelvault.ui.components.Tooltip(text = "Hide this panel (Tab)") {
                 IconButton(onClick = onCollapse) {
                     Icon(
-                        imageVector = Icons.Default.KeyboardArrowRight,
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = "Collapse panel",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

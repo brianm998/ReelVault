@@ -116,7 +116,11 @@ impl RateLimiter {
 
     /// Record a hit for `key`; false if it exceeds the limit.
     pub fn allow(&self, key: &str) -> bool {
-        let now = Instant::now();
+        self.allow_at(key, Instant::now())
+    }
+
+    /// Like `allow`, with an explicit clock reading (deterministic tests).
+    pub fn allow_at(&self, key: &str, now: Instant) -> bool {
         let mut m = self.hits.lock().unwrap_or_else(|e| e.into_inner());
         if m.len() > 4096 {
             let w = self.window;

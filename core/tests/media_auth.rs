@@ -22,7 +22,6 @@ const PROTECTED: &[(&str, &str)] = &[
     ("POST", "/upload?filename=a.mp4"),
     ("POST", "/upload?filename=a.mp4&upload_id=abc&total_size=3"),
     ("POST", "/upload/abc/status"),
-    ("POST", "/upload/vid1/catalog-data"),
     ("GET", "/video/vid1"),
     ("GET", "/video/vid1?height=480"),
     ("GET", "/hls/vid1/720/index.m3u8"),

@@ -7,7 +7,6 @@ use crate::error::{Result, ReelVaultError};
 use crate::indexing::IndexingEngine;
 use crate::metadata_keys;
 use crate::path_templates::expand_path_templates;
-use crate::search::SearchEngine;
 use crate::thumbnails::ThumbnailGenerator;
 use crate::watcher::{CatalogChange, LibraryWatcher};
 use std::pin::Pin;
@@ -131,6 +130,8 @@ impl ReelVaultService {
             data_dir,
         };
 
+        service.spawn_cache_maintenance();
+
         // Boot the watcher if config says so and a catalog is open.
         // Done on a Tokio task so `new` stays synchronous.
         if config.watch_enabled && service.db.current_path().is_some() {
@@ -141,6 +142,41 @@ impl ReelVaultService {
         }
 
         service
+    }
+
+    /// Bounded background sweep of cache files whose video is gone. Rows are
+    /// never purged here (soft-delete stays reversible). Any cache dir may be
+    /// shared, so the sweep uses the registry of catalogs that have used it and
+    /// skips if any can't be read.
+    fn spawn_cache_maintenance(&self) {
+        let Some(catalog_path) = self.db.current_path() else { return };
+        let cache = self.config.thumbnail_cache_path.clone();
+        tokio::task::spawn_blocking(move || {
+            // Always key on the registry: the catalog open now may not be the
+            // one whose config chose this directory.
+            ThumbnailGenerator::register_catalog(&cache, &catalog_path);
+            let (ids, since) = match ThumbnailGenerator::shared_known_ids(&cache) {
+                Some((ids, since)) => (ids, Some(since)),
+                None => {
+                    tracing::warn!(
+                        "thumbnail sweep skipped: a catalog registered for {} cannot be read (current catalog {})",
+                        cache.display(),
+                        catalog_path.display()
+                    );
+                    return;
+                }
+            };
+            let n = ThumbnailGenerator::sweep_orphans_since(
+                &cache,
+                &ids,
+                std::time::Duration::from_secs(600),
+                5000,
+                since,
+            );
+            if n > 0 {
+                tracing::info!("thumbnail sweep removed {n} orphaned file(s)");
+            }
+        });
     }
 
     /// A sender on the catalog-change broadcast bus. The media server holds one
@@ -726,13 +762,17 @@ impl ReelVaultService {
     ///
     /// Missing rows keep the per-row defaults: no metadata → zeros, no marks
     /// → (0, ""), unknown id → online, no group → singleton.
-    fn build_video_summaries(&self, seeds: Vec<SummarySeed>) -> Vec<VideoSummary> {
+    #[allow(clippy::result_large_err)]
+    fn build_video_summaries(
+        &self,
+        seeds: Vec<SummarySeed>,
+    ) -> std::result::Result<Vec<VideoSummary>, Status> {
         use std::collections::HashMap;
 
         if seeds.is_empty() {
-            return Vec::new();
+            return Ok(Vec::new());
         }
-        let conn = self.db.get_connection().ok();
+        let conn = Some(self.db.get_connection().map_err(Status::from)?);
         let ids: Vec<&str> = seeds.iter().map(|s| s.id.as_str()).collect();
 
         // (is_online, group_id, proxy_of, is_derived) straight off the videos row.
@@ -954,7 +994,7 @@ impl ReelVaultService {
         let custom_overrides = self.load_custom_camera_names();
         let mut fullres_memo: HashMap<(String, i32, i32), i32> = HashMap::new();
 
-        seeds
+        Ok(seeds
             .into_iter()
             .map(|seed| {
                 let m = meta.remove(&seed.id).unwrap_or_default();
@@ -1081,7 +1121,7 @@ impl ReelVaultService {
                     is_derived,
                 }
             })
-            .collect()
+            .collect::<Vec<_>>())
     }
 }
 
@@ -1395,7 +1435,7 @@ impl ReelVaultTrait for ReelVaultService {
                     indexed_at: v.indexed_at,
                 })
                 .collect();
-            let video_summaries = svc.build_video_summaries(seeds);
+            let video_summaries = svc.build_video_summaries(seeds)?;
 
             Ok(Response::new(ListVideosResponse {
                 videos: video_summaries,
@@ -1415,26 +1455,38 @@ impl ReelVaultTrait for ReelVaultService {
             let limit = if req.limit <= 0 { 50 } else { req.limit as i64 };
             let offset = req.offset.max(0) as i64;
 
-            let (results, total_count) = SearchEngine::search(
-                svc.db.as_ref(),
-                &req.query,
-                limit,
-                offset,
-                &req.filter_tags,
-            )
-            .map_err(Status::from)?;
-
-            let seeds: Vec<SummarySeed> = results
+            // Delegate to the grid query so search results match the grid:
+            // grouped representatives only, no proxies or deleted rows.
+            let tag_ids: Vec<String> = req
+                .filter_tags
                 .iter()
-                .map(|r| SummarySeed {
-                    id: r.video_id.clone(),
-                    filename: r.filename.clone(),
-                    path: r.path.clone(),
-                    size_bytes: 0,
-                    indexed_at: 0,
+                .filter(|s| !s.is_empty())
+                .map(|s| match svc.db.get_tag_by_name(s) {
+                    Ok(Some(tag)) => tag.id,
+                    _ => s.clone(),
                 })
                 .collect();
-            let video_summaries = svc.build_video_summaries(seeds);
+            let spec = FilterSpec {
+                tag_ids,
+                search_query: req.query.clone(),
+                ..Default::default()
+            };
+            let (videos, total_count) = svc
+                .db
+                .list_videos_grouped(limit, offset, "", false, &spec)
+                .map_err(Status::from)?;
+
+            let seeds: Vec<SummarySeed> = videos
+                .iter()
+                .map(|v| SummarySeed {
+                    id: v.id.clone(),
+                    filename: v.filename.clone(),
+                    path: v.path.clone(),
+                    size_bytes: v.file_size_bytes.unwrap_or(0),
+                    indexed_at: v.indexed_at,
+                })
+                .collect();
+            let video_summaries = svc.build_video_summaries(seeds)?;
 
             Ok(Response::new(SearchResponse {
                 videos: video_summaries,
@@ -1502,18 +1554,38 @@ impl ReelVaultTrait for ReelVaultService {
         // the requested one. Without this the card shows the film-icon
         // placeholder forever — GetThumbnail returns NOT_FOUND, which tells the
         // client to stop asking — even though only scrub frames self-healed.
+        // A still made by an older pipeline version (blurry upscaled large) is
+        // regenerated lazily on access; the old bytes stay as a fallback if
+        // regeneration fails (e.g. the source volume is offline).
+        let mut stale_fallback = None;
+        if req.max_width == 0
+            && thumbnail_data.is_some()
+            && matches!(req.size.as_str(), "small" | "medium" | "large")
+            && !ThumbnailGenerator::stills_current(&self.config.thumbnail_cache_path, &req.video_id)
+        {
+            stale_fallback = thumbnail_data.take();
+        }
         if req.max_width == 0 && thumbnail_data.is_none() && !req.size.starts_with("scrub_") {
             let lock = self.scrub_lock_for(&req.video_id).await;
             let _gen_guard = lock.lock().await;
 
             // Double-check: another waiter may have generated it meanwhile.
-            thumbnail_data = read_cached_thumbnail(
-                self.config.thumbnail_cache_path.clone(),
-                req.video_id.clone(),
-                req.size.clone(),
-                0,
-            )
-            .await?;
+            // A stale still on disk counts as a miss unless it was refreshed
+            // meanwhile (stills_current), so regeneration actually runs.
+            if stale_fallback.is_none()
+                || ThumbnailGenerator::stills_current(
+                    &self.config.thumbnail_cache_path,
+                    &req.video_id,
+                )
+            {
+                thumbnail_data = read_cached_thumbnail(
+                    self.config.thumbnail_cache_path.clone(),
+                    req.video_id.clone(),
+                    req.size.clone(),
+                    0,
+                )
+                .await?;
+            }
 
             if thumbnail_data.is_none() {
                 {
@@ -1556,6 +1628,9 @@ impl ReelVaultTrait for ReelVaultService {
                 }
             }
 
+            if thumbnail_data.is_none() {
+                thumbnail_data = stale_fallback.take();
+            }
             drop(_gen_guard);
             if Arc::strong_count(&lock) == 2 {
                 let mut map = self.scrub_locks.lock().await;
@@ -1765,10 +1840,24 @@ impl ReelVaultTrait for ReelVaultService {
     ) -> std::result::Result<Response<LocationResponse>, Status> {
         let req = request.into_inner();
 
+        // Collect the ids first: the rows are hard-deleted below, and their
+        // cached thumbnails would otherwise stay forever.
         let path = req.path.clone();
-        let deleted = self
-            .run_blocking(move |svc| svc.db.remove_library_location(&path).map_err(Status::from))
+        let (doomed, deleted) = self
+            .run_blocking(move |svc| {
+                let doomed = svc.db.video_ids_under(&path).unwrap_or_default();
+                let deleted = svc.db.remove_library_location(&path).map_err(Status::from)?;
+                Ok((doomed, deleted))
+            })
             .await?;
+        {
+            let cache = self.config.thumbnail_cache_path.clone();
+            tokio::task::spawn_blocking(move || {
+                for id in doomed {
+                    let _ = ThumbnailGenerator::cleanup_thumbnails(&cache, &id);
+                }
+            });
+        }
 
         // Drop this path from the watcher.
         let handle = self.clone_for_watcher();
@@ -2460,6 +2549,9 @@ impl ReelVaultTrait for ReelVaultService {
             }
 
             svc.db.delete_video(&req.video_id).map_err(Status::from)?;
+            // Soft delete keeps the row (undelete is possible) but not its
+            // cache files; thumbnails regenerate lazily if it comes back.
+            let _ = ThumbnailGenerator::cleanup_thumbnails(&svc.config.thumbnail_cache_path, &req.video_id);
 
             Ok(Response::new(reelvault::Response {
                 success: true,
@@ -2492,7 +2584,7 @@ impl ReelVaultTrait for ReelVaultService {
                     });
                 }
             }
-            let members = svc.build_video_summaries(seeds);
+            let members = svc.build_video_summaries(seeds)?;
 
             let preferred = svc
                 .db
@@ -3129,7 +3221,8 @@ impl ReelVaultTrait for ReelVaultService {
             // request-time decisions (max_native_playback_height,
             // proxy_target_height) are re-read from the config table on every
             // GenerateProxy, so this UPSERT is enough for them.
-            if let Ok(conn) = svc.db.get_connection() {
+            let conn = svc.db.get_connection().map_err(Status::from)?;
+            {
                 let pairs: &[(&str, String)] = &[
                     ("max_native_playback_height", req.max_native_playback_height.clamp(0, 7680).to_string()),
                     ("proxy_target_height", req.proxy_target_height.clamp(144, 4320).to_string()),
@@ -3138,11 +3231,12 @@ impl ReelVaultTrait for ReelVaultService {
                     ("auto_tag_timelapses", req.auto_tag_timelapses.to_string()),
                 ];
                 for (key, value) in pairs {
-                    let _ = conn.execute(
+                    conn.execute(
                         "INSERT INTO config (key, value) VALUES (?, ?)
                          ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP",
                         rusqlite::params![key, value, value],
-                    );
+                    )
+                    .map_err(|e| Status::internal(format!("failed to save config {key}: {e}")))?;
                 }
             }
             Ok(Response::new(reelvault::Response {
@@ -3201,6 +3295,8 @@ impl ReelVaultTrait for ReelVaultService {
         // Restart the watcher so it observes those instead of the old set.
         let handle = self.clone_for_watcher();
         tokio::spawn(async move { handle.restart_watcher().await });
+
+        self.spawn_cache_maintenance();
 
         let info = self
             .run_blocking(move |svc| Ok(catalog_info_from(svc.db.as_ref(), opened)))

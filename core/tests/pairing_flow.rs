@@ -204,11 +204,12 @@ fn rate_limiter_blocks_after_max_per_key() {
 
 #[test]
 fn rate_limiter_window_expires() {
-    let rl = pairing::RateLimiter::new(1, std::time::Duration::from_millis(30));
-    assert!(rl.allow("a"));
-    assert!(!rl.allow("a"));
-    std::thread::sleep(std::time::Duration::from_millis(60));
-    assert!(rl.allow("a"));
+    let d = std::time::Duration::from_millis;
+    let t0 = std::time::Instant::now();
+    let rl = pairing::RateLimiter::new(1, d(30));
+    assert!(rl.allow_at("a", t0));
+    assert!(!rl.allow_at("a", t0));
+    assert!(rl.allow_at("a", t0 + d(60)));
 }
 
 #[test]

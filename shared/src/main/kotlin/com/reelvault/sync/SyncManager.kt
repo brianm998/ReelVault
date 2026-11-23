@@ -105,7 +105,7 @@ class SyncManager(
     // ── Push (TO_REMOTE) ──────────────────────────────────────────────────
 
     private suspend fun runPush(profile: SyncProfile): SyncRunResult {
-        var total = 0
+        var total: Int
         var completed = 0
         var failed = 0
         val errors = mutableListOf<String>()
@@ -243,7 +243,7 @@ class SyncManager(
     // ── Pull (FROM_REMOTE) ────────────────────────────────────────────────
 
     private suspend fun runPull(profile: SyncProfile): SyncRunResult {
-        var total = 0
+        var total: Int
         var completed = 0
         var failed = 0
         val errors = mutableListOf<String>()
@@ -416,7 +416,7 @@ class SyncManager(
 
         // 2. Download the rendition.
         val remoteMediaBase = "https://$remoteHost:$remoteMediaPort"
-        val downloadUrl = java.net.URL("$remoteMediaBase$downloadPath")
+        val downloadUrl = java.net.URI("$remoteMediaBase$downloadPath").toURL()
         val destDir = File(System.getProperty("user.home", "/tmp"), "ReelVaultSynced").also { it.mkdirs() }
         val destFile = File(destDir, safeSyncFilename(entry.filename))
 
