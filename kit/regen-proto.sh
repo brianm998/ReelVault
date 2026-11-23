@@ -8,9 +8,11 @@
 # Requirements:
 #   - protoc
 #   - protoc-gen-swift           (SwiftProtobuf plugin)
-#   - protoc-gen-grpc-swift      (grpc-swift **v2** plugin — must match the pinned
-#                                  grpc-swift-protobuf 1.3.1 in Package.swift; a v1
-#                                  plugin emits `import GRPC` which will not compile)
+#   - protoc-gen-grpc-swift-2    (grpc-swift-protobuf 2.x plugin — must match the pinned
+#                                  grpc-swift-protobuf 2.4.0 in Package.swift; build it with
+#                                  `swift build -c release --product protoc-gen-grpc-swift-2`
+#                                  and copy it to ~/.local/bin; a v1 plugin emits
+#                                  `import GRPC` which will not compile)
 #
 # Verify the grpc plugin is v2 by checking the output imports `GRPCCore`.
 set -euo pipefail
@@ -19,21 +21,21 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 PROTO_DIR="$HERE/../core/proto"
 OUT_DIR="$HERE/Sources/ReelVaultKit/Generated"
 PLUGIN_SWIFT="$HOME/.local/bin/protoc-gen-swift"
-PLUGIN_GRPC="$HOME/.local/bin/protoc-gen-grpc-swift"
+PLUGIN_GRPC="$HOME/.local/bin/protoc-gen-grpc-swift-2"
 
 mkdir -p "$OUT_DIR"
 
 protoc \
   --plugin=protoc-gen-swift="$PLUGIN_SWIFT" \
-  --plugin=protoc-gen-grpc-swift="$PLUGIN_GRPC" \
+  --plugin=protoc-gen-grpc-swift-2="$PLUGIN_GRPC" \
   --swift_out="$OUT_DIR" --swift_opt=Visibility=Public \
-  --grpc-swift_out="$OUT_DIR" --grpc-swift_opt=Visibility=Public \
+  --grpc-swift-2_out="$OUT_DIR" --grpc-swift-2_opt=Visibility=Public \
   -I "$PROTO_DIR" \
   "$PROTO_DIR/reelvault.proto"
 
 # Sanity check: the gRPC stubs must be the v2 flavor.
 if ! grep -q "^import GRPCCore" "$OUT_DIR/reelvault.grpc.swift"; then
-  echo "ERROR: generated reelvault.grpc.swift is not grpc-swift v2 (no 'import GRPCCore')." >&2
+  echo "ERROR: generated reelvault.grpc.swift is not the grpc-swift-protobuf 2.x output (no 'import GRPCCore')." >&2
   echo "       Your protoc-gen-grpc-swift is the wrong version. See Package.swift pin." >&2
   exit 1
 fi
