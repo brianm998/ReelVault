@@ -61,3 +61,5 @@ The earlier rounds' "still open" lists are closed here; they are kept above as h
 - **Filenames**: `safeFilename` (Swift) and `safeSyncFilename` (Kotlin) return the dot-trimmed, non-hidden name.
 - **Known limit**: a pulled *downscaled* copy has a different hash from the peer's original, so the next pull plans it as a copy again (no origin-hash lookup yet). Full-size pulls converge by hash.
 - **Not verified**: push/pull on a real Apple client and a real Kotlin client against a live daemon (criterion 2) could not be run here (no GUI/device runs). Evidence: `core/tests/sync_e2e.rs` (two in-process daemons, whole RPC sequence incl. `ReconcileCatalog`, `IngestSyncedFile`, `ApplyVideoCatalogData`), `kit` `SyncPushTests`, `shared` `PushFileTest`/`CheckPushableTest`.
+
+- **Device verification and flag removal**: see 1001 (open).
