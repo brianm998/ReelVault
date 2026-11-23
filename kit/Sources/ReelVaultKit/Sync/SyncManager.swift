@@ -527,7 +527,7 @@ public final class SyncManager: ObservableObject {
     /// Builds an HTTP/2 transport for the LOCAL embedded core (plaintext loopback).
     private func makeLocalTransport() throws -> HTTP2ClientTransport.Posix {
         try HTTP2ClientTransport.Posix(
-            target: .ipv4(host: "127.0.0.1", port: localPort),
+            target: .ipv4(address: "127.0.0.1", port: localPort),
             transportSecurity: .plaintext
         )
     }
@@ -552,12 +552,12 @@ public final class SyncManager: ObservableObject {
     ) throws -> HTTP2ClientTransport.Posix {
         if IPv4Address(remoteHost) != nil {
             return try HTTP2ClientTransport.Posix(
-                target: .ipv4(host: remoteHost, port: remotePort),
+                target: .ipv4(address: remoteHost, port: remotePort),
                 transportSecurity: tls
             )
         } else if IPv6Address(remoteHost) != nil {
             return try HTTP2ClientTransport.Posix(
-                target: .ipv6(host: remoteHost, port: remotePort),
+                target: .ipv6(address: remoteHost, port: remotePort),
                 transportSecurity: tls
             )
         } else {

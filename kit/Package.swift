@@ -21,18 +21,18 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.28.0"),
-        .package(url: "https://github.com/grpc/grpc-swift.git", from: "2.2.1"),
+        .package(url: "https://github.com/grpc/grpc-swift-2.git", from: "2.4.0"),
         // Pinned exactly: the generated *.grpc.swift is produced by this plugin
         // version; a mismatch makes the stubs fail to compile (see project memory).
-        .package(url: "https://github.com/grpc/grpc-swift-protobuf.git", exact: "1.3.1"),
-        .package(url: "https://github.com/grpc/grpc-swift-nio-transport.git", from: "1.0.0"),
+        .package(url: "https://github.com/grpc/grpc-swift-protobuf.git", exact: "2.4.0"),
+        .package(url: "https://github.com/grpc/grpc-swift-nio-transport.git", from: "2.8.0"),
     ],
     targets: [
         .target(
             name: "ReelVaultKit",
             dependencies: [
                 .product(name: "SwiftProtobuf", package: "swift-protobuf"),
-                .product(name: "GRPCCore", package: "grpc-swift"),
+                .product(name: "GRPCCore", package: "grpc-swift-2"),
                 .product(name: "GRPCProtobuf", package: "grpc-swift-protobuf"),
                 .product(name: "GRPCNIOTransportHTTP2", package: "grpc-swift-nio-transport"),
             ],

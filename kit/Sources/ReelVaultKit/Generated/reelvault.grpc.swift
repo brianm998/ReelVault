@@ -18,13 +18,13 @@ import GRPCProtobuf
 
 /// Namespace containing generated types for the "reelvault.ReelVault" service.
 @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-public enum Reelvault_ReelVault {
+public enum Reelvault_ReelVault: Sendable {
     /// Service descriptor for the "reelvault.ReelVault" service.
     public static let descriptor = GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault")
     /// Namespace for method metadata.
-    public enum Method {
+    public enum Method: Sendable {
         /// Namespace for "ListVideos" metadata.
-        public enum ListVideos {
+        public enum ListVideos: Sendable {
             /// Request type for "ListVideos".
             public typealias Input = Reelvault_ListVideosRequest
             /// Response type for "ListVideos".
@@ -32,11 +32,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListVideos".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListVideos"
+                method: "ListVideos",
+                type: .unary
             )
         }
         /// Namespace for "SearchVideos" metadata.
-        public enum SearchVideos {
+        public enum SearchVideos: Sendable {
             /// Request type for "SearchVideos".
             public typealias Input = Reelvault_SearchRequest
             /// Response type for "SearchVideos".
@@ -44,11 +45,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "SearchVideos".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "SearchVideos"
+                method: "SearchVideos",
+                type: .unary
             )
         }
         /// Namespace for "GetMetadata" metadata.
-        public enum GetMetadata {
+        public enum GetMetadata: Sendable {
             /// Request type for "GetMetadata".
             public typealias Input = Reelvault_GetMetadataRequest
             /// Response type for "GetMetadata".
@@ -56,11 +58,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetMetadata".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetMetadata"
+                method: "GetMetadata",
+                type: .unary
             )
         }
         /// Namespace for "GetThumbnail" metadata.
-        public enum GetThumbnail {
+        public enum GetThumbnail: Sendable {
             /// Request type for "GetThumbnail".
             public typealias Input = Reelvault_GetThumbnailRequest
             /// Response type for "GetThumbnail".
@@ -68,11 +71,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetThumbnail".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetThumbnail"
+                method: "GetThumbnail",
+                type: .serverStreaming
             )
         }
         /// Namespace for "AddLibraryLocation" metadata.
-        public enum AddLibraryLocation {
+        public enum AddLibraryLocation: Sendable {
             /// Request type for "AddLibraryLocation".
             public typealias Input = Reelvault_AddLocationRequest
             /// Response type for "AddLibraryLocation".
@@ -80,11 +84,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "AddLibraryLocation".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "AddLibraryLocation"
+                method: "AddLibraryLocation",
+                type: .unary
             )
         }
         /// Namespace for "RemoveLibraryLocation" metadata.
-        public enum RemoveLibraryLocation {
+        public enum RemoveLibraryLocation: Sendable {
             /// Request type for "RemoveLibraryLocation".
             public typealias Input = Reelvault_RemoveLocationRequest
             /// Response type for "RemoveLibraryLocation".
@@ -92,11 +97,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "RemoveLibraryLocation".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "RemoveLibraryLocation"
+                method: "RemoveLibraryLocation",
+                type: .unary
             )
         }
         /// Namespace for "ListLibraryLocations" metadata.
-        public enum ListLibraryLocations {
+        public enum ListLibraryLocations: Sendable {
             /// Request type for "ListLibraryLocations".
             public typealias Input = Reelvault_ListLocationsRequest
             /// Response type for "ListLibraryLocations".
@@ -104,11 +110,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListLibraryLocations".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListLibraryLocations"
+                method: "ListLibraryLocations",
+                type: .unary
             )
         }
         /// Namespace for "ListSubdirectories" metadata.
-        public enum ListSubdirectories {
+        public enum ListSubdirectories: Sendable {
             /// Request type for "ListSubdirectories".
             public typealias Input = Reelvault_ListSubdirectoriesRequest
             /// Response type for "ListSubdirectories".
@@ -116,11 +123,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListSubdirectories".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListSubdirectories"
+                method: "ListSubdirectories",
+                type: .unary
             )
         }
         /// Namespace for "ScanLibrary" metadata.
-        public enum ScanLibrary {
+        public enum ScanLibrary: Sendable {
             /// Request type for "ScanLibrary".
             public typealias Input = Reelvault_ScanLibraryRequest
             /// Response type for "ScanLibrary".
@@ -128,11 +136,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ScanLibrary".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ScanLibrary"
+                method: "ScanLibrary",
+                type: .serverStreaming
             )
         }
         /// Namespace for "GetScanStatus" metadata.
-        public enum GetScanStatus {
+        public enum GetScanStatus: Sendable {
             /// Request type for "GetScanStatus".
             public typealias Input = Reelvault_GetScanStatusRequest
             /// Response type for "GetScanStatus".
@@ -140,11 +149,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetScanStatus".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetScanStatus"
+                method: "GetScanStatus",
+                type: .unary
             )
         }
         /// Namespace for "CreateTag" metadata.
-        public enum CreateTag {
+        public enum CreateTag: Sendable {
             /// Request type for "CreateTag".
             public typealias Input = Reelvault_CreateTagRequest
             /// Response type for "CreateTag".
@@ -152,11 +162,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "CreateTag".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "CreateTag"
+                method: "CreateTag",
+                type: .unary
             )
         }
         /// Namespace for "DeleteTag" metadata.
-        public enum DeleteTag {
+        public enum DeleteTag: Sendable {
             /// Request type for "DeleteTag".
             public typealias Input = Reelvault_DeleteTagRequest
             /// Response type for "DeleteTag".
@@ -164,11 +175,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "DeleteTag".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "DeleteTag"
+                method: "DeleteTag",
+                type: .unary
             )
         }
         /// Namespace for "ListTags" metadata.
-        public enum ListTags {
+        public enum ListTags: Sendable {
             /// Request type for "ListTags".
             public typealias Input = Reelvault_ListTagsRequest
             /// Response type for "ListTags".
@@ -176,11 +188,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListTags".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListTags"
+                method: "ListTags",
+                type: .unary
             )
         }
         /// Namespace for "TagVideos" metadata.
-        public enum TagVideos {
+        public enum TagVideos: Sendable {
             /// Request type for "TagVideos".
             public typealias Input = Reelvault_TagVideosRequest
             /// Response type for "TagVideos".
@@ -188,11 +201,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "TagVideos".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "TagVideos"
+                method: "TagVideos",
+                type: .unary
             )
         }
         /// Namespace for "UntagVideos" metadata.
-        public enum UntagVideos {
+        public enum UntagVideos: Sendable {
             /// Request type for "UntagVideos".
             public typealias Input = Reelvault_UntagVideosRequest
             /// Response type for "UntagVideos".
@@ -200,11 +214,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UntagVideos".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UntagVideos"
+                method: "UntagVideos",
+                type: .unary
             )
         }
         /// Namespace for "CreateCollection" metadata.
-        public enum CreateCollection {
+        public enum CreateCollection: Sendable {
             /// Request type for "CreateCollection".
             public typealias Input = Reelvault_CreateCollectionRequest
             /// Response type for "CreateCollection".
@@ -212,11 +227,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "CreateCollection".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "CreateCollection"
+                method: "CreateCollection",
+                type: .unary
             )
         }
         /// Namespace for "DeleteCollection" metadata.
-        public enum DeleteCollection {
+        public enum DeleteCollection: Sendable {
             /// Request type for "DeleteCollection".
             public typealias Input = Reelvault_DeleteCollectionRequest
             /// Response type for "DeleteCollection".
@@ -224,11 +240,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "DeleteCollection".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "DeleteCollection"
+                method: "DeleteCollection",
+                type: .unary
             )
         }
         /// Namespace for "ListCollections" metadata.
-        public enum ListCollections {
+        public enum ListCollections: Sendable {
             /// Request type for "ListCollections".
             public typealias Input = Reelvault_ListCollectionsRequest
             /// Response type for "ListCollections".
@@ -236,11 +253,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListCollections".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListCollections"
+                method: "ListCollections",
+                type: .unary
             )
         }
         /// Namespace for "AddToCollection" metadata.
-        public enum AddToCollection {
+        public enum AddToCollection: Sendable {
             /// Request type for "AddToCollection".
             public typealias Input = Reelvault_AddToCollectionRequest
             /// Response type for "AddToCollection".
@@ -248,11 +266,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "AddToCollection".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "AddToCollection"
+                method: "AddToCollection",
+                type: .unary
             )
         }
         /// Namespace for "RemoveFromCollection" metadata.
-        public enum RemoveFromCollection {
+        public enum RemoveFromCollection: Sendable {
             /// Request type for "RemoveFromCollection".
             public typealias Input = Reelvault_RemoveFromCollectionRequest
             /// Response type for "RemoveFromCollection".
@@ -260,11 +279,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "RemoveFromCollection".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "RemoveFromCollection"
+                method: "RemoveFromCollection",
+                type: .unary
             )
         }
         /// Namespace for "UpdateVideoNotes" metadata.
-        public enum UpdateVideoNotes {
+        public enum UpdateVideoNotes: Sendable {
             /// Request type for "UpdateVideoNotes".
             public typealias Input = Reelvault_UpdateNotesRequest
             /// Response type for "UpdateVideoNotes".
@@ -272,11 +292,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UpdateVideoNotes".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateVideoNotes"
+                method: "UpdateVideoNotes",
+                type: .unary
             )
         }
         /// Namespace for "DeleteVideo" metadata.
-        public enum DeleteVideo {
+        public enum DeleteVideo: Sendable {
             /// Request type for "DeleteVideo".
             public typealias Input = Reelvault_DeleteVideoRequest
             /// Response type for "DeleteVideo".
@@ -284,11 +305,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "DeleteVideo".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "DeleteVideo"
+                method: "DeleteVideo",
+                type: .unary
             )
         }
         /// Namespace for "ListGroupMembers" metadata.
-        public enum ListGroupMembers {
+        public enum ListGroupMembers: Sendable {
             /// Request type for "ListGroupMembers".
             public typealias Input = Reelvault_ListGroupMembersRequest
             /// Response type for "ListGroupMembers".
@@ -296,11 +318,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListGroupMembers".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListGroupMembers"
+                method: "ListGroupMembers",
+                type: .unary
             )
         }
         /// Namespace for "CreateGroup" metadata.
-        public enum CreateGroup {
+        public enum CreateGroup: Sendable {
             /// Request type for "CreateGroup".
             public typealias Input = Reelvault_CreateGroupRequest
             /// Response type for "CreateGroup".
@@ -308,11 +331,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "CreateGroup".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "CreateGroup"
+                method: "CreateGroup",
+                type: .unary
             )
         }
         /// Namespace for "UngroupVideo" metadata.
-        public enum UngroupVideo {
+        public enum UngroupVideo: Sendable {
             /// Request type for "UngroupVideo".
             public typealias Input = Reelvault_UngroupVideoRequest
             /// Response type for "UngroupVideo".
@@ -320,11 +344,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UngroupVideo".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UngroupVideo"
+                method: "UngroupVideo",
+                type: .unary
             )
         }
         /// Namespace for "SetGroupPreferred" metadata.
-        public enum SetGroupPreferred {
+        public enum SetGroupPreferred: Sendable {
             /// Request type for "SetGroupPreferred".
             public typealias Input = Reelvault_SetGroupPreferredRequest
             /// Response type for "SetGroupPreferred".
@@ -332,11 +357,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "SetGroupPreferred".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "SetGroupPreferred"
+                method: "SetGroupPreferred",
+                type: .unary
             )
         }
         /// Namespace for "AutoGroupVideos" metadata.
-        public enum AutoGroupVideos {
+        public enum AutoGroupVideos: Sendable {
             /// Request type for "AutoGroupVideos".
             public typealias Input = Reelvault_AutoGroupRequest
             /// Response type for "AutoGroupVideos".
@@ -344,11 +370,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "AutoGroupVideos".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "AutoGroupVideos"
+                method: "AutoGroupVideos",
+                type: .unary
             )
         }
         /// Namespace for "GenerateProxy" metadata.
-        public enum GenerateProxy {
+        public enum GenerateProxy: Sendable {
             /// Request type for "GenerateProxy".
             public typealias Input = Reelvault_GenerateProxyRequest
             /// Response type for "GenerateProxy".
@@ -356,11 +383,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GenerateProxy".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GenerateProxy"
+                method: "GenerateProxy",
+                type: .serverStreaming
             )
         }
         /// Namespace for "ListProxies" metadata.
-        public enum ListProxies {
+        public enum ListProxies: Sendable {
             /// Request type for "ListProxies".
             public typealias Input = Reelvault_ListProxiesRequest
             /// Response type for "ListProxies".
@@ -368,11 +396,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListProxies".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListProxies"
+                method: "ListProxies",
+                type: .unary
             )
         }
         /// Namespace for "SetProxyOf" metadata.
-        public enum SetProxyOf {
+        public enum SetProxyOf: Sendable {
             /// Request type for "SetProxyOf".
             public typealias Input = Reelvault_SetProxyOfRequest
             /// Response type for "SetProxyOf".
@@ -380,11 +409,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "SetProxyOf".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "SetProxyOf"
+                method: "SetProxyOf",
+                type: .unary
             )
         }
         /// Namespace for "RemoveProxyLink" metadata.
-        public enum RemoveProxyLink {
+        public enum RemoveProxyLink: Sendable {
             /// Request type for "RemoveProxyLink".
             public typealias Input = Reelvault_RemoveProxyLinkRequest
             /// Response type for "RemoveProxyLink".
@@ -392,11 +422,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "RemoveProxyLink".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "RemoveProxyLink"
+                method: "RemoveProxyLink",
+                type: .unary
             )
         }
         /// Namespace for "DetectProxies" metadata.
-        public enum DetectProxies {
+        public enum DetectProxies: Sendable {
             /// Request type for "DetectProxies".
             public typealias Input = Reelvault_DetectProxiesRequest
             /// Response type for "DetectProxies".
@@ -404,11 +435,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "DetectProxies".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "DetectProxies"
+                method: "DetectProxies",
+                type: .unary
             )
         }
         /// Namespace for "AttachProxies" metadata.
-        public enum AttachProxies {
+        public enum AttachProxies: Sendable {
             /// Request type for "AttachProxies".
             public typealias Input = Reelvault_AttachProxiesRequest
             /// Response type for "AttachProxies".
@@ -416,11 +448,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "AttachProxies".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "AttachProxies"
+                method: "AttachProxies",
+                type: .unary
             )
         }
         /// Namespace for "GetFilterOptions" metadata.
-        public enum GetFilterOptions {
+        public enum GetFilterOptions: Sendable {
             /// Request type for "GetFilterOptions".
             public typealias Input = Reelvault_GetFilterOptionsRequest
             /// Response type for "GetFilterOptions".
@@ -428,11 +461,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetFilterOptions".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetFilterOptions"
+                method: "GetFilterOptions",
+                type: .unary
             )
         }
         /// Namespace for "GetMetadataFacets" metadata.
-        public enum GetMetadataFacets {
+        public enum GetMetadataFacets: Sendable {
             /// Request type for "GetMetadataFacets".
             public typealias Input = Reelvault_MetadataFacetsRequest
             /// Response type for "GetMetadataFacets".
@@ -440,11 +474,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetMetadataFacets".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetMetadataFacets"
+                method: "GetMetadataFacets",
+                type: .unary
             )
         }
         /// Namespace for "GetStatus" metadata.
-        public enum GetStatus {
+        public enum GetStatus: Sendable {
             /// Request type for "GetStatus".
             public typealias Input = Reelvault_GetStatusRequest
             /// Response type for "GetStatus".
@@ -452,11 +487,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetStatus".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetStatus"
+                method: "GetStatus",
+                type: .unary
             )
         }
         /// Namespace for "GetConfig" metadata.
-        public enum GetConfig {
+        public enum GetConfig: Sendable {
             /// Request type for "GetConfig".
             public typealias Input = Reelvault_GetConfigRequest
             /// Response type for "GetConfig".
@@ -464,11 +500,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetConfig".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetConfig"
+                method: "GetConfig",
+                type: .unary
             )
         }
         /// Namespace for "UpdateConfig" metadata.
-        public enum UpdateConfig {
+        public enum UpdateConfig: Sendable {
             /// Request type for "UpdateConfig".
             public typealias Input = Reelvault_UpdateConfigRequest
             /// Response type for "UpdateConfig".
@@ -476,11 +513,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UpdateConfig".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateConfig"
+                method: "UpdateConfig",
+                type: .unary
             )
         }
         /// Namespace for "StartPairing" metadata.
-        public enum StartPairing {
+        public enum StartPairing: Sendable {
             /// Request type for "StartPairing".
             public typealias Input = Reelvault_StartPairingRequest
             /// Response type for "StartPairing".
@@ -488,11 +526,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "StartPairing".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "StartPairing"
+                method: "StartPairing",
+                type: .unary
             )
         }
         /// Namespace for "OpenCatalog" metadata.
-        public enum OpenCatalog {
+        public enum OpenCatalog: Sendable {
             /// Request type for "OpenCatalog".
             public typealias Input = Reelvault_OpenCatalogRequest
             /// Response type for "OpenCatalog".
@@ -500,11 +539,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "OpenCatalog".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "OpenCatalog"
+                method: "OpenCatalog",
+                type: .unary
             )
         }
         /// Namespace for "CloseCatalog" metadata.
-        public enum CloseCatalog {
+        public enum CloseCatalog: Sendable {
             /// Request type for "CloseCatalog".
             public typealias Input = Reelvault_CloseCatalogRequest
             /// Response type for "CloseCatalog".
@@ -512,11 +552,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "CloseCatalog".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "CloseCatalog"
+                method: "CloseCatalog",
+                type: .unary
             )
         }
         /// Namespace for "GetCurrentCatalog" metadata.
-        public enum GetCurrentCatalog {
+        public enum GetCurrentCatalog: Sendable {
             /// Request type for "GetCurrentCatalog".
             public typealias Input = Reelvault_GetCurrentCatalogRequest
             /// Response type for "GetCurrentCatalog".
@@ -524,11 +565,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetCurrentCatalog".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetCurrentCatalog"
+                method: "GetCurrentCatalog",
+                type: .unary
             )
         }
         /// Namespace for "UpdateVideoLocation" metadata.
-        public enum UpdateVideoLocation {
+        public enum UpdateVideoLocation: Sendable {
             /// Request type for "UpdateVideoLocation".
             public typealias Input = Reelvault_UpdateVideoLocationRequest
             /// Response type for "UpdateVideoLocation".
@@ -536,11 +578,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UpdateVideoLocation".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateVideoLocation"
+                method: "UpdateVideoLocation",
+                type: .unary
             )
         }
         /// Namespace for "ListVideosWithLocations" metadata.
-        public enum ListVideosWithLocations {
+        public enum ListVideosWithLocations: Sendable {
             /// Request type for "ListVideosWithLocations".
             public typealias Input = Reelvault_ListVideosWithLocationsRequest
             /// Response type for "ListVideosWithLocations".
@@ -548,11 +591,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListVideosWithLocations".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListVideosWithLocations"
+                method: "ListVideosWithLocations",
+                type: .unary
             )
         }
         /// Namespace for "ListNamedLocations" metadata.
-        public enum ListNamedLocations {
+        public enum ListNamedLocations: Sendable {
             /// Request type for "ListNamedLocations".
             public typealias Input = Reelvault_ListNamedLocationsRequest
             /// Response type for "ListNamedLocations".
@@ -560,11 +604,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListNamedLocations".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListNamedLocations"
+                method: "ListNamedLocations",
+                type: .unary
             )
         }
         /// Namespace for "UpsertNamedLocation" metadata.
-        public enum UpsertNamedLocation {
+        public enum UpsertNamedLocation: Sendable {
             /// Request type for "UpsertNamedLocation".
             public typealias Input = Reelvault_UpsertNamedLocationRequest
             /// Response type for "UpsertNamedLocation".
@@ -572,11 +617,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UpsertNamedLocation".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpsertNamedLocation"
+                method: "UpsertNamedLocation",
+                type: .unary
             )
         }
         /// Namespace for "DeleteNamedLocation" metadata.
-        public enum DeleteNamedLocation {
+        public enum DeleteNamedLocation: Sendable {
             /// Request type for "DeleteNamedLocation".
             public typealias Input = Reelvault_DeleteNamedLocationRequest
             /// Response type for "DeleteNamedLocation".
@@ -584,11 +630,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "DeleteNamedLocation".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "DeleteNamedLocation"
+                method: "DeleteNamedLocation",
+                type: .unary
             )
         }
         /// Namespace for "UpdateVideoCaptureDate" metadata.
-        public enum UpdateVideoCaptureDate {
+        public enum UpdateVideoCaptureDate: Sendable {
             /// Request type for "UpdateVideoCaptureDate".
             public typealias Input = Reelvault_UpdateVideoCaptureDateRequest
             /// Response type for "UpdateVideoCaptureDate".
@@ -596,11 +643,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UpdateVideoCaptureDate".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateVideoCaptureDate"
+                method: "UpdateVideoCaptureDate",
+                type: .unary
             )
         }
         /// Namespace for "UpdateVideoRating" metadata.
-        public enum UpdateVideoRating {
+        public enum UpdateVideoRating: Sendable {
             /// Request type for "UpdateVideoRating".
             public typealias Input = Reelvault_UpdateVideoRatingRequest
             /// Response type for "UpdateVideoRating".
@@ -608,11 +656,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UpdateVideoRating".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateVideoRating"
+                method: "UpdateVideoRating",
+                type: .unary
             )
         }
         /// Namespace for "UpdateVideoColorLabel" metadata.
-        public enum UpdateVideoColorLabel {
+        public enum UpdateVideoColorLabel: Sendable {
             /// Request type for "UpdateVideoColorLabel".
             public typealias Input = Reelvault_UpdateVideoColorLabelRequest
             /// Response type for "UpdateVideoColorLabel".
@@ -620,11 +669,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UpdateVideoColorLabel".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateVideoColorLabel"
+                method: "UpdateVideoColorLabel",
+                type: .unary
             )
         }
         /// Namespace for "GetGridSettings" metadata.
-        public enum GetGridSettings {
+        public enum GetGridSettings: Sendable {
             /// Request type for "GetGridSettings".
             public typealias Input = Reelvault_GetGridSettingsRequest
             /// Response type for "GetGridSettings".
@@ -632,11 +682,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetGridSettings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetGridSettings"
+                method: "GetGridSettings",
+                type: .unary
             )
         }
         /// Namespace for "UpdateGridSettings" metadata.
-        public enum UpdateGridSettings {
+        public enum UpdateGridSettings: Sendable {
             /// Request type for "UpdateGridSettings".
             public typealias Input = Reelvault_GridSettings
             /// Response type for "UpdateGridSettings".
@@ -644,11 +695,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UpdateGridSettings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateGridSettings"
+                method: "UpdateGridSettings",
+                type: .unary
             )
         }
         /// Namespace for "SubscribeCatalogEvents" metadata.
-        public enum SubscribeCatalogEvents {
+        public enum SubscribeCatalogEvents: Sendable {
             /// Request type for "SubscribeCatalogEvents".
             public typealias Input = Reelvault_SubscribeCatalogEventsRequest
             /// Response type for "SubscribeCatalogEvents".
@@ -656,11 +708,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "SubscribeCatalogEvents".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "SubscribeCatalogEvents"
+                method: "SubscribeCatalogEvents",
+                type: .serverStreaming
             )
         }
         /// Namespace for "GetWatchSettings" metadata.
-        public enum GetWatchSettings {
+        public enum GetWatchSettings: Sendable {
             /// Request type for "GetWatchSettings".
             public typealias Input = Reelvault_GetWatchSettingsRequest
             /// Response type for "GetWatchSettings".
@@ -668,11 +721,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetWatchSettings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetWatchSettings"
+                method: "GetWatchSettings",
+                type: .unary
             )
         }
         /// Namespace for "UpdateWatchSettings" metadata.
-        public enum UpdateWatchSettings {
+        public enum UpdateWatchSettings: Sendable {
             /// Request type for "UpdateWatchSettings".
             public typealias Input = Reelvault_WatchSettings
             /// Response type for "UpdateWatchSettings".
@@ -680,11 +734,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UpdateWatchSettings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateWatchSettings"
+                method: "UpdateWatchSettings",
+                type: .unary
             )
         }
         /// Namespace for "ListCameraNameMappings" metadata.
-        public enum ListCameraNameMappings {
+        public enum ListCameraNameMappings: Sendable {
             /// Request type for "ListCameraNameMappings".
             public typealias Input = Reelvault_ListCameraNameMappingsRequest
             /// Response type for "ListCameraNameMappings".
@@ -692,11 +747,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListCameraNameMappings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListCameraNameMappings"
+                method: "ListCameraNameMappings",
+                type: .unary
             )
         }
         /// Namespace for "SetCameraNameMapping" metadata.
-        public enum SetCameraNameMapping {
+        public enum SetCameraNameMapping: Sendable {
             /// Request type for "SetCameraNameMapping".
             public typealias Input = Reelvault_SetCameraNameMappingRequest
             /// Response type for "SetCameraNameMapping".
@@ -704,11 +760,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "SetCameraNameMapping".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "SetCameraNameMapping"
+                method: "SetCameraNameMapping",
+                type: .unary
             )
         }
         /// Namespace for "ListLensNameMappings" metadata.
-        public enum ListLensNameMappings {
+        public enum ListLensNameMappings: Sendable {
             /// Request type for "ListLensNameMappings".
             public typealias Input = Reelvault_ListLensNameMappingsRequest
             /// Response type for "ListLensNameMappings".
@@ -716,11 +773,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListLensNameMappings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListLensNameMappings"
+                method: "ListLensNameMappings",
+                type: .unary
             )
         }
         /// Namespace for "SetLensNameMapping" metadata.
-        public enum SetLensNameMapping {
+        public enum SetLensNameMapping: Sendable {
             /// Request type for "SetLensNameMapping".
             public typealias Input = Reelvault_SetLensNameMappingRequest
             /// Response type for "SetLensNameMapping".
@@ -728,11 +786,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "SetLensNameMapping".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "SetLensNameMapping"
+                method: "SetLensNameMapping",
+                type: .unary
             )
         }
         /// Namespace for "GetSyncManifest" metadata.
-        public enum GetSyncManifest {
+        public enum GetSyncManifest: Sendable {
             /// Request type for "GetSyncManifest".
             public typealias Input = Reelvault_SyncManifestRequest
             /// Response type for "GetSyncManifest".
@@ -740,11 +799,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetSyncManifest".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetSyncManifest"
+                method: "GetSyncManifest",
+                type: .serverStreaming
             )
         }
         /// Namespace for "LookupByContentHash" metadata.
-        public enum LookupByContentHash {
+        public enum LookupByContentHash: Sendable {
             /// Request type for "LookupByContentHash".
             public typealias Input = Reelvault_LookupByContentHashRequest
             /// Response type for "LookupByContentHash".
@@ -752,11 +812,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "LookupByContentHash".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "LookupByContentHash"
+                method: "LookupByContentHash",
+                type: .unary
             )
         }
         /// Namespace for "GetVideoCatalogData" metadata.
-        public enum GetVideoCatalogData {
+        public enum GetVideoCatalogData: Sendable {
             /// Request type for "GetVideoCatalogData".
             public typealias Input = Reelvault_VideoCatalogDataRequest
             /// Response type for "GetVideoCatalogData".
@@ -764,11 +825,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetVideoCatalogData".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetVideoCatalogData"
+                method: "GetVideoCatalogData",
+                type: .unary
             )
         }
         /// Namespace for "ApplyVideoCatalogData" metadata.
-        public enum ApplyVideoCatalogData {
+        public enum ApplyVideoCatalogData: Sendable {
             /// Request type for "ApplyVideoCatalogData".
             public typealias Input = Reelvault_ApplyCatalogDataRequest
             /// Response type for "ApplyVideoCatalogData".
@@ -776,11 +838,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ApplyVideoCatalogData".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ApplyVideoCatalogData"
+                method: "ApplyVideoCatalogData",
+                type: .unary
             )
         }
         /// Namespace for "PrepareRendition" metadata.
-        public enum PrepareRendition {
+        public enum PrepareRendition: Sendable {
             /// Request type for "PrepareRendition".
             public typealias Input = Reelvault_PrepareRenditionRequest
             /// Response type for "PrepareRendition".
@@ -788,11 +851,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "PrepareRendition".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "PrepareRendition"
+                method: "PrepareRendition",
+                type: .serverStreaming
             )
         }
         /// Namespace for "ReconcileCatalog" metadata.
-        public enum ReconcileCatalog {
+        public enum ReconcileCatalog: Sendable {
             /// Request type for "ReconcileCatalog".
             public typealias Input = Reelvault_ReconcileCatalogRequest
             /// Response type for "ReconcileCatalog".
@@ -800,11 +864,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ReconcileCatalog".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ReconcileCatalog"
+                method: "ReconcileCatalog",
+                type: .unary
             )
         }
         /// Namespace for "IngestSyncedFile" metadata.
-        public enum IngestSyncedFile {
+        public enum IngestSyncedFile: Sendable {
             /// Request type for "IngestSyncedFile".
             public typealias Input = Reelvault_IngestSyncedFileRequest
             /// Response type for "IngestSyncedFile".
@@ -812,11 +877,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "IngestSyncedFile".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "IngestSyncedFile"
+                method: "IngestSyncedFile",
+                type: .unary
             )
         }
         /// Namespace for "ListSyncProfiles" metadata.
-        public enum ListSyncProfiles {
+        public enum ListSyncProfiles: Sendable {
             /// Request type for "ListSyncProfiles".
             public typealias Input = Reelvault_ListSyncProfilesRequest
             /// Response type for "ListSyncProfiles".
@@ -824,11 +890,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListSyncProfiles".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListSyncProfiles"
+                method: "ListSyncProfiles",
+                type: .unary
             )
         }
         /// Namespace for "UpsertSyncProfile" metadata.
-        public enum UpsertSyncProfile {
+        public enum UpsertSyncProfile: Sendable {
             /// Request type for "UpsertSyncProfile".
             public typealias Input = Reelvault_UpsertSyncProfileRequest
             /// Response type for "UpsertSyncProfile".
@@ -836,11 +903,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UpsertSyncProfile".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpsertSyncProfile"
+                method: "UpsertSyncProfile",
+                type: .unary
             )
         }
         /// Namespace for "DeleteSyncProfile" metadata.
-        public enum DeleteSyncProfile {
+        public enum DeleteSyncProfile: Sendable {
             /// Request type for "DeleteSyncProfile".
             public typealias Input = Reelvault_DeleteSyncProfileRequest
             /// Response type for "DeleteSyncProfile".
@@ -848,11 +916,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "DeleteSyncProfile".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "DeleteSyncProfile"
+                method: "DeleteSyncProfile",
+                type: .unary
             )
         }
         /// Namespace for "GetSyncRun" metadata.
-        public enum GetSyncRun {
+        public enum GetSyncRun: Sendable {
             /// Request type for "GetSyncRun".
             public typealias Input = Reelvault_GetSyncRunRequest
             /// Response type for "GetSyncRun".
@@ -860,7 +929,8 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetSyncRun".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetSyncRun"
+                method: "GetSyncRun",
+                type: .unary
             )
         }
         /// Descriptors for all methods in the "reelvault.ReelVault" service.
@@ -954,8 +1024,9 @@ extension Reelvault_ReelVault {
     /// This protocol is the lowest-level of the service protocols generated for this service
     /// giving you the most flexibility over the implementation of your service. This comes at
     /// the cost of more verbose and less strict APIs. Each RPC requires you to implement it in
-    /// terms of a request stream and response stream. Where only a single request or response
-    /// message is expected, you are responsible for enforcing this invariant is maintained.
+    /// terms of a request stream and response stream. Where the RPC expects only a single
+    /// request or response message, you are responsible for ensuring your implementation
+    /// maintains this invariant.
     ///
     /// Where possible, prefer using the stricter, less-verbose ``ServiceProtocol``
     /// or ``SimpleServiceProtocol`` instead.
@@ -6908,9 +6979,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListVideosRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListVideosResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func listVideos<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListVideosRequest>,
@@ -6927,9 +6998,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_SearchRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_SearchResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func searchVideos<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SearchRequest>,
@@ -6946,9 +7017,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetMetadataRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_VideoMetadata` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func getMetadata<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetMetadataRequest>,
@@ -6965,9 +7036,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetThumbnailRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ThumbnailChunk` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func getThumbnail<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetThumbnailRequest>,
@@ -6988,9 +7059,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_AddLocationRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_LocationResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func addLibraryLocation<Result>(
             request: GRPCCore.ClientRequest<Reelvault_AddLocationRequest>,
@@ -7007,9 +7078,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_RemoveLocationRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_LocationResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func removeLibraryLocation<Result>(
             request: GRPCCore.ClientRequest<Reelvault_RemoveLocationRequest>,
@@ -7026,9 +7097,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListLocationsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListLocationsResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func listLibraryLocations<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListLocationsRequest>,
@@ -7052,9 +7123,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListSubdirectoriesRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListSubdirectoriesResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func listSubdirectories<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListSubdirectoriesRequest>,
@@ -7071,9 +7142,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ScanLibraryRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ScanProgress` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func scanLibrary<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ScanLibraryRequest>,
@@ -7090,9 +7161,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetScanStatusRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ScanStatusResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func getScanStatus<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetScanStatusRequest>,
@@ -7113,9 +7184,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_CreateTagRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_TagResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func createTag<Result>(
             request: GRPCCore.ClientRequest<Reelvault_CreateTagRequest>,
@@ -7132,9 +7203,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_DeleteTagRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func deleteTag<Result>(
             request: GRPCCore.ClientRequest<Reelvault_DeleteTagRequest>,
@@ -7151,9 +7222,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListTagsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListTagsResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func listTags<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListTagsRequest>,
@@ -7170,9 +7241,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_TagVideosRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func tagVideos<Result>(
             request: GRPCCore.ClientRequest<Reelvault_TagVideosRequest>,
@@ -7189,9 +7260,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UntagVideosRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func untagVideos<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UntagVideosRequest>,
@@ -7212,9 +7283,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_CreateCollectionRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_CollectionResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func createCollection<Result>(
             request: GRPCCore.ClientRequest<Reelvault_CreateCollectionRequest>,
@@ -7231,9 +7302,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_DeleteCollectionRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func deleteCollection<Result>(
             request: GRPCCore.ClientRequest<Reelvault_DeleteCollectionRequest>,
@@ -7250,9 +7321,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListCollectionsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListCollectionsResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func listCollections<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListCollectionsRequest>,
@@ -7269,9 +7340,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_AddToCollectionRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func addToCollection<Result>(
             request: GRPCCore.ClientRequest<Reelvault_AddToCollectionRequest>,
@@ -7288,9 +7359,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_RemoveFromCollectionRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func removeFromCollection<Result>(
             request: GRPCCore.ClientRequest<Reelvault_RemoveFromCollectionRequest>,
@@ -7311,9 +7382,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UpdateNotesRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func updateVideoNotes<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpdateNotesRequest>,
@@ -7330,9 +7401,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_DeleteVideoRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func deleteVideo<Result>(
             request: GRPCCore.ClientRequest<Reelvault_DeleteVideoRequest>,
@@ -7353,9 +7424,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListGroupMembersRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListGroupMembersResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func listGroupMembers<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListGroupMembersRequest>,
@@ -7372,9 +7443,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_CreateGroupRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_GroupResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func createGroup<Result>(
             request: GRPCCore.ClientRequest<Reelvault_CreateGroupRequest>,
@@ -7391,9 +7462,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UngroupVideoRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func ungroupVideo<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UngroupVideoRequest>,
@@ -7410,9 +7481,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_SetGroupPreferredRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func setGroupPreferred<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SetGroupPreferredRequest>,
@@ -7429,9 +7500,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_AutoGroupRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_AutoGroupResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func autoGroupVideos<Result>(
             request: GRPCCore.ClientRequest<Reelvault_AutoGroupRequest>,
@@ -7452,9 +7523,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GenerateProxyRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ProxyGenerationProgress` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func generateProxy<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GenerateProxyRequest>,
@@ -7471,9 +7542,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListProxiesRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListProxiesResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func listProxies<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListProxiesRequest>,
@@ -7490,9 +7561,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_SetProxyOfRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func setProxyOf<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SetProxyOfRequest>,
@@ -7509,9 +7580,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_RemoveProxyLinkRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func removeProxyLink<Result>(
             request: GRPCCore.ClientRequest<Reelvault_RemoveProxyLinkRequest>,
@@ -7528,9 +7599,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_DetectProxiesRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_DetectProxiesResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func detectProxies<Result>(
             request: GRPCCore.ClientRequest<Reelvault_DetectProxiesRequest>,
@@ -7547,9 +7618,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_AttachProxiesRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_AttachProxiesResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func attachProxies<Result>(
             request: GRPCCore.ClientRequest<Reelvault_AttachProxiesRequest>,
@@ -7570,9 +7641,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetFilterOptionsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_FilterOptions` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func getFilterOptions<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetFilterOptionsRequest>,
@@ -7598,9 +7669,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_MetadataFacetsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_MetadataFacetsResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func getMetadataFacets<Result>(
             request: GRPCCore.ClientRequest<Reelvault_MetadataFacetsRequest>,
@@ -7621,9 +7692,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetStatusRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_StatusResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func getStatus<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetStatusRequest>,
@@ -7640,9 +7711,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetConfigRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ConfigResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func getConfig<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetConfigRequest>,
@@ -7659,9 +7730,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UpdateConfigRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func updateConfig<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpdateConfigRequest>,
@@ -7686,9 +7757,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_StartPairingRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_StartPairingResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func startPairing<Result>(
             request: GRPCCore.ClientRequest<Reelvault_StartPairingRequest>,
@@ -7711,9 +7782,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_OpenCatalogRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_CatalogInfo` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func openCatalog<Result>(
             request: GRPCCore.ClientRequest<Reelvault_OpenCatalogRequest>,
@@ -7730,9 +7801,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_CloseCatalogRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func closeCatalog<Result>(
             request: GRPCCore.ClientRequest<Reelvault_CloseCatalogRequest>,
@@ -7749,9 +7820,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetCurrentCatalogRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_CatalogInfo` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func getCurrentCatalog<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetCurrentCatalogRequest>,
@@ -7773,9 +7844,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UpdateVideoLocationRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func updateVideoLocation<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpdateVideoLocationRequest>,
@@ -7792,9 +7863,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListVideosWithLocationsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_VideoLocationsResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func listVideosWithLocations<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListVideosWithLocationsRequest>,
@@ -7818,9 +7889,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListNamedLocationsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_NamedLocationsResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func listNamedLocations<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListNamedLocationsRequest>,
@@ -7837,9 +7908,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UpsertNamedLocationRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_NamedLocationResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func upsertNamedLocation<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpsertNamedLocationRequest>,
@@ -7856,9 +7927,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_DeleteNamedLocationRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func deleteNamedLocation<Result>(
             request: GRPCCore.ClientRequest<Reelvault_DeleteNamedLocationRequest>,
@@ -7882,9 +7953,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UpdateVideoCaptureDateRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func updateVideoCaptureDate<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpdateVideoCaptureDateRequest>,
@@ -7908,9 +7979,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UpdateVideoRatingRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func updateVideoRating<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpdateVideoRatingRequest>,
@@ -7927,9 +7998,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UpdateVideoColorLabelRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func updateVideoColorLabel<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpdateVideoColorLabelRequest>,
@@ -7952,9 +8023,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetGridSettingsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_GridSettings` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func getGridSettings<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetGridSettingsRequest>,
@@ -7971,9 +8042,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GridSettings` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func updateGridSettings<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GridSettings>,
@@ -8001,9 +8072,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_SubscribeCatalogEventsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_CatalogEvent` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func subscribeCatalogEvents<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SubscribeCatalogEventsRequest>,
@@ -8027,9 +8098,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetWatchSettingsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_WatchSettings` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func getWatchSettings<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetWatchSettingsRequest>,
@@ -8046,9 +8117,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_WatchSettings` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func updateWatchSettings<Result>(
             request: GRPCCore.ClientRequest<Reelvault_WatchSettings>,
@@ -8077,9 +8148,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListCameraNameMappingsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListCameraNameMappingsResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func listCameraNameMappings<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListCameraNameMappingsRequest>,
@@ -8096,9 +8167,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_SetCameraNameMappingRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func setCameraNameMapping<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SetCameraNameMappingRequest>,
@@ -8126,9 +8197,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListLensNameMappingsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListLensNameMappingsResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func listLensNameMappings<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListLensNameMappingsRequest>,
@@ -8145,9 +8216,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_SetLensNameMappingRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func setLensNameMapping<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SetLensNameMappingRequest>,
@@ -8168,9 +8239,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_SyncManifestRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_SyncManifestEntry` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func getSyncManifest<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SyncManifestRequest>,
@@ -8187,9 +8258,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_LookupByContentHashRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_LookupByContentHashResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func lookupByContentHash<Result>(
             request: GRPCCore.ClientRequest<Reelvault_LookupByContentHashRequest>,
@@ -8206,9 +8277,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_VideoCatalogDataRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_VideoCatalogData` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func getVideoCatalogData<Result>(
             request: GRPCCore.ClientRequest<Reelvault_VideoCatalogDataRequest>,
@@ -8225,9 +8296,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ApplyCatalogDataRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func applyVideoCatalogData<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ApplyCatalogDataRequest>,
@@ -8244,9 +8315,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_PrepareRenditionRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_PrepareRenditionProgress` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func prepareRendition<Result>(
             request: GRPCCore.ClientRequest<Reelvault_PrepareRenditionRequest>,
@@ -8273,9 +8344,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ReconcileCatalogRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ReconcileCatalogResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func reconcileCatalog<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ReconcileCatalogRequest>,
@@ -8292,9 +8363,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_IngestSyncedFileRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_IngestSyncedFileResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func ingestSyncedFile<Result>(
             request: GRPCCore.ClientRequest<Reelvault_IngestSyncedFileRequest>,
@@ -8311,9 +8382,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListSyncProfilesRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListSyncProfilesResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func listSyncProfiles<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListSyncProfilesRequest>,
@@ -8330,9 +8401,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UpsertSyncProfileRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_SyncProfileResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func upsertSyncProfile<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpsertSyncProfileRequest>,
@@ -8349,9 +8420,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_DeleteSyncProfileRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func deleteSyncProfile<Result>(
             request: GRPCCore.ClientRequest<Reelvault_DeleteSyncProfileRequest>,
@@ -8368,9 +8439,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetSyncRunRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_SyncRunResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         func getSyncRun<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetSyncRunRequest>,
@@ -8412,9 +8483,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListVideosRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListVideosResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func listVideos<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListVideosRequest>,
@@ -8442,9 +8513,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_SearchRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_SearchResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func searchVideos<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SearchRequest>,
@@ -8472,9 +8543,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetMetadataRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_VideoMetadata` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func getMetadata<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetMetadataRequest>,
@@ -8502,9 +8573,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetThumbnailRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ThumbnailChunk` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func getThumbnail<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetThumbnailRequest>,
@@ -8534,9 +8605,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_AddLocationRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_LocationResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func addLibraryLocation<Result>(
             request: GRPCCore.ClientRequest<Reelvault_AddLocationRequest>,
@@ -8564,9 +8635,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_RemoveLocationRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_LocationResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func removeLibraryLocation<Result>(
             request: GRPCCore.ClientRequest<Reelvault_RemoveLocationRequest>,
@@ -8594,9 +8665,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListLocationsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListLocationsResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func listLibraryLocations<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListLocationsRequest>,
@@ -8631,9 +8702,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListSubdirectoriesRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListSubdirectoriesResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func listSubdirectories<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListSubdirectoriesRequest>,
@@ -8661,9 +8732,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ScanLibraryRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ScanProgress` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func scanLibrary<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ScanLibraryRequest>,
@@ -8689,9 +8760,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetScanStatusRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ScanStatusResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func getScanStatus<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetScanStatusRequest>,
@@ -8723,9 +8794,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_CreateTagRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_TagResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func createTag<Result>(
             request: GRPCCore.ClientRequest<Reelvault_CreateTagRequest>,
@@ -8753,9 +8824,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_DeleteTagRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func deleteTag<Result>(
             request: GRPCCore.ClientRequest<Reelvault_DeleteTagRequest>,
@@ -8783,9 +8854,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListTagsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListTagsResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func listTags<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListTagsRequest>,
@@ -8813,9 +8884,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_TagVideosRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func tagVideos<Result>(
             request: GRPCCore.ClientRequest<Reelvault_TagVideosRequest>,
@@ -8843,9 +8914,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UntagVideosRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func untagVideos<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UntagVideosRequest>,
@@ -8877,9 +8948,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_CreateCollectionRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_CollectionResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func createCollection<Result>(
             request: GRPCCore.ClientRequest<Reelvault_CreateCollectionRequest>,
@@ -8907,9 +8978,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_DeleteCollectionRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func deleteCollection<Result>(
             request: GRPCCore.ClientRequest<Reelvault_DeleteCollectionRequest>,
@@ -8937,9 +9008,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListCollectionsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListCollectionsResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func listCollections<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListCollectionsRequest>,
@@ -8967,9 +9038,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_AddToCollectionRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func addToCollection<Result>(
             request: GRPCCore.ClientRequest<Reelvault_AddToCollectionRequest>,
@@ -8997,9 +9068,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_RemoveFromCollectionRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func removeFromCollection<Result>(
             request: GRPCCore.ClientRequest<Reelvault_RemoveFromCollectionRequest>,
@@ -9031,9 +9102,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UpdateNotesRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func updateVideoNotes<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpdateNotesRequest>,
@@ -9061,9 +9132,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_DeleteVideoRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func deleteVideo<Result>(
             request: GRPCCore.ClientRequest<Reelvault_DeleteVideoRequest>,
@@ -9095,9 +9166,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListGroupMembersRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListGroupMembersResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func listGroupMembers<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListGroupMembersRequest>,
@@ -9125,9 +9196,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_CreateGroupRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_GroupResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func createGroup<Result>(
             request: GRPCCore.ClientRequest<Reelvault_CreateGroupRequest>,
@@ -9155,9 +9226,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UngroupVideoRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func ungroupVideo<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UngroupVideoRequest>,
@@ -9185,9 +9256,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_SetGroupPreferredRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func setGroupPreferred<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SetGroupPreferredRequest>,
@@ -9215,9 +9286,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_AutoGroupRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_AutoGroupResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func autoGroupVideos<Result>(
             request: GRPCCore.ClientRequest<Reelvault_AutoGroupRequest>,
@@ -9249,9 +9320,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GenerateProxyRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ProxyGenerationProgress` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func generateProxy<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GenerateProxyRequest>,
@@ -9277,9 +9348,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListProxiesRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListProxiesResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func listProxies<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListProxiesRequest>,
@@ -9307,9 +9378,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_SetProxyOfRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func setProxyOf<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SetProxyOfRequest>,
@@ -9337,9 +9408,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_RemoveProxyLinkRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func removeProxyLink<Result>(
             request: GRPCCore.ClientRequest<Reelvault_RemoveProxyLinkRequest>,
@@ -9367,9 +9438,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_DetectProxiesRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_DetectProxiesResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func detectProxies<Result>(
             request: GRPCCore.ClientRequest<Reelvault_DetectProxiesRequest>,
@@ -9397,9 +9468,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_AttachProxiesRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_AttachProxiesResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func attachProxies<Result>(
             request: GRPCCore.ClientRequest<Reelvault_AttachProxiesRequest>,
@@ -9431,9 +9502,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetFilterOptionsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_FilterOptions` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func getFilterOptions<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetFilterOptionsRequest>,
@@ -9470,9 +9541,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_MetadataFacetsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_MetadataFacetsResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func getMetadataFacets<Result>(
             request: GRPCCore.ClientRequest<Reelvault_MetadataFacetsRequest>,
@@ -9504,9 +9575,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetStatusRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_StatusResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func getStatus<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetStatusRequest>,
@@ -9534,9 +9605,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetConfigRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ConfigResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func getConfig<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetConfigRequest>,
@@ -9564,9 +9635,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UpdateConfigRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func updateConfig<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpdateConfigRequest>,
@@ -9602,9 +9673,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_StartPairingRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_StartPairingResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func startPairing<Result>(
             request: GRPCCore.ClientRequest<Reelvault_StartPairingRequest>,
@@ -9638,9 +9709,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_OpenCatalogRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_CatalogInfo` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func openCatalog<Result>(
             request: GRPCCore.ClientRequest<Reelvault_OpenCatalogRequest>,
@@ -9668,9 +9739,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_CloseCatalogRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func closeCatalog<Result>(
             request: GRPCCore.ClientRequest<Reelvault_CloseCatalogRequest>,
@@ -9698,9 +9769,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetCurrentCatalogRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_CatalogInfo` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func getCurrentCatalog<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetCurrentCatalogRequest>,
@@ -9733,9 +9804,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UpdateVideoLocationRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func updateVideoLocation<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpdateVideoLocationRequest>,
@@ -9763,9 +9834,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListVideosWithLocationsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_VideoLocationsResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func listVideosWithLocations<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListVideosWithLocationsRequest>,
@@ -9800,9 +9871,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListNamedLocationsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_NamedLocationsResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func listNamedLocations<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListNamedLocationsRequest>,
@@ -9830,9 +9901,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UpsertNamedLocationRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_NamedLocationResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func upsertNamedLocation<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpsertNamedLocationRequest>,
@@ -9860,9 +9931,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_DeleteNamedLocationRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func deleteNamedLocation<Result>(
             request: GRPCCore.ClientRequest<Reelvault_DeleteNamedLocationRequest>,
@@ -9897,9 +9968,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UpdateVideoCaptureDateRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func updateVideoCaptureDate<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpdateVideoCaptureDateRequest>,
@@ -9934,9 +10005,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UpdateVideoRatingRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func updateVideoRating<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpdateVideoRatingRequest>,
@@ -9964,9 +10035,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UpdateVideoColorLabelRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func updateVideoColorLabel<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpdateVideoColorLabelRequest>,
@@ -10000,9 +10071,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetGridSettingsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_GridSettings` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func getGridSettings<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetGridSettingsRequest>,
@@ -10030,9 +10101,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GridSettings` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func updateGridSettings<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GridSettings>,
@@ -10071,9 +10142,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_SubscribeCatalogEventsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_CatalogEvent` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func subscribeCatalogEvents<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SubscribeCatalogEventsRequest>,
@@ -10106,9 +10177,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetWatchSettingsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_WatchSettings` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func getWatchSettings<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetWatchSettingsRequest>,
@@ -10136,9 +10207,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_WatchSettings` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func updateWatchSettings<Result>(
             request: GRPCCore.ClientRequest<Reelvault_WatchSettings>,
@@ -10178,9 +10249,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListCameraNameMappingsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListCameraNameMappingsResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func listCameraNameMappings<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListCameraNameMappingsRequest>,
@@ -10208,9 +10279,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_SetCameraNameMappingRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func setCameraNameMapping<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SetCameraNameMappingRequest>,
@@ -10249,9 +10320,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListLensNameMappingsRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListLensNameMappingsResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func listLensNameMappings<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListLensNameMappingsRequest>,
@@ -10279,9 +10350,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_SetLensNameMappingRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func setLensNameMapping<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SetLensNameMappingRequest>,
@@ -10313,9 +10384,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_SyncManifestRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_SyncManifestEntry` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func getSyncManifest<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SyncManifestRequest>,
@@ -10341,9 +10412,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_LookupByContentHashRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_LookupByContentHashResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func lookupByContentHash<Result>(
             request: GRPCCore.ClientRequest<Reelvault_LookupByContentHashRequest>,
@@ -10371,9 +10442,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_VideoCatalogDataRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_VideoCatalogData` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func getVideoCatalogData<Result>(
             request: GRPCCore.ClientRequest<Reelvault_VideoCatalogDataRequest>,
@@ -10401,9 +10472,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ApplyCatalogDataRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func applyVideoCatalogData<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ApplyCatalogDataRequest>,
@@ -10431,9 +10502,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_PrepareRenditionRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_PrepareRenditionProgress` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func prepareRendition<Result>(
             request: GRPCCore.ClientRequest<Reelvault_PrepareRenditionRequest>,
@@ -10469,9 +10540,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ReconcileCatalogRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ReconcileCatalogResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func reconcileCatalog<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ReconcileCatalogRequest>,
@@ -10499,9 +10570,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_IngestSyncedFileRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_IngestSyncedFileResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func ingestSyncedFile<Result>(
             request: GRPCCore.ClientRequest<Reelvault_IngestSyncedFileRequest>,
@@ -10529,9 +10600,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_ListSyncProfilesRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_ListSyncProfilesResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func listSyncProfiles<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListSyncProfilesRequest>,
@@ -10559,9 +10630,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_UpsertSyncProfileRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_SyncProfileResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func upsertSyncProfile<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpsertSyncProfileRequest>,
@@ -10589,9 +10660,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_DeleteSyncProfileRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_Response` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func deleteSyncProfile<Result>(
             request: GRPCCore.ClientRequest<Reelvault_DeleteSyncProfileRequest>,
@@ -10619,9 +10690,9 @@ extension Reelvault_ReelVault {
         ///   - serializer: A serializer for `Reelvault_GetSyncRunRequest` messages.
         ///   - deserializer: A deserializer for `Reelvault_SyncRunResponse` messages.
         ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
+        ///   - handleResponse: A closure which handles the response and returns its result to
+        ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+        ///       already finished.
         /// - Returns: The result of `handleResponse`.
         public func getSyncRun<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetSyncRunRequest>,
@@ -10656,9 +10727,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_ListVideosRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listVideos<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListVideosRequest>,
@@ -10681,9 +10752,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_SearchRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func searchVideos<Result>(
         request: GRPCCore.ClientRequest<Reelvault_SearchRequest>,
@@ -10706,9 +10777,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_GetMetadataRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getMetadata<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GetMetadataRequest>,
@@ -10731,9 +10802,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_GetThumbnailRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getThumbnail<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GetThumbnailRequest>,
@@ -10758,9 +10829,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_AddLocationRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func addLibraryLocation<Result>(
         request: GRPCCore.ClientRequest<Reelvault_AddLocationRequest>,
@@ -10783,9 +10854,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_RemoveLocationRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func removeLibraryLocation<Result>(
         request: GRPCCore.ClientRequest<Reelvault_RemoveLocationRequest>,
@@ -10808,9 +10879,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_ListLocationsRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listLibraryLocations<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListLocationsRequest>,
@@ -10840,9 +10911,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_ListSubdirectoriesRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listSubdirectories<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListSubdirectoriesRequest>,
@@ -10865,9 +10936,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_ScanLibraryRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func scanLibrary<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ScanLibraryRequest>,
@@ -10888,9 +10959,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_GetScanStatusRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getScanStatus<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GetScanStatusRequest>,
@@ -10917,9 +10988,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_CreateTagRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func createTag<Result>(
         request: GRPCCore.ClientRequest<Reelvault_CreateTagRequest>,
@@ -10942,9 +11013,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_DeleteTagRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func deleteTag<Result>(
         request: GRPCCore.ClientRequest<Reelvault_DeleteTagRequest>,
@@ -10967,9 +11038,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_ListTagsRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listTags<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListTagsRequest>,
@@ -10992,9 +11063,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_TagVideosRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func tagVideos<Result>(
         request: GRPCCore.ClientRequest<Reelvault_TagVideosRequest>,
@@ -11017,9 +11088,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_UntagVideosRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func untagVideos<Result>(
         request: GRPCCore.ClientRequest<Reelvault_UntagVideosRequest>,
@@ -11046,9 +11117,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_CreateCollectionRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func createCollection<Result>(
         request: GRPCCore.ClientRequest<Reelvault_CreateCollectionRequest>,
@@ -11071,9 +11142,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_DeleteCollectionRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func deleteCollection<Result>(
         request: GRPCCore.ClientRequest<Reelvault_DeleteCollectionRequest>,
@@ -11096,9 +11167,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_ListCollectionsRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listCollections<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListCollectionsRequest>,
@@ -11121,9 +11192,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_AddToCollectionRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func addToCollection<Result>(
         request: GRPCCore.ClientRequest<Reelvault_AddToCollectionRequest>,
@@ -11146,9 +11217,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_RemoveFromCollectionRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func removeFromCollection<Result>(
         request: GRPCCore.ClientRequest<Reelvault_RemoveFromCollectionRequest>,
@@ -11175,9 +11246,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_UpdateNotesRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func updateVideoNotes<Result>(
         request: GRPCCore.ClientRequest<Reelvault_UpdateNotesRequest>,
@@ -11200,9 +11271,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_DeleteVideoRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func deleteVideo<Result>(
         request: GRPCCore.ClientRequest<Reelvault_DeleteVideoRequest>,
@@ -11229,9 +11300,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_ListGroupMembersRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listGroupMembers<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListGroupMembersRequest>,
@@ -11254,9 +11325,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_CreateGroupRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func createGroup<Result>(
         request: GRPCCore.ClientRequest<Reelvault_CreateGroupRequest>,
@@ -11279,9 +11350,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_UngroupVideoRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func ungroupVideo<Result>(
         request: GRPCCore.ClientRequest<Reelvault_UngroupVideoRequest>,
@@ -11304,9 +11375,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_SetGroupPreferredRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func setGroupPreferred<Result>(
         request: GRPCCore.ClientRequest<Reelvault_SetGroupPreferredRequest>,
@@ -11329,9 +11400,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_AutoGroupRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func autoGroupVideos<Result>(
         request: GRPCCore.ClientRequest<Reelvault_AutoGroupRequest>,
@@ -11358,9 +11429,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_GenerateProxyRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func generateProxy<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GenerateProxyRequest>,
@@ -11381,9 +11452,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_ListProxiesRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listProxies<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListProxiesRequest>,
@@ -11406,9 +11477,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_SetProxyOfRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func setProxyOf<Result>(
         request: GRPCCore.ClientRequest<Reelvault_SetProxyOfRequest>,
@@ -11431,9 +11502,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_RemoveProxyLinkRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func removeProxyLink<Result>(
         request: GRPCCore.ClientRequest<Reelvault_RemoveProxyLinkRequest>,
@@ -11456,9 +11527,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_DetectProxiesRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func detectProxies<Result>(
         request: GRPCCore.ClientRequest<Reelvault_DetectProxiesRequest>,
@@ -11481,9 +11552,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_AttachProxiesRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func attachProxies<Result>(
         request: GRPCCore.ClientRequest<Reelvault_AttachProxiesRequest>,
@@ -11510,9 +11581,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_GetFilterOptionsRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getFilterOptions<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GetFilterOptionsRequest>,
@@ -11544,9 +11615,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_MetadataFacetsRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getMetadataFacets<Result>(
         request: GRPCCore.ClientRequest<Reelvault_MetadataFacetsRequest>,
@@ -11573,9 +11644,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_GetStatusRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getStatus<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GetStatusRequest>,
@@ -11598,9 +11669,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_GetConfigRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getConfig<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GetConfigRequest>,
@@ -11623,9 +11694,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_UpdateConfigRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func updateConfig<Result>(
         request: GRPCCore.ClientRequest<Reelvault_UpdateConfigRequest>,
@@ -11656,9 +11727,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_StartPairingRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func startPairing<Result>(
         request: GRPCCore.ClientRequest<Reelvault_StartPairingRequest>,
@@ -11687,9 +11758,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_OpenCatalogRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func openCatalog<Result>(
         request: GRPCCore.ClientRequest<Reelvault_OpenCatalogRequest>,
@@ -11712,9 +11783,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_CloseCatalogRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func closeCatalog<Result>(
         request: GRPCCore.ClientRequest<Reelvault_CloseCatalogRequest>,
@@ -11737,9 +11808,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_GetCurrentCatalogRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getCurrentCatalog<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GetCurrentCatalogRequest>,
@@ -11767,9 +11838,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_UpdateVideoLocationRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func updateVideoLocation<Result>(
         request: GRPCCore.ClientRequest<Reelvault_UpdateVideoLocationRequest>,
@@ -11792,9 +11863,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_ListVideosWithLocationsRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listVideosWithLocations<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListVideosWithLocationsRequest>,
@@ -11824,9 +11895,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_ListNamedLocationsRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listNamedLocations<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListNamedLocationsRequest>,
@@ -11849,9 +11920,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_UpsertNamedLocationRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func upsertNamedLocation<Result>(
         request: GRPCCore.ClientRequest<Reelvault_UpsertNamedLocationRequest>,
@@ -11874,9 +11945,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_DeleteNamedLocationRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func deleteNamedLocation<Result>(
         request: GRPCCore.ClientRequest<Reelvault_DeleteNamedLocationRequest>,
@@ -11906,9 +11977,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_UpdateVideoCaptureDateRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func updateVideoCaptureDate<Result>(
         request: GRPCCore.ClientRequest<Reelvault_UpdateVideoCaptureDateRequest>,
@@ -11938,9 +12009,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_UpdateVideoRatingRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func updateVideoRating<Result>(
         request: GRPCCore.ClientRequest<Reelvault_UpdateVideoRatingRequest>,
@@ -11963,9 +12034,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_UpdateVideoColorLabelRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func updateVideoColorLabel<Result>(
         request: GRPCCore.ClientRequest<Reelvault_UpdateVideoColorLabelRequest>,
@@ -11994,9 +12065,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_GetGridSettingsRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getGridSettings<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GetGridSettingsRequest>,
@@ -12019,9 +12090,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_GridSettings` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func updateGridSettings<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GridSettings>,
@@ -12055,9 +12126,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_SubscribeCatalogEventsRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func subscribeCatalogEvents<Result>(
         request: GRPCCore.ClientRequest<Reelvault_SubscribeCatalogEventsRequest>,
@@ -12085,9 +12156,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_GetWatchSettingsRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getWatchSettings<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GetWatchSettingsRequest>,
@@ -12110,9 +12181,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_WatchSettings` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func updateWatchSettings<Result>(
         request: GRPCCore.ClientRequest<Reelvault_WatchSettings>,
@@ -12147,9 +12218,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_ListCameraNameMappingsRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listCameraNameMappings<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListCameraNameMappingsRequest>,
@@ -12172,9 +12243,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_SetCameraNameMappingRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func setCameraNameMapping<Result>(
         request: GRPCCore.ClientRequest<Reelvault_SetCameraNameMappingRequest>,
@@ -12208,9 +12279,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_ListLensNameMappingsRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listLensNameMappings<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListLensNameMappingsRequest>,
@@ -12233,9 +12304,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_SetLensNameMappingRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func setLensNameMapping<Result>(
         request: GRPCCore.ClientRequest<Reelvault_SetLensNameMappingRequest>,
@@ -12262,9 +12333,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_SyncManifestRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getSyncManifest<Result>(
         request: GRPCCore.ClientRequest<Reelvault_SyncManifestRequest>,
@@ -12285,9 +12356,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_LookupByContentHashRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func lookupByContentHash<Result>(
         request: GRPCCore.ClientRequest<Reelvault_LookupByContentHashRequest>,
@@ -12310,9 +12381,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_VideoCatalogDataRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getVideoCatalogData<Result>(
         request: GRPCCore.ClientRequest<Reelvault_VideoCatalogDataRequest>,
@@ -12335,9 +12406,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_ApplyCatalogDataRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func applyVideoCatalogData<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ApplyCatalogDataRequest>,
@@ -12360,9 +12431,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_PrepareRenditionRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func prepareRendition<Result>(
         request: GRPCCore.ClientRequest<Reelvault_PrepareRenditionRequest>,
@@ -12393,9 +12464,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_ReconcileCatalogRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func reconcileCatalog<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ReconcileCatalogRequest>,
@@ -12418,9 +12489,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_IngestSyncedFileRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func ingestSyncedFile<Result>(
         request: GRPCCore.ClientRequest<Reelvault_IngestSyncedFileRequest>,
@@ -12443,9 +12514,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_ListSyncProfilesRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listSyncProfiles<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListSyncProfilesRequest>,
@@ -12468,9 +12539,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_UpsertSyncProfileRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func upsertSyncProfile<Result>(
         request: GRPCCore.ClientRequest<Reelvault_UpsertSyncProfileRequest>,
@@ -12493,9 +12564,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_DeleteSyncProfileRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func deleteSyncProfile<Result>(
         request: GRPCCore.ClientRequest<Reelvault_DeleteSyncProfileRequest>,
@@ -12518,9 +12589,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     /// - Parameters:
     ///   - request: A request containing a single `Reelvault_GetSyncRunRequest` message.
     ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getSyncRun<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GetSyncRunRequest>,
@@ -12552,9 +12623,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listVideos<Result>(
         _ message: Reelvault_ListVideosRequest,
@@ -12581,9 +12652,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func searchVideos<Result>(
         _ message: Reelvault_SearchRequest,
@@ -12610,9 +12681,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getMetadata<Result>(
         _ message: Reelvault_GetMetadataRequest,
@@ -12639,9 +12710,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getThumbnail<Result>(
         _ message: Reelvault_GetThumbnailRequest,
@@ -12670,9 +12741,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func addLibraryLocation<Result>(
         _ message: Reelvault_AddLocationRequest,
@@ -12699,9 +12770,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func removeLibraryLocation<Result>(
         _ message: Reelvault_RemoveLocationRequest,
@@ -12728,9 +12799,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listLibraryLocations<Result>(
         _ message: Reelvault_ListLocationsRequest,
@@ -12764,9 +12835,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listSubdirectories<Result>(
         _ message: Reelvault_ListSubdirectoriesRequest,
@@ -12793,9 +12864,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func scanLibrary<Result>(
         _ message: Reelvault_ScanLibraryRequest,
@@ -12820,9 +12891,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getScanStatus<Result>(
         _ message: Reelvault_GetScanStatusRequest,
@@ -12853,9 +12924,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func createTag<Result>(
         _ message: Reelvault_CreateTagRequest,
@@ -12882,9 +12953,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func deleteTag<Result>(
         _ message: Reelvault_DeleteTagRequest,
@@ -12911,9 +12982,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listTags<Result>(
         _ message: Reelvault_ListTagsRequest,
@@ -12940,9 +13011,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func tagVideos<Result>(
         _ message: Reelvault_TagVideosRequest,
@@ -12969,9 +13040,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func untagVideos<Result>(
         _ message: Reelvault_UntagVideosRequest,
@@ -13002,9 +13073,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func createCollection<Result>(
         _ message: Reelvault_CreateCollectionRequest,
@@ -13031,9 +13102,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func deleteCollection<Result>(
         _ message: Reelvault_DeleteCollectionRequest,
@@ -13060,9 +13131,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listCollections<Result>(
         _ message: Reelvault_ListCollectionsRequest,
@@ -13089,9 +13160,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func addToCollection<Result>(
         _ message: Reelvault_AddToCollectionRequest,
@@ -13118,9 +13189,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func removeFromCollection<Result>(
         _ message: Reelvault_RemoveFromCollectionRequest,
@@ -13151,9 +13222,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func updateVideoNotes<Result>(
         _ message: Reelvault_UpdateNotesRequest,
@@ -13180,9 +13251,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func deleteVideo<Result>(
         _ message: Reelvault_DeleteVideoRequest,
@@ -13213,9 +13284,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listGroupMembers<Result>(
         _ message: Reelvault_ListGroupMembersRequest,
@@ -13242,9 +13313,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func createGroup<Result>(
         _ message: Reelvault_CreateGroupRequest,
@@ -13271,9 +13342,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func ungroupVideo<Result>(
         _ message: Reelvault_UngroupVideoRequest,
@@ -13300,9 +13371,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func setGroupPreferred<Result>(
         _ message: Reelvault_SetGroupPreferredRequest,
@@ -13329,9 +13400,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func autoGroupVideos<Result>(
         _ message: Reelvault_AutoGroupRequest,
@@ -13362,9 +13433,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func generateProxy<Result>(
         _ message: Reelvault_GenerateProxyRequest,
@@ -13389,9 +13460,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listProxies<Result>(
         _ message: Reelvault_ListProxiesRequest,
@@ -13418,9 +13489,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func setProxyOf<Result>(
         _ message: Reelvault_SetProxyOfRequest,
@@ -13447,9 +13518,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func removeProxyLink<Result>(
         _ message: Reelvault_RemoveProxyLinkRequest,
@@ -13476,9 +13547,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func detectProxies<Result>(
         _ message: Reelvault_DetectProxiesRequest,
@@ -13505,9 +13576,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func attachProxies<Result>(
         _ message: Reelvault_AttachProxiesRequest,
@@ -13538,9 +13609,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getFilterOptions<Result>(
         _ message: Reelvault_GetFilterOptionsRequest,
@@ -13576,9 +13647,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getMetadataFacets<Result>(
         _ message: Reelvault_MetadataFacetsRequest,
@@ -13609,9 +13680,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getStatus<Result>(
         _ message: Reelvault_GetStatusRequest,
@@ -13638,9 +13709,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getConfig<Result>(
         _ message: Reelvault_GetConfigRequest,
@@ -13667,9 +13738,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func updateConfig<Result>(
         _ message: Reelvault_UpdateConfigRequest,
@@ -13704,9 +13775,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func startPairing<Result>(
         _ message: Reelvault_StartPairingRequest,
@@ -13739,9 +13810,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func openCatalog<Result>(
         _ message: Reelvault_OpenCatalogRequest,
@@ -13768,9 +13839,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func closeCatalog<Result>(
         _ message: Reelvault_CloseCatalogRequest,
@@ -13797,9 +13868,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getCurrentCatalog<Result>(
         _ message: Reelvault_GetCurrentCatalogRequest,
@@ -13831,9 +13902,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func updateVideoLocation<Result>(
         _ message: Reelvault_UpdateVideoLocationRequest,
@@ -13860,9 +13931,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listVideosWithLocations<Result>(
         _ message: Reelvault_ListVideosWithLocationsRequest,
@@ -13896,9 +13967,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listNamedLocations<Result>(
         _ message: Reelvault_ListNamedLocationsRequest,
@@ -13925,9 +13996,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func upsertNamedLocation<Result>(
         _ message: Reelvault_UpsertNamedLocationRequest,
@@ -13954,9 +14025,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func deleteNamedLocation<Result>(
         _ message: Reelvault_DeleteNamedLocationRequest,
@@ -13990,9 +14061,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func updateVideoCaptureDate<Result>(
         _ message: Reelvault_UpdateVideoCaptureDateRequest,
@@ -14026,9 +14097,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func updateVideoRating<Result>(
         _ message: Reelvault_UpdateVideoRatingRequest,
@@ -14055,9 +14126,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func updateVideoColorLabel<Result>(
         _ message: Reelvault_UpdateVideoColorLabelRequest,
@@ -14090,9 +14161,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getGridSettings<Result>(
         _ message: Reelvault_GetGridSettingsRequest,
@@ -14119,9 +14190,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func updateGridSettings<Result>(
         _ message: Reelvault_GridSettings,
@@ -14159,9 +14230,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func subscribeCatalogEvents<Result>(
         _ message: Reelvault_SubscribeCatalogEventsRequest,
@@ -14193,9 +14264,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getWatchSettings<Result>(
         _ message: Reelvault_GetWatchSettingsRequest,
@@ -14222,9 +14293,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func updateWatchSettings<Result>(
         _ message: Reelvault_WatchSettings,
@@ -14263,9 +14334,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listCameraNameMappings<Result>(
         _ message: Reelvault_ListCameraNameMappingsRequest,
@@ -14292,9 +14363,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func setCameraNameMapping<Result>(
         _ message: Reelvault_SetCameraNameMappingRequest,
@@ -14332,9 +14403,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listLensNameMappings<Result>(
         _ message: Reelvault_ListLensNameMappingsRequest,
@@ -14361,9 +14432,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func setLensNameMapping<Result>(
         _ message: Reelvault_SetLensNameMappingRequest,
@@ -14394,9 +14465,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getSyncManifest<Result>(
         _ message: Reelvault_SyncManifestRequest,
@@ -14421,9 +14492,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func lookupByContentHash<Result>(
         _ message: Reelvault_LookupByContentHashRequest,
@@ -14450,9 +14521,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getVideoCatalogData<Result>(
         _ message: Reelvault_VideoCatalogDataRequest,
@@ -14479,9 +14550,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func applyVideoCatalogData<Result>(
         _ message: Reelvault_ApplyCatalogDataRequest,
@@ -14508,9 +14579,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func prepareRendition<Result>(
         _ message: Reelvault_PrepareRenditionRequest,
@@ -14545,9 +14616,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func reconcileCatalog<Result>(
         _ message: Reelvault_ReconcileCatalogRequest,
@@ -14574,9 +14645,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func ingestSyncedFile<Result>(
         _ message: Reelvault_IngestSyncedFileRequest,
@@ -14603,9 +14674,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func listSyncProfiles<Result>(
         _ message: Reelvault_ListSyncProfilesRequest,
@@ -14632,9 +14703,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func upsertSyncProfile<Result>(
         _ message: Reelvault_UpsertSyncProfileRequest,
@@ -14661,9 +14732,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func deleteSyncProfile<Result>(
         _ message: Reelvault_DeleteSyncProfileRequest,
@@ -14690,9 +14761,9 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///   - message: request message to send.
     ///   - metadata: Additional metadata to send, defaults to empty.
     ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
+    ///   - handleResponse: A closure which handles the response and returns its result to
+    ///       the caller. Returning from the closure will cancel the RPC if it hasn't
+    ///       already finished.
     /// - Returns: The result of `handleResponse`.
     public func getSyncRun<Result>(
         _ message: Reelvault_GetSyncRunRequest,
