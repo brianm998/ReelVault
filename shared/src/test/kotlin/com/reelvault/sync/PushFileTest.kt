@@ -70,4 +70,23 @@ class PushFileTest {
         assertEquals(1, r.videosByHash.size)
         assertEquals(listOf("remote-1"), r.applied)
     }
+
+    @Test fun lostFinalChunkResponseThenApplyFailureStillOneVideo() = withFile { f ->
+        // The server indexed the video but the client never saw its id, and the
+        // first apply fails: the next run must find it by hash, not re-upload.
+        val fake = FakeRemote().apply { failApplyTimes = 1 }
+        val t = object : PushTransport by fake {
+            override fun uploadChunk(uploadId: String, filename: String, total: Long, offset: Long, contentHash: String, chunk: ByteArray): String? {
+                fake.uploadChunk(uploadId, filename, total, offset, contentHash, chunk)
+                return null
+            }
+        }
+        runBlocking {
+            try { pushFile(entry(), f, 100, t); fail("expected apply failure") } catch (e: Exception) {}
+            pushFile(entry(), f, 100, t)
+        }
+        assertEquals(1, fake.uploadedChunks)
+        assertEquals(1, fake.videosByHash.size)
+        assertEquals(listOf("remote-1"), fake.applied)
+    }
 }
