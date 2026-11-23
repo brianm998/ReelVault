@@ -167,11 +167,11 @@ public class VideoRepository: ObservableObject {
     ) throws -> HTTP2ClientTransport.Posix {
         if IPv4Address(host) != nil {
             return try HTTP2ClientTransport.Posix(
-                target: .ipv4(host: host, port: port), transportSecurity: security)
+                target: .ipv4(address: host, port: port), transportSecurity: security)
         }
         if IPv6Address(host) != nil {
             return try HTTP2ClientTransport.Posix(
-                target: .ipv6(host: host, port: port), transportSecurity: security)
+                target: .ipv6(address: host, port: port), transportSecurity: security)
         }
         return try HTTP2ClientTransport.Posix(
             target: .dns(host: host, port: port), transportSecurity: security)

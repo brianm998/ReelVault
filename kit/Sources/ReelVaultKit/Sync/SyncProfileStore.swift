@@ -171,7 +171,7 @@ public final class SyncProfileStore: ObservableObject {
     private func localClient() throws -> Reelvault_ReelVault.Client<HTTP2ClientTransport.Posix> {
         if let client { return Reelvault_ReelVault.Client(wrapping: client) }
         let transport = try HTTP2ClientTransport.Posix(
-            target: .ipv4(host: "127.0.0.1", port: localPort),
+            target: .ipv4(address: "127.0.0.1", port: localPort),
             transportSecurity: .plaintext
         )
         let c = GRPCClient(transport: transport)

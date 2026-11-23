@@ -37,8 +37,11 @@ regenerated stubs), not an in-place API rename.
 grpc-swift-protobuf exact 2.4.0, grpc-swift-nio-transport from 2.8.0 (resolved 2.13.1).
 Stubs were regenerated with `kit/regen-proto.sh` using the new `protoc-gen-grpc-swift-2`
 plugin (the 2.x plugin has a new name, so the script now calls it); output has
-`import GRPCCore`. The module and type names (GRPCCore, GRPCClient, HTTP2ClientTransport)
-are unchanged, so no call sites in Networking/ or Sync/ needed edits; TLS pinning, bearer
+`import GRPCCore`. The module and type names are unchanged, but the new transport deprecates the target
+initialisers: `'ipv4(host:port:)' is deprecated: renamed to 'ipv4(address:port:)'` and
+`'ipv6(host:port:)' is deprecated: renamed to 'ipv6(address:port:)'` (6 call sites in
+VideoRepository, SyncManager, SyncProfileStore). Labels were renamed to `address:`;
+ TLS pinning, bearer
 auth, host-type target choice and the force-cancel disconnect path are untouched.
 Result: kit `swift build` has 0 grpc deprecation warnings (was 87).
 
