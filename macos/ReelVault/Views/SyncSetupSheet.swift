@@ -11,9 +11,9 @@ import ReelVaultKit
 /// the remote device's address and token, since the macOS client does not yet
 /// store a "last paired mobile endpoint" the way the iOS client does.
 ///
-/// Phase 6 scaffold: UI is complete; the actual SyncManager run is wired up
-/// when a remote host + token are provided. When those fields are empty the
-/// Start button stays disabled and the sheet explains what to fill in.
+/// The remote's pinned TLS fingerprint is required: sync talks to the remote
+/// only over a fingerprint-pinned connection. Start stays disabled until the
+/// host and fingerprint are filled in.
 struct SyncSetupSheet: View {
     let direction: SyncDirection
     @Environment(\.dismiss) private var dismiss
@@ -21,6 +21,7 @@ struct SyncSetupSheet: View {
     @State private var remoteHost: String = ""
     @State private var remotePortStr: String = "50051"
     @State private var remoteToken: String = ""
+    @State private var remoteFingerprint: String = ""
     @State private var targetHeight: Int32 = 1080
     @State private var isRunning = false
     @State private var runResult: SyncRunResult?
@@ -28,7 +29,8 @@ struct SyncSetupSheet: View {
 
     private var remotePort: Int { Int(remotePortStr) ?? 50051 }
     private var canStart: Bool {
-        !remoteHost.trimmingCharacters(in: .whitespaces).isEmpty && !isRunning && runResult == nil
+        !remoteHost.trimmingCharacters(in: .whitespaces).isEmpty
+            && !remoteFingerprint.trimmingCharacters(in: .whitespaces).isEmpty && !isRunning && runResult == nil
     }
 
     var body: some View {
@@ -68,7 +70,9 @@ struct SyncSetupSheet: View {
                             .frame(width: 80)
                             .multilineTextAlignment(.trailing)
                     }
-                    SecureField("Bearer token (leave blank if unpaired)", text: $remoteToken)
+                    SecureField("Bearer token", text: $remoteToken)
+                        .textFieldStyle(.roundedBorder)
+                    TextField("TLS certificate fingerprint (SHA-256 hex)", text: $remoteFingerprint)
                         .textFieldStyle(.roundedBorder)
                 }
 
@@ -196,7 +200,7 @@ struct SyncSetupSheet: View {
             remotePort: remotePort,
             remoteMediaPort: remotePort + 1,
             token: remoteToken,
-            fingerprint: ""
+            fingerprint: remoteFingerprint.trimmingCharacters(in: .whitespaces).lowercased()
         )
 
         await manager.startSync(profile: profile)

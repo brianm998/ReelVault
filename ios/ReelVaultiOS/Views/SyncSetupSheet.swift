@@ -181,8 +181,8 @@ struct SyncSetupSheet: View {
         let manager = SyncManager(
             localPort: localPort,
             remoteHost: endpoint.host,
-            remotePort: endpoint.mediaPort,   // gRPC port is mediaPort by convention
-            remoteMediaPort: endpoint.mediaPort + 1,
+            remotePort: endpoint.mediaPort - 1,   // gRPC port is mediaPort - 1 by convention
+            remoteMediaPort: endpoint.mediaPort,
             token: endpoint.bearerToken ?? "",
             fingerprint: endpoint.fingerprintHex ?? ""
         )

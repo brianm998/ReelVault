@@ -254,11 +254,6 @@ fun SyncSetupSheet(
                                     remoteMediaPort = endpoint.mediaPort,
                                     token = endpoint.token,
                                     fingerprint = endpoint.fingerprintHex,
-                                    onIngestSynced = { path, filename, contentHash, derivedHeight ->
-                                        ReelVaultCore.nativeIngestSynced(
-                                            path, filename, contentHash, derivedHeight,
-                                        )
-                                    },
                                 )
                                 manager.startSync(profile)
                                 result = manager.lastResult.value

@@ -136,13 +136,13 @@ public final class SyncManager: ObservableObject {
             of: (Bool, String?).self,
             returning: [(Bool, String?)].self
         ) { group in
-            for entry in manifestEntries where !entry.isDerived {
+            for entry in manifestEntries where !entry.isDerived && entry.deletedAtMs == 0 {
                 group.addTask { @MainActor @Sendable [weak self] in
                     guard let self else { return (false, nil) }
                     await self.semaphore.wait()
                     defer { Task { await self.semaphore.signal() } }
                     do {
-                        try await self.pushEntry(entry: entry, profile: profile)
+                        try await self.pushEntry(entry: entry, profile: profile, remoteTLS: remoteTLS)
                         return (true, nil)
                     } catch {
                         return (false, error.localizedDescription)
@@ -181,34 +181,60 @@ public final class SyncManager: ObservableObject {
         return result
     }
 
-    private func pushEntry(entry: Reelvault_SyncManifestEntry, profile: SyncProfile) async throws {
-        // The upload is not implemented: never report success for a transfer that
-        // did not happen. (Real fix: audit item O2.)
-        throw SyncError.notAvailable
-        #if false
-        var job = SyncJob(videoId: entry.videoID, filename: entry.filename, direction: .toRemote)
+    /// Push one video: read the original from the path the local core reports
+    /// (`GetMetadata.path`), stream it to the remote through the resumable
+    /// `/upload` protocol in `uploadChunkBytes` pieces (resuming from the
+    /// server's `bytes_received`, verified by `content_hash`), then copy the
+    /// catalog data (tags, rating, ...) onto the video the remote indexed.
+    /// Mirrors `pushFile` in shared/ (Kotlin).
+    private func pushEntry(
+        entry: Reelvault_SyncManifestEntry,
+        profile: SyncProfile,
+        remoteTLS: HTTP2ClientTransport.Posix.TransportSecurity
+    ) async throws {
+        let jobId = beginJob(entry: entry, direction: .toRemote)
+        do {
+            try await withGRPCClient(transport: makeLocalTransport()) { localRaw in
+                try await withGRPCClient(
+                    transport: self.makeRemoteTransport(tls: remoteTLS),
+                    interceptors: [BearerTokenInterceptor(token: self.token)]
+                ) { remoteRaw in
+                    let local = Reelvault_ReelVault.Client(wrapping: localRaw)
+                    let remote = Reelvault_ReelVault.Client(wrapping: remoteRaw)
+                    var metaReq = Reelvault_GetMetadataRequest()
+                    metaReq.videoID = entry.videoID
+                    let path = try await local.getMetadata(metaReq).path
+                    let file = URL(fileURLWithPath: path)
+                    let total = try SyncPush.checkPushable(
+                        filename: entry.filename, file: file, contentHash: entry.contentHash
+                    )
+                    let http = PinnedHTTP(fingerprint: self.fingerprint, token: self.token,
+                                          base: "https://\(self.remoteHost):\(self.remoteMediaPort)")
+                    defer { http.invalidate() }
+                    let transport = GRPCPushTransport(http: http, local: local, remote: remote)
+                    try await SyncPush.pushFile(entry: entry, file: file, total: total, transport: transport) { offset in
+                        let frac = Float(offset) / Float(total) * 0.95
+                        await self.updateJob(jobId) { $0.status = .inFlight; $0.progress = frac }
+                    }
+                }
+            }
+            updateJob(jobId) { $0.status = .done; $0.progress = 1 }
+        } catch {
+            updateJob(jobId) { $0.status = .failed(error.localizedDescription) }
+            throw error
+        }
+    }
+
+    private func beginJob(entry: Reelvault_SyncManifestEntry, direction: SyncDirection) -> String {
+        var job = SyncJob(videoId: entry.videoID, filename: entry.filename, direction: direction)
+        job.status = .inFlight
         jobs.append(job)
+        return job.id
+    }
 
-        let mediaBaseURL = "https://\(remoteHost):\(remoteMediaPort)"
-        guard let uploadURL = URL(string: "\(mediaBaseURL)/upload") else {
-            throw SyncError.invalidURL(mediaBaseURL)
-        }
-
-        var request = URLRequest(url: uploadURL)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue(entry.filename, forHTTPHeaderField: "X-Filename")
-
-        // TODO: LocalVideoExport.export(videoId:) -> URL then stream the file body.
-        // Full multipart / resumable upload is deferred to the LocalVideoExport
-        // integration that already handles photos:// -> temp-file materialization.
-
-        if let idx = jobs.firstIndex(where: { $0.videoId == entry.videoID }) {
-            jobs[idx].status = .done
-            jobs[idx].progress = 1.0
-        }
-        _ = job  // suppress unused warning until fully wired
-        #endif
+    private func updateJob(_ id: String, _ mutate: (inout SyncJob) -> Void) {
+        guard let idx = jobs.firstIndex(where: { $0.id == id }) else { return }
+        mutate(&jobs[idx])
     }
 
     // MARK: - Pull (remote -> local)
@@ -246,18 +272,30 @@ public final class SyncManager: ObservableObject {
         }
         result.total = manifestEntries.count
 
-        // 2. Pull non-derived entries concurrently.
+        // 2. Reconcile against the local catalog (adopt by content hash, merge
+        //    marks, record links, honour tombstones); the planner reports which
+        //    entries still need their bytes transferred.
+        let liveEntries = manifestEntries.filter { !$0.isDerived }
+        let toCopy: Set<String>
+        do {
+            toCopy = try await reconcile(entries: liveEntries, profile: profile, remoteTLS: remoteTLS)
+        } catch {
+            result.errors.append("pull: reconcile failed: \(error.localizedDescription)")
+            return result
+        }
+
+        // 3. Pull the entries the planner asked for, concurrently.
         let pullOutcomes = await withTaskGroup(
             of: (Bool, String?).self,
             returning: [(Bool, String?)].self
         ) { group in
-            for entry in manifestEntries where !entry.isDerived {
+            for entry in liveEntries where toCopy.contains(entry.videoID) {
                 group.addTask { @MainActor @Sendable [weak self] in
                     guard let self else { return (false, nil) }
                     await self.semaphore.wait()
                     defer { Task { await self.semaphore.signal() } }
                     do {
-                        try await self.pullEntry(entry: entry, profile: profile)
+                        try await self.pullEntry(entry: entry, profile: profile, remoteTLS: remoteTLS)
                         return (true, nil)
                     } catch {
                         return (false, error.localizedDescription)
@@ -275,7 +313,7 @@ public final class SyncManager: ObservableObject {
             }
         }
 
-        // 3. Sync smart collections: remote (source) → local (destination).
+        // 4. Sync smart collections: remote (source) → local (destination).
         do {
             let remoteTransport = try makeRemoteTransport(tls: remoteTLS)
             let localTransport = try makeLocalTransport()
@@ -296,54 +334,123 @@ public final class SyncManager: ObservableObject {
         return result
     }
 
-    private func pullEntry(entry: Reelvault_SyncManifestEntry, profile: SyncProfile) async throws {
-        // /media/<id>/original does not exist on the server and the download used
-        // an unpinned session; ingest and catalog apply are TODO. Never report
-        // success. (Real fix: audit item O2.)
-        throw SyncError.notAvailable
-        #if false
-        var job = SyncJob(videoId: entry.videoID, filename: entry.filename, direction: .fromRemote)
-        jobs.append(job)
-
-        // 1. PrepareRendition RPC on the remote (tells the server to transcode to
-        //    targetHeight if needed and returns the download path).
-        // TODO: Reelvault_PrepareRenditionRequest -> Reelvault_PrepareRenditionProgress stream.
-        let downloadPath = "/media/\(entry.videoID)/original"
-        let renditionBytes: Int64 = 0
-
-        // 2. Storage pre-flight.
-        if renditionBytes > 0 {
-            let available = try availableStorage()
-            guard available > renditionBytes + 100_000_000 else {
-                throw SyncError.insufficientStorage(needed: renditionBytes)
+    /// Reconcile `entries` (the peer's live manifest) against the local catalog
+    /// via the core's `ReconcileCatalog` RPC and return the peer video ids whose
+    /// bytes still need transferring. Peer catalog data is fetched only for
+    /// entries whose hash the local catalog already holds.
+    private func reconcile(
+        entries: [Reelvault_SyncManifestEntry],
+        profile: SyncProfile,
+        remoteTLS: HTTP2ClientTransport.Posix.TransportSecurity
+    ) async throws -> Set<String> {
+        try await withGRPCClient(transport: makeLocalTransport()) { localRaw in
+            try await withGRPCClient(
+                transport: self.makeRemoteTransport(tls: remoteTLS),
+                interceptors: [BearerTokenInterceptor(token: self.token)]
+            ) { remoteRaw in
+                let local = Reelvault_ReelVault.Client(wrapping: localRaw)
+                let remote = Reelvault_ReelVault.Client(wrapping: remoteRaw)
+                var lookup = Reelvault_LookupByContentHashRequest()
+                lookup.contentHash = entries.map(\.contentHash).filter { !$0.isEmpty }
+                let held = Set(try await local.lookupByContentHash(lookup).hits.map(\.contentHash))
+                var req = Reelvault_ReconcileCatalogRequest()
+                req.peerKey = profile.peerKey
+                req.entries = entries
+                for entry in entries where entry.deletedAtMs == 0 && held.contains(entry.contentHash) {
+                    var dataReq = Reelvault_VideoCatalogDataRequest()
+                    dataReq.videoID = entry.videoID
+                    req.remoteData[entry.videoID] = try await remote.getVideoCatalogData(dataReq)
+                }
+                return Set(try await local.reconcileCatalog(req).toCopy)
             }
         }
+    }
 
-        // 3. Download the rendition.
-        let mediaBaseURL = "https://\(remoteHost):\(remoteMediaPort)"
-        guard let downloadURL = URL(string: "\(mediaBaseURL)\(downloadPath)") else {
-            throw SyncError.invalidURL("\(mediaBaseURL)\(downloadPath)")
+    /// Pull one video: `PrepareRendition` on the remote, download the rendition over pinned TLS, `IngestSyncedFile` on
+    /// the local daemon, and copy the remote's catalog data onto the local
+    /// video. Mirrors `pullVideo` in shared/ (Kotlin).
+    private func pullEntry(
+        entry: Reelvault_SyncManifestEntry,
+        profile: SyncProfile,
+        remoteTLS: HTTP2ClientTransport.Posix.TransportSecurity
+    ) async throws {
+        let jobId = beginJob(entry: entry, direction: .fromRemote)
+        do {
+            try await withGRPCClient(transport: makeLocalTransport()) { localRaw in
+                try await withGRPCClient(
+                    transport: self.makeRemoteTransport(tls: remoteTLS),
+                    interceptors: [BearerTokenInterceptor(token: self.token)]
+                ) { remoteRaw in
+                    let local = Reelvault_ReelVault.Client(wrapping: localRaw)
+                    let remote = Reelvault_ReelVault.Client(wrapping: remoteRaw)
+
+                    var localId: String?
+                    if localId == nil {
+                        // 1. Ask the remote to prepare a rendition at the target height.
+                        var prep = Reelvault_PrepareRenditionRequest()
+                        prep.videoID = entry.videoID
+                        prep.targetHeight = profile.targetHeight
+                        let ready: Reelvault_PrepareRenditionProgress? = try await remote.prepareRendition(prep) { response in
+                            var ready: Reelvault_PrepareRenditionProgress?
+                            for try await progress in response.messages {
+                                switch progress.phase {
+                                case .failed:
+                                    throw SyncError.prepareFailed(progress.detail)
+                                case .ready:
+                                    ready = progress
+                                default:
+                                    await self.updateJob(jobId) { $0.progress = progress.fraction * 0.5 }
+                                }
+                            }
+                            return ready
+                        }
+                        let downloadPath = ready?.downloadPath ?? ""
+                        let readyHeight = ready?.readyHeight ?? 0
+                        let renditionBytes = ready?.renditionBytes ?? 0
+                        guard !downloadPath.isEmpty else {
+                            throw SyncError.prepareFailed("no download path from PrepareRendition")
+                        }
+
+                        // 2. Storage pre-flight, then download over pinned TLS.
+                        if renditionBytes > 0 {
+                            guard try self.availableStorage() > renditionBytes + 100_000_000 else {
+                                throw SyncError.insufficientStorage(needed: renditionBytes)
+                            }
+                        }
+                        let http = PinnedHTTP(fingerprint: self.fingerprint, token: self.token,
+                                              base: "https://\(self.remoteHost):\(self.remoteMediaPort)")
+                        defer { http.invalidate() }
+                        let dest = self.syncedFilesDirectory()
+                            .appendingPathComponent(SyncPush.safeFilename(entry.filename))
+                        try await http.download(path: downloadPath, to: dest)
+                        await self.updateJob(jobId) { $0.progress = 0.8 }
+
+                        // 3. Ingest into the local daemon. Only a downscaled copy is "derived".
+                        var ingest = Reelvault_IngestSyncedFileRequest()
+                        ingest.path = dest.path
+                        ingest.filename = entry.filename
+                        ingest.originHash = entry.contentHash
+                        ingest.derivedHeight =
+                            (profile.targetHeight > 0 && readyHeight > 0 && readyHeight < entry.height) ? readyHeight : 0
+                        localId = try await local.ingestSyncedFile(ingest).videoID
+                    }
+
+                    // 4. Apply the remote's catalog data (tags, rating, ...) locally.
+                    guard let localId else { throw SyncError.prepareFailed("ingest returned no video id") }
+                    var dataReq = Reelvault_VideoCatalogDataRequest()
+                    dataReq.videoID = entry.videoID
+                    let data = try await remote.getVideoCatalogData(dataReq)
+                    var apply = Reelvault_ApplyCatalogDataRequest()
+                    apply.videoID = localId
+                    apply.data = data
+                    _ = try await local.applyVideoCatalogData(apply)
+                }
+            }
+            updateJob(jobId) { $0.status = .done; $0.progress = 1 }
+        } catch {
+            updateJob(jobId) { $0.status = .failed(error.localizedDescription) }
+            throw error
         }
-        let destURL = syncedFilesDirectory().appendingPathComponent(entry.filename)
-        var request = URLRequest(url: downloadURL)
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-
-        // PinnedTLS URLSession would be used here; plain shared session for the scaffold.
-        let (tempURL, _) = try await URLSession.shared.download(for: request)
-        try FileManager.default.moveItem(at: tempURL, to: destURL)
-
-        // 4. Ingest into local core via FFI.
-        // TODO: reelvault_ingest_synced(path, filename, origin_hash, derived_height)
-
-        // 5. Apply catalog metadata (tags, collections, rating, color label).
-        // TODO: Reelvault_VideoCatalogDataRequest -> Reelvault_ApplyCatalogDataRequest on local.
-
-        if let idx = jobs.firstIndex(where: { $0.videoId == entry.videoID }) {
-            jobs[idx].status = .done
-            jobs[idx].progress = 1.0
-        }
-        _ = job  // suppress unused warning until fully wired
-        #endif
     }
 
     // MARK: - Smart-collection tag-UUID rewrite
@@ -517,10 +624,10 @@ public enum SyncError: LocalizedError {
             return "Invalid URL: \(url)"
         case .insufficientStorage(let needed):
             return "Insufficient storage: need \(needed / 1_000_000) MB"
-        case .notAvailable:
-            return "Catalog sync is not available yet"
         case .prepareFailed(let detail):
             return "PrepareRendition failed: \(detail)"
+        case .notAvailable:
+            return "Catalog sync is not available yet"
         }
     }
 }

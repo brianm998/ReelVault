@@ -19,6 +19,10 @@ pub enum SyncAction {
         local_video_id: String,
         marks_changed: bool,
     },
+    /// No sync link yet, but exactly one local original has the same content
+    /// hash: adopt it (record a link, then reconcile marks) instead of
+    /// transferring the bytes again.
+    AdoptLocal { local_video_id: String },
     /// The remote entry is itself a derived (downscaled) copy — skip it; we
     /// only sync originals and let the local daemon re-derive as needed.
     SkipDerived,
@@ -69,8 +73,14 @@ impl Planner {
         manifest_rows: &[SyncManifestRow],
         hash_hits: &[ContentHashHit],
     ) -> Vec<SyncPlanItem> {
-        let hash_hit_map: HashMap<&str, &ContentHashHit> =
-            hash_hits.iter().map(|h| (h.content_hash.as_str(), h)).collect();
+        // hash -> distinct local video ids carrying it.
+        let mut hash_hit_map: HashMap<&str, Vec<&str>> = HashMap::new();
+        for h in hash_hits {
+            let ids = hash_hit_map.entry(h.content_hash.as_str()).or_default();
+            if !ids.contains(&h.video_id.as_str()) {
+                ids.push(h.video_id.as_str());
+            }
+        }
 
         manifest_rows
             .iter()
@@ -128,15 +138,20 @@ impl Planner {
                     };
                 }
 
-                // Step 2: hash adoption — a local original shares the same
-                // content hash. The executor validates before creating the link.
+                // Step 2: hash adoption — local originals share the same
+                // content hash. One distinct match is adopted; several are
+                // ambiguous and left for the user rather than guessed at.
                 if let Some(hash) = &row.content_hash {
-                    if hash_hit_map.contains_key(hash.as_str()) {
-                        // Return CopyNew so the executor can decide whether to
-                        // adopt or genuinely copy (it checks hash_hit_map again).
+                    if let Some(ids) = hash_hit_map.get(hash.as_str()) {
+                        let action = match ids.as_slice() {
+                            [only] => SyncAction::AdoptLocal { local_video_id: (*only).to_string() },
+                            many => SyncAction::Ambiguous {
+                                reason: format!("{} local videos share content hash {hash}", many.len()),
+                            },
+                        };
                         return SyncPlanItem {
                             source_video_id: row.video_id.clone(),
-                            action: SyncAction::CopyNew,
+                            action,
                             content_hash: row.content_hash.clone(),
                             remote_marks_rev: row.marks_rev,
                         };
@@ -152,5 +167,67 @@ impl Planner {
                 }
             })
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn row(id: &str, hash: Option<&str>) -> SyncManifestRow {
+        SyncManifestRow {
+            video_id: id.into(),
+            content_hash: hash.map(String::from),
+            marks_rev: 1,
+            size_bytes: 10,
+            duration_ms: 1000,
+            filename: format!("{id}.mov"),
+            width: 1920,
+            height: 1080,
+            codec_video: "h264".into(),
+            is_derived: false,
+            proxy_of: None,
+            has_streamable_proxy: false,
+            deleted_at: None,
+        }
+    }
+
+    fn hit(hash: &str, id: &str) -> ContentHashHit {
+        ContentHashHit {
+            content_hash: hash.into(),
+            video_id: id.into(),
+            marks_rev: 0,
+            duration_ms: 1000,
+            creation_date_ms: 0,
+        }
+    }
+
+    fn planner() -> (tempfile::TempDir, Planner) {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = Database::new_empty();
+        db.set_path(&tmp.path().join("c.db")).unwrap();
+        (tmp, Planner::new(Arc::new(db), "peer".into()))
+    }
+
+    #[test]
+    fn hash_hit_adopts_and_miss_copies() {
+        let (_t, p) = planner();
+        let items = p.classify(
+            &[row("r1", Some("h1")), row("r2", Some("h2")), row("r3", None)],
+            &[hit("h1", "local1")],
+        );
+        assert_eq!(items[0].action, SyncAction::AdoptLocal { local_video_id: "local1".into() });
+        assert_eq!(items[1].action, SyncAction::CopyNew);
+        assert_eq!(items[2].action, SyncAction::DeferHashPending);
+    }
+
+    #[test]
+    fn multiple_local_matches_are_ambiguous() {
+        let (_t, p) = planner();
+        let items = p.classify(
+            &[row("r1", Some("h1"))],
+            &[hit("h1", "a"), hit("h1", "b"), hit("h1", "a")],
+        );
+        assert!(matches!(items[0].action, SyncAction::Ambiguous { .. }));
     }
 }

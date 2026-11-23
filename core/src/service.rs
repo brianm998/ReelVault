@@ -29,6 +29,26 @@ use reelvault::*;
 
 pub use reelvault::reel_vault_server;
 
+/// Convert wire catalog data into the db struct.
+fn catalog_data_from_proto(data: &VideoCatalogData) -> crate::db::VideoCatalogData {
+    crate::db::VideoCatalogData {
+        marks_rev: data.marks_rev,
+        tags: data.tags.clone(),
+        tag_colors: data.tag_colors.clone(),
+        collections: data.collections.clone(),
+        smart_collections: data.smart.iter().map(|s| crate::db::SmartCollectionEntry { name: s.name.clone(), filter_json: s.filter_json.clone() }).collect(),
+        rating: data.rating,
+        color_label: data.color_label.clone(),
+        notes: data.notes.clone(),
+        creation_date_str: String::new(),
+        gps_lat: data.gps_lat,
+        gps_lon: data.gps_lon,
+        has_gps: data.gps_valid,
+        group_name: data.group.as_ref().map(|g| g.name.clone()).unwrap_or_default(),
+        proxy_of_id: data.proxy_of_id.clone(),
+    }
+}
+
 /// Cloning is cheap — every field is an `Arc` or a handle — and lets RPC
 /// handlers move a copy of the service into `spawn_blocking` closures.
 #[derive(Clone)]
@@ -4010,6 +4030,76 @@ impl ReelVaultTrait for ReelVaultService {
         }
     }
 
+    async fn reconcile_catalog(
+        &self,
+        request: Request<ReconcileCatalogRequest>,
+    ) -> std::result::Result<Response<ReconcileCatalogResponse>, Status> {
+        let req = request.into_inner();
+        if req.peer_key.is_empty() {
+            return Err(Status::invalid_argument("peer_key required"));
+        }
+        let db = Arc::clone(&self.db);
+        let manifest: Vec<crate::db::SyncManifestRow> = req
+            .entries
+            .iter()
+            .map(|e| crate::db::SyncManifestRow {
+                video_id: e.video_id.clone(),
+                content_hash: if e.content_hash.is_empty() { None } else { Some(e.content_hash.clone()) },
+                marks_rev: e.marks_rev,
+                size_bytes: e.size_bytes,
+                duration_ms: e.duration_ms,
+                filename: e.filename.clone(),
+                width: e.width,
+                height: e.height,
+                codec_video: e.codec_video.clone(),
+                is_derived: e.is_derived,
+                proxy_of: None,
+                has_streamable_proxy: e.has_streamable_proxy,
+                deleted_at: if e.deleted_at_ms > 0 { Some(e.deleted_at_ms) } else { None },
+            })
+            .collect();
+        let remote_data = req.remote_data;
+        let peer_key = req.peer_key;
+        let summary = tokio::task::spawn_blocking(move || {
+            crate::sync::reconcile_catalog(&db, &peer_key, &manifest, |id| {
+                Ok(remote_data.get(id).map(catalog_data_from_proto))
+            })
+        })
+        .await
+        .map_err(|e| Status::internal(format!("{e}")))?
+        .map_err(|e| Status::failed_precondition(e.to_string()))?;
+        Ok(Response::new(ReconcileCatalogResponse {
+            adopted: summary.adopted as i32,
+            marks_reconciled: summary.marks_reconciled as i32,
+            soft_deleted: summary.soft_deleted as i32,
+            to_copy: summary.to_copy,
+            ambiguous: summary.ambiguous as i32,
+            deferred: summary.deferred as i32,
+        }))
+    }
+
+    async fn ingest_synced_file(
+        &self,
+        request: Request<IngestSyncedFileRequest>,
+    ) -> std::result::Result<Response<IngestSyncedFileResponse>, Status> {
+        let req = request.into_inner();
+        if req.path.is_empty() {
+            return Err(Status::invalid_argument("path required"));
+        }
+        let db = Arc::clone(&self.db);
+        let events = self.catalog_events.clone();
+        let cache = self.config.thumbnail_cache_path.clone();
+        let video_id = tokio::task::spawn_blocking(move || {
+            crate::sync::ingest_synced_into(
+                &db, &cache, &events, &req.path, &req.filename, &req.origin_hash, req.derived_height,
+            )
+        })
+        .await
+        .map_err(|e| Status::internal(format!("{e}")))?
+        .map_err(|e| Status::internal(e.to_string()))?;
+        Ok(Response::new(IngestSyncedFileResponse { video_id }))
+    }
+
     async fn apply_video_catalog_data(
         &self,
         request: Request<ApplyCatalogDataRequest>,
@@ -4018,22 +4108,7 @@ impl ReelVaultTrait for ReelVaultService {
         let db = Arc::clone(&self.db);
         let vid = req.video_id.clone();
         let data = req.data.ok_or_else(|| Status::invalid_argument("data required"))?;
-        let catalog_data = crate::db::VideoCatalogData {
-            marks_rev: data.marks_rev,
-            tags: data.tags.clone(),
-            tag_colors: data.tag_colors.clone(),
-            collections: data.collections.clone(),
-            smart_collections: data.smart.iter().map(|s| crate::db::SmartCollectionEntry { name: s.name.clone(), filter_json: s.filter_json.clone() }).collect(),
-            rating: data.rating,
-            color_label: data.color_label.clone(),
-            notes: data.notes.clone(),
-            creation_date_str: String::new(),
-            gps_lat: data.gps_lat,
-            gps_lon: data.gps_lon,
-            has_gps: data.gps_valid,
-            group_name: data.group.as_ref().map(|g| g.name.clone()).unwrap_or_default(),
-            proxy_of_id: data.proxy_of_id.clone(),
-        };
+        let catalog_data = catalog_data_from_proto(&data);
         tokio::task::spawn_blocking(move || db.apply_video_catalog_data(&vid, &catalog_data))
             .await
             .map_err(|e| Status::internal(format!("{e}")))?

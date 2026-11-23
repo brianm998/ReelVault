@@ -60,24 +60,22 @@ struct ReelVaultApp: App {
 }
 
 /// Runs any auto-sync profiles once when the app foregrounds.
-/// Loads profiles from UserDefaults (same key the SyncProfileStore uses),
-/// filters to those with `autoSync == true`, and drives a one-shot SyncManager.
+/// Loads profiles from the local core's sync_profiles table, filters to those
+/// flagged auto-sync on this device, and drives a one-shot SyncManager.
 @MainActor
 private func triggerAutoSync(router: AppRouter) async {
     guard CatalogSyncFeature.isEnabled else { return }
-    guard let data = UserDefaults.standard.data(forKey: "reelvault.syncProfiles"),
-          let profiles = try? JSONDecoder().decode([SyncProfile].self, from: data)
-    else { return }
-    let autoProfiles = profiles.filter { $0.autoSync }
+    guard let localPort = LocalCore.port else { return }
+    let store = SyncProfileStore(localPort: localPort)
+    await store.load()
+    let autoProfiles = store.profiles.filter { $0.autoSync }
     guard !autoProfiles.isEmpty else { return }
-    guard let endpoint = router.lastPairedUploadEndpoint(),
-          let localPort = LocalCore.port
-    else { return }
+    guard let endpoint = router.lastPairedUploadEndpoint() else { return }
     let mgr = SyncManager(
         localPort: localPort,
         remoteHost: endpoint.host,
-        remotePort: endpoint.mediaPort,
-        remoteMediaPort: endpoint.mediaPort + 1,
+        remotePort: endpoint.mediaPort - 1,   // gRPC port is mediaPort - 1 by convention
+        remoteMediaPort: endpoint.mediaPort,
         token: endpoint.bearerToken ?? "",
         fingerprint: endpoint.fingerprintHex ?? ""
     )

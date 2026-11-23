@@ -744,7 +744,7 @@ fn is_allowed_hls_file(file: &str) -> bool {
 /// v5: a no-proxy original is re-encoded with the `ultrafast` x264 preset (not
 /// `veryfast`) so the live encode keeps up and the first segment appears — a v4
 /// session that stalled at 0 segments shouldn't be treated as reusable.
-const MEDIA_CACHE_VERSION: &str = "v5";
+pub const MEDIA_CACHE_VERSION: &str = "v5";
 
 /// A completed, *reusable* HLS session: `index.m3u8` present and `.complete`
 /// written by THIS daemon version. An older/empty marker is treated as not-ready

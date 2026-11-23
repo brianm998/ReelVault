@@ -791,6 +791,30 @@ public enum Reelvault_ReelVault {
                 method: "PrepareRendition"
             )
         }
+        /// Namespace for "ReconcileCatalog" metadata.
+        public enum ReconcileCatalog {
+            /// Request type for "ReconcileCatalog".
+            public typealias Input = Reelvault_ReconcileCatalogRequest
+            /// Response type for "ReconcileCatalog".
+            public typealias Output = Reelvault_ReconcileCatalogResponse
+            /// Descriptor for "ReconcileCatalog".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "ReconcileCatalog"
+            )
+        }
+        /// Namespace for "IngestSyncedFile" metadata.
+        public enum IngestSyncedFile {
+            /// Request type for "IngestSyncedFile".
+            public typealias Input = Reelvault_IngestSyncedFileRequest
+            /// Response type for "IngestSyncedFile".
+            public typealias Output = Reelvault_IngestSyncedFileResponse
+            /// Descriptor for "IngestSyncedFile".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "IngestSyncedFile"
+            )
+        }
         /// Namespace for "ListSyncProfiles" metadata.
         public enum ListSyncProfiles {
             /// Request type for "ListSyncProfiles".
@@ -905,6 +929,8 @@ public enum Reelvault_ReelVault {
             GetVideoCatalogData.descriptor,
             ApplyVideoCatalogData.descriptor,
             PrepareRendition.descriptor,
+            ReconcileCatalog.descriptor,
+            IngestSyncedFile.descriptor,
             ListSyncProfiles.descriptor,
             UpsertSyncProfile.descriptor,
             DeleteSyncProfile.descriptor,
@@ -1976,6 +2002,44 @@ extension Reelvault_ReelVault {
             request: GRPCCore.StreamingServerRequest<Reelvault_PrepareRenditionRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_PrepareRenditionProgress>
+
+        /// Handle the "ReconcileCatalog" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Index a file a client pulled from a sync peer (already on this daemon's
+        /// > disk) and stamp its provenance. Returns the new local video id so the
+        /// > client can ApplyVideoCatalogData onto it.
+        /// > Run the sync planner for one pull against a peer's manifest: adopt local
+        /// > originals that match by content hash, merge catalog data, record sync
+        /// > links and honour tombstones. Returns the remote video ids whose bytes the
+        /// > client still has to transfer.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Reelvault_ReconcileCatalogRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_ReconcileCatalogResponse` messages.
+        func reconcileCatalog(
+            request: GRPCCore.StreamingServerRequest<Reelvault_ReconcileCatalogRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ReconcileCatalogResponse>
+
+        /// Handle the "IngestSyncedFile" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Reelvault_IngestSyncedFileRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_IngestSyncedFileResponse` messages.
+        func ingestSyncedFile(
+            request: GRPCCore.StreamingServerRequest<Reelvault_IngestSyncedFileRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_IngestSyncedFileResponse>
 
         /// Handle the "ListSyncProfiles" method.
         ///
@@ -3084,6 +3148,44 @@ extension Reelvault_ReelVault {
             request: GRPCCore.ServerRequest<Reelvault_PrepareRenditionRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_PrepareRenditionProgress>
+
+        /// Handle the "ReconcileCatalog" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Index a file a client pulled from a sync peer (already on this daemon's
+        /// > disk) and stamp its provenance. Returns the new local video id so the
+        /// > client can ApplyVideoCatalogData onto it.
+        /// > Run the sync planner for one pull against a peer's manifest: adopt local
+        /// > originals that match by content hash, merge catalog data, record sync
+        /// > links and honour tombstones. Returns the remote video ids whose bytes the
+        /// > client still has to transfer.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_ReconcileCatalogRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Reelvault_ReconcileCatalogResponse` message.
+        func reconcileCatalog(
+            request: GRPCCore.ServerRequest<Reelvault_ReconcileCatalogRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Reelvault_ReconcileCatalogResponse>
+
+        /// Handle the "IngestSyncedFile" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_IngestSyncedFileRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Reelvault_IngestSyncedFileResponse` message.
+        func ingestSyncedFile(
+            request: GRPCCore.ServerRequest<Reelvault_IngestSyncedFileRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Reelvault_IngestSyncedFileResponse>
 
         /// Handle the "ListSyncProfiles" method.
         ///
@@ -4197,6 +4299,44 @@ extension Reelvault_ReelVault {
             context: GRPCCore.ServerContext
         ) async throws
 
+        /// Handle the "ReconcileCatalog" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Index a file a client pulled from a sync peer (already on this daemon's
+        /// > disk) and stamp its provenance. Returns the new local video id so the
+        /// > client can ApplyVideoCatalogData onto it.
+        /// > Run the sync planner for one pull against a peer's manifest: adopt local
+        /// > originals that match by content hash, merge catalog data, record sync
+        /// > links and honour tombstones. Returns the remote video ids whose bytes the
+        /// > client still has to transfer.
+        ///
+        /// - Parameters:
+        ///   - request: A `Reelvault_ReconcileCatalogRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Reelvault_ReconcileCatalogResponse` to respond with.
+        func reconcileCatalog(
+            request: Reelvault_ReconcileCatalogRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Reelvault_ReconcileCatalogResponse
+
+        /// Handle the "IngestSyncedFile" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Reelvault_IngestSyncedFileRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Reelvault_IngestSyncedFileResponse` to respond with.
+        func ingestSyncedFile(
+            request: Reelvault_IngestSyncedFileRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Reelvault_IngestSyncedFileResponse
+
         /// Handle the "ListSyncProfiles" method.
         ///
         /// - Parameters:
@@ -4964,6 +5104,28 @@ extension Reelvault_ReelVault.StreamingServiceProtocol {
             }
         )
         router.registerHandler(
+            forMethod: Reelvault_ReelVault.Method.ReconcileCatalog.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_ReconcileCatalogRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_ReconcileCatalogResponse>(),
+            handler: { request, context in
+                try await self.reconcileCatalog(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Reelvault_ReelVault.Method.IngestSyncedFile.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_IngestSyncedFileRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_IngestSyncedFileResponse>(),
+            handler: { request, context in
+                try await self.ingestSyncedFile(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
             forMethod: Reelvault_ReelVault.Method.ListSyncProfiles.descriptor,
             deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_ListSyncProfilesRequest>(),
             serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_ListSyncProfilesResponse>(),
@@ -5715,6 +5877,28 @@ extension Reelvault_ReelVault.ServiceProtocol {
             context: context
         )
         return response
+    }
+
+    public func reconcileCatalog(
+        request: GRPCCore.StreamingServerRequest<Reelvault_ReconcileCatalogRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ReconcileCatalogResponse> {
+        let response = try await self.reconcileCatalog(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    public func ingestSyncedFile(
+        request: GRPCCore.StreamingServerRequest<Reelvault_IngestSyncedFileRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_IngestSyncedFileResponse> {
+        let response = try await self.ingestSyncedFile(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
     }
 
     public func listSyncProfiles(
@@ -6618,6 +6802,32 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
                 )
                 return [:]
             }
+        )
+    }
+
+    public func reconcileCatalog(
+        request: GRPCCore.ServerRequest<Reelvault_ReconcileCatalogRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Reelvault_ReconcileCatalogResponse> {
+        return GRPCCore.ServerResponse<Reelvault_ReconcileCatalogResponse>(
+            message: try await self.reconcileCatalog(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    public func ingestSyncedFile(
+        request: GRPCCore.ServerRequest<Reelvault_IngestSyncedFileRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Reelvault_IngestSyncedFileResponse> {
+        return GRPCCore.ServerResponse<Reelvault_IngestSyncedFileResponse>(
+            message: try await self.ingestSyncedFile(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
         )
     }
 
@@ -8044,6 +8254,54 @@ extension Reelvault_ReelVault {
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_PrepareRenditionProgress>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Reelvault_PrepareRenditionProgress>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "ReconcileCatalog" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Index a file a client pulled from a sync peer (already on this daemon's
+        /// > disk) and stamp its provenance. Returns the new local video id so the
+        /// > client can ApplyVideoCatalogData onto it.
+        /// > Run the sync planner for one pull against a peer's manifest: adopt local
+        /// > originals that match by content hash, merge catalog data, record sync
+        /// > links and honour tombstones. Returns the remote video ids whose bytes the
+        /// > client still has to transfer.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_ReconcileCatalogRequest` message.
+        ///   - serializer: A serializer for `Reelvault_ReconcileCatalogRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_ReconcileCatalogResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func reconcileCatalog<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_ReconcileCatalogRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_ReconcileCatalogRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_ReconcileCatalogResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ReconcileCatalogResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "IngestSyncedFile" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_IngestSyncedFileRequest` message.
+        ///   - serializer: A serializer for `Reelvault_IngestSyncedFileRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_IngestSyncedFileResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func ingestSyncedFile<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_IngestSyncedFileRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_IngestSyncedFileRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_IngestSyncedFileResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_IngestSyncedFileResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
         /// Call the "ListSyncProfiles" method.
@@ -10194,6 +10452,76 @@ extension Reelvault_ReelVault {
             )
         }
 
+        /// Call the "ReconcileCatalog" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Index a file a client pulled from a sync peer (already on this daemon's
+        /// > disk) and stamp its provenance. Returns the new local video id so the
+        /// > client can ApplyVideoCatalogData onto it.
+        /// > Run the sync planner for one pull against a peer's manifest: adopt local
+        /// > originals that match by content hash, merge catalog data, record sync
+        /// > links and honour tombstones. Returns the remote video ids whose bytes the
+        /// > client still has to transfer.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_ReconcileCatalogRequest` message.
+        ///   - serializer: A serializer for `Reelvault_ReconcileCatalogRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_ReconcileCatalogResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func reconcileCatalog<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_ReconcileCatalogRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_ReconcileCatalogRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_ReconcileCatalogResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ReconcileCatalogResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Reelvault_ReelVault.Method.ReconcileCatalog.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "IngestSyncedFile" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_IngestSyncedFileRequest` message.
+        ///   - serializer: A serializer for `Reelvault_IngestSyncedFileRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_IngestSyncedFileResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func ingestSyncedFile<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_IngestSyncedFileRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_IngestSyncedFileRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_IngestSyncedFileResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_IngestSyncedFileResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Reelvault_ReelVault.Method.IngestSyncedFile.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
         /// Call the "ListSyncProfiles" method.
         ///
         /// - Parameters:
@@ -12045,6 +12373,66 @@ extension Reelvault_ReelVault.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_PrepareRenditionRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_PrepareRenditionProgress>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ReconcileCatalog" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Index a file a client pulled from a sync peer (already on this daemon's
+    /// > disk) and stamp its provenance. Returns the new local video id so the
+    /// > client can ApplyVideoCatalogData onto it.
+    /// > Run the sync planner for one pull against a peer's manifest: adopt local
+    /// > originals that match by content hash, merge catalog data, record sync
+    /// > links and honour tombstones. Returns the remote video ids whose bytes the
+    /// > client still has to transfer.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Reelvault_ReconcileCatalogRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func reconcileCatalog<Result>(
+        request: GRPCCore.ClientRequest<Reelvault_ReconcileCatalogRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ReconcileCatalogResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.reconcileCatalog(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_ReconcileCatalogRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_ReconcileCatalogResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "IngestSyncedFile" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Reelvault_IngestSyncedFileRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func ingestSyncedFile<Result>(
+        request: GRPCCore.ClientRequest<Reelvault_IngestSyncedFileRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_IngestSyncedFileResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.ingestSyncedFile(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_IngestSyncedFileRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_IngestSyncedFileResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -14135,6 +14523,74 @@ extension Reelvault_ReelVault.ClientProtocol {
             metadata: metadata
         )
         return try await self.prepareRendition(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ReconcileCatalog" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Index a file a client pulled from a sync peer (already on this daemon's
+    /// > disk) and stamp its provenance. Returns the new local video id so the
+    /// > client can ApplyVideoCatalogData onto it.
+    /// > Run the sync planner for one pull against a peer's manifest: adopt local
+    /// > originals that match by content hash, merge catalog data, record sync
+    /// > links and honour tombstones. Returns the remote video ids whose bytes the
+    /// > client still has to transfer.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func reconcileCatalog<Result>(
+        _ message: Reelvault_ReconcileCatalogRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ReconcileCatalogResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Reelvault_ReconcileCatalogRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.reconcileCatalog(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "IngestSyncedFile" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func ingestSyncedFile<Result>(
+        _ message: Reelvault_IngestSyncedFileRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_IngestSyncedFileResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Reelvault_IngestSyncedFileRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.ingestSyncedFile(
             request: request,
             options: options,
             onResponse: handleResponse

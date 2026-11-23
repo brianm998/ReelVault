@@ -272,7 +272,6 @@ fun SyncSetupDialog(
                                             remoteMediaPort = ep.mediaPort,
                                             token = ep.token,
                                             fingerprint = ep.fingerprintHex,
-                                            onIngestSynced = null, // desktop ingests via local daemon gRPC
                                         )
                                         mgr.startSync(profile)
                                         result = mgr.lastResult.value
